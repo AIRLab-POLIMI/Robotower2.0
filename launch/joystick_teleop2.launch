@@ -1,0 +1,20 @@
+<launch>
+	<!--  smooths inputs from cmd_vel_mux/input/teleop_raw to cmd_vel_mux/input/teleop 
+		use this line when using turtlebot model-->
+	<include file="$(find phd_robogame)/launch/includes/velocity_smoother.launch.xml"/>
+	
+	<node pkg="joy" type="joy_node" name="joystick">
+        <param name="autorepeat_rate" value="2" />
+    </node>
+	
+	<node pkg="phd_robogame" type="joystick_node" name="teleop" output="screen">
+		<remap from="robogame/cmd_vel" to="teleop_velocity_smoother/raw_cmd_vel" />
+		
+		<param name="linear_scale" value="4" />
+		<param name="angular_scale" value="3.14159" />
+		<param name="axis_deadman" value="5"/>
+		<param name="axis_linear" value="1"/>
+		<param name="axis_angular" value="0"/>
+
+	</node>
+</launch>

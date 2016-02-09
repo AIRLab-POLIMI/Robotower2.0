@@ -1,0 +1,14 @@
+<launch>	
+	<node pkg="joy" type="joy_node" name="joystick"/>
+	
+	<node pkg="phd_robogame" type="joystick_node" name="teleop" output="screen">
+		<remap from="/cmd_vel" to="/cmd_vel_mux/input/teleop" />
+		
+		<param name="linear_scale" value="4" />
+		<param name="angular_scale" value="3.14159" />
+		<param name="axis_deadman" value="5"/>
+		<param name="axis_linear" value="1"/>
+		<param name="axis_angular" value="0"/>
+
+	</node>
+</launch>
