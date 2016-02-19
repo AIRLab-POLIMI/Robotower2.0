@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(phd_robogame)
+project(robogame_simulator)
 
 ######### This block is for enabling c++11 support when needed #############################
 include(CheckCXXCompilerFlag)

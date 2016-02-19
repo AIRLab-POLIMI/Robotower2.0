@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>phd_robogame</name>
+  <name>robogame_simulator</name>
   <version>0.0.0</version>
-  <description>The phd_robogame package</description>
+  <description>The phd_robogame simulator package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->

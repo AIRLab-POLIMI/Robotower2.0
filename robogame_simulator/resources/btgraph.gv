@@ -1,0 +1,54 @@
+digraph G{
+    root -> win_game;
+    win_game -> look_for_player;
+    win_game -> goto_target;
+    look_for_player -> scan;
+    look_for_player -> proc_scene;
+    proc_scene -> player_found;
+    player_found -> player_dect;
+    player_found -> get_feat;
+    get_feat -> est_pos;
+    get_feat -> est_vel;
+    get_feat -> est_ori;
+    get_feat -> est_fut_pos;
+    proc_scene -> player_nFound;
+    player_nFound -> est_loc;
+    player_found -> proc_prox;
+    proc_prox -> get_prox;
+    proc_prox -> very_close;
+	proc_prox -> close;
+	close -> is_close;
+	close -> get_safe;
+    very_close -> is_very_close;
+    very_close -> flee_hard;
+
+	goto_target -> calc_path;
+	goto_target -> follow_path;
+	
+	close [label="Close\n(->)"];
+	is_close [label="Is enemy\nclose?",shape=pentagon];
+	get_safe [label="Get safe",shape=box];
+	follow_path [label="Follow path",shape=box];
+	calc_path [label="Find path to target",shape=box];
+	flee_hard [label="Flee Hard",shape=box];
+	is_very_close [label="is enemy\nvery close?",shape=pentagon];
+    proc_prox [label="Process Proximity\n(->)"];
+    very_close [label="Very Close\n(->)"];
+    est_loc [label="Estimate player\nposition",shape=box];
+    est_fut_pos [label="Predict next\nlocation",shape=box];
+    player_nFound [label="Player not Found\n(->)"];
+    get_prox [label="Est. proximity",shape=box];
+    player_found [label="Player Found\n(->)"];
+    est_pos [label="Get position",shape=box];
+    est_vel [label="Get velocity",shape=box];
+    est_ori [label="Get orientation",shape=box];
+    goto_target [label="Go to target"];
+    get_feat [label="Get features\n(->)"];
+    player_dect [label="Is player\ndetected?", shape=pentagon];
+    win_game[label="Win Game\n(->)"];
+    look_for_player [label="Look for players\n(->)"];
+    scan [label="scan\n(->)"];
+    scan [label="Perform\nscan",shape=box];
+    root [shape=invtriangle];
+    proc_scene [label="Process Scene\n(?)"];
+}
