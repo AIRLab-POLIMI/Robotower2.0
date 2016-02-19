@@ -1,5 +1,5 @@
-PhD Robogame ROS package
-========================
+PhD Robogame ROS stack
+======================
 
 This is the repository for the robogame project during my PhD studies at Politecnico di Milano, Italy.
 
