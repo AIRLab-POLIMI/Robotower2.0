@@ -1,14 +1,21 @@
 <launch>
-  <!--  smooths inputs from cmd_vel_mux/input/teleop_raw to cmd_vel_mux/input/teleop -->
-  <include file="$(find turtlebot_teleop)/launch/includes/velocity_smoother.launch.xml"/>
+	<!--  smooths inputs from cmd_vel_mux/input/teleop_raw to cmd_vel_mux/input/teleop 
+		use this line when using turtlebot model-->
+	<include file="$(find robogame_simulator)/launch/includes/velocity_smoother.launch.xml"/>
+	
+	<node pkg="joy" type="joy_node" name="joystick">
+        <param name="autorepeat_rate" value="2" />
+    </node>
+	
+	<node pkg="robogame_simulator" type="joystick_node" name="teleop" output="screen">
+		<remap from="robogame/cmd_vel" to="teleop_velocity_smoother/raw_cmd_vel" />
+		<!-- <remap from="robogame/cmd_vel" to="/mobile_base/commands/velocity" / -->
+		
+		<param name="linear_scale" value="4" />
+		<param name="angular_scale" value="3.14159" />
+		<param name="axis_deadman" value="5"/>
+		<param name="axis_linear" value="1"/>
+		<param name="axis_angular" value="0"/>
 
-  <node pkg="turtlebot_teleop" type="turtlebot_teleop_joy" name="turtlebot_teleop_joystick">
-    <param name="scale_angular" value="1.5"/>
-    <param name="scale_linear" value="0.5"/>
-    <param name="axis_deadman" value="5"/>
-    <param name="axis_linear" value="1"/>
-    <param name="axis_angular" value="0"/>
-    <remap from="turtlebot_teleop_joystick/cmd_vel" to="cmd_vel_mux/input/teleop"/>
-  </node>
-  <node pkg="joy" type="joy_node" name="joystick"/>
+	</node>
 </launch>

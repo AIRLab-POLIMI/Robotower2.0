@@ -44,8 +44,6 @@ public:
     }
   }
 
-
-
   //returns the status to the client (Behavior Tree)
     void setStatus(int status){
         //Set The feedback and result of BT.action
