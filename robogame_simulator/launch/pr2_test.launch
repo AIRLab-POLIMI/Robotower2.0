@@ -1,3 +1,9 @@
+<!-- This is the launch file responsable for bringing up the pr2 to my robogame.world environment
+     I used the pr2 only for the purpose of acquiring a high quality map using the PR2 slam package.
+     Under the hypothesis that the PR2 is equipped with better sensors, I manage to get a better map
+     than the one using turtlebot.
+     This should not be used for any other purpose besides SLAM. -->
+
 <launch>
     <arg name="gui" default="true"/>
   

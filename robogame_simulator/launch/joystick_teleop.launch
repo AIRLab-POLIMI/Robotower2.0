@@ -1,3 +1,6 @@
+<!-- This is a file to control the robot using a PS3-like Joystick. What is different here
+     is the fact that I can increase velocity using the joystick not the keyboard.--> 
+
 <launch>
 	<!--  smooths inputs from cmd_vel_mux/input/teleop_raw to cmd_vel_mux/input/teleop 
 		use this line when using turtlebot model-->
