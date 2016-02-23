@@ -9,6 +9,12 @@ This is the repository for the robogame project during my PhD studies at Politec
 * robotgame_bt -- game behavior tree. <br/>
 * robogame_simulator -- gazebo simulator. <br/>
 
+Dependencies
+============
+
+**[Turtlebot ROS packages](http://wiki.ros.org/turtlebot_gazebo) <br/>
+**[ROS-Behavior-Tree](https://github.com/ewerlopes/ROS-Behavior-Tree) <br/>
+
 Setup
 =====
 Git clone the repository into your catkin workspace: <br/>
