@@ -12,13 +12,13 @@ This is the repository for the robogame project during my PhD studies at Politec
 How to use it
 =============
 
-**Bring up**
+**Bring up**  <br/>
 `$ roslaunch robogame_simulator robogame.launch` <br/>
 
-**Navigation**
+**Navigation** <br/>
 
 
-**For visualization:**
+**For visualization:** <br/>
 `$ rosrun image_view image_view image:=/camera/depth/image_raw` <br/>
 `$ rosrun image_view image_view image:=/camera/rgb/image_raw` <br/>
 `$ roslaunch turtlebot_rviz_launchers view_navigation.launch` <br/>
