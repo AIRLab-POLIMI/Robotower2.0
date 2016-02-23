@@ -9,6 +9,18 @@ This is the repository for the robogame project during my PhD studies at Politec
 * robotgame_bt -- game behavior tree. <br/>
 * robogame_simulator -- gazebo simulator. <br/>
 
+Setup
+=====
+Git clone the repository into your catkin workspace: <br/>
+`$ cd path/to/catkin/repository` <br/>
+`$ cd src` <br/>
+`$ git clone https://github.com/ewerlopes/phd_robogame.git` <br/>
+
+Build: <br/>
+`$ cd ..` <br/>
+`$ catkin_make` <br/>
+
+
 How to use it
 =============
 
