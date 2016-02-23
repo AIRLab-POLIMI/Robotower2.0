@@ -1,4 +1,9 @@
 digraph G{
+    
+    ratio="fill";
+    size="8.3,11.7!";
+    margin=0;
+
     root -> win_game;
     win_game -> look_for_player;
     win_game -> goto_target;
@@ -14,7 +19,6 @@ digraph G{
     proc_scene -> player_nFound;
     player_nFound -> est_loc;
     player_found -> proc_prox;
-    proc_prox -> get_prox;
     proc_prox -> very_close;
 	proc_prox -> close;
 	close -> is_close;
@@ -32,12 +36,11 @@ digraph G{
 	calc_path [label="Find path to target",shape=box];
 	flee_hard [label="Flee Hard",shape=box];
 	is_very_close [label="is enemy\nvery close?",shape=pentagon];
-    proc_prox [label="Process Proximity\n(->)"];
+    proc_prox [label="Process Proximity\n(?)"];
     very_close [label="Very Close\n(->)"];
     est_loc [label="Estimate player\nposition",shape=box];
     est_fut_pos [label="Predict next\nlocation",shape=box];
     player_nFound [label="Player not Found\n(->)"];
-    get_prox [label="Est. proximity",shape=box];
     player_found [label="Player Found\n(->)"];
     est_pos [label="Get position",shape=box];
     est_vel [label="Get velocity",shape=box];
