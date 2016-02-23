@@ -16,7 +16,7 @@ How to use it
 `$ roslaunch robogame_simulator robogame.launch` <br/>
 
 **Navigation** <br/>
-
+`$ roslaunch robogame_simulator nav_demo.launch` <br/>
 
 **For visualization:** <br/>
 `$ rosrun image_view image_view image:=/camera/depth/image_raw` <br/>
@@ -25,6 +25,5 @@ How to use it
 
 Additional Info
 ===============
-
 At this point I am using the `turtlebot` as the target robot base. So, there's a large dependency on
 `turtlebot` ros packages. This dependency is going to be descontinued soon.

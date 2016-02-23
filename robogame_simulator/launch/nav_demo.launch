@@ -1,0 +1,24 @@
+<!-- This uses the turtlebod acml_demo as the starting point. Calls it using the default game environment
+     as the map_file. Launches also the patrol demo (responsable for issuing target positions). --> 
+
+<launch>
+  <!-- Map server -->
+  <arg name="map_file" default="$(find robogame_simulator)/launch/maps/map.yaml"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+
+  <!-- Localization -->
+  <arg name="initial_pose_x" default="0.0"/>
+  <arg name="initial_pose_y" default="0.0"/>
+  <arg name="initial_pose_a" default="0.0"/>
+  <include file="$(find turtlebot_navigation)/launch/includes/amcl.launch.xml">
+    <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+  </include>
+
+  <!-- Move base -->
+  <include file="$(find turtlebot_navigation)/launch/includes/move_base.launch.xml"/>
+  
+  <!-- Calling the patrol demo -->
+  <node pkg="robogame_simulator" type="patrol_nav" name="patrol_nav" output="screen"/>
+</launch>
