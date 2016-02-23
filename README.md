@@ -1,7 +1,7 @@
 PhD Robogame ROS stack
 ======================
-![ROS][https://img.shields.io/badge/ROS-Indigo-brightgreen.svg]
-![OS][https://img.shields.io/badge/OS-Ubutu14.04-orange.svg]
+![ROS](https://img.shields.io/badge/ROS-Indigo-brightgreen.svg)
+![OS](https://img.shields.io/badge/OS-Ubutu14.04-orange.svg)
 
 This is the repository for the robogame project during my PhD studies at Politecnico di Milano, Italy.
 
