@@ -1,0 +1,15 @@
+
+<!-- run it alone: rosrun rosserial_python serial_node.py _port:=/dev/ttyUSB0 _baud:=57600-->
+
+<launch>
+  	<node pkg="rosserial_python" type="serial_node.py" respawn="true" name="rosserial_arduino" output="screen">
+  	<param name="~port" value="/dev/ttyUSB0" />
+	<param name="_baud" value="57600" />
+	</node>
+
+	<include file="$(find triskar_joystick)/launch/triskar-joystick.launch"/>
+
+	<node name="kinect_feat_extractor" pkg="kinect_feat_extractor" type="kinect_feat_extractor_node" respawn="true" output="screen"/>
+	<node pkg="rosbag" type="record" name="rosbag_record_kinect_features" respawn="true"
+       	args="-o $(find kinect_feat_extractor)/bags/ /kinect_features/ /camera/image" />
+</launch>

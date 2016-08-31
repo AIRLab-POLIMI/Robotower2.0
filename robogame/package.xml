@@ -10,7 +10,6 @@
   <buildtool_depend>catkin</buildtool_depend>
   <run_depend>behavior_tree_core</run_depend>
   <run_depend>behavior_tree_leaves</run_depend>
-  <run_depend>robogame_simulator</run_depend>
   <run_depend>robogame_bt</run_depend>
 
   <export>
