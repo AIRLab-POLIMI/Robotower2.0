@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     message_generation
     sensor_msgs
+    wiimote
 )
 
 ## System dependencies are found with CMake's conventions
@@ -121,6 +122,11 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 add_executable(robogame_rosarduino_node
                     src/robogame_rosarduino.cpp
                     )
+
+add_executable(robogame_rosarduino_LED_node
+                    src/robogame_rosarduino_LED.cpp
+                    )
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -135,6 +141,10 @@ add_dependencies(robogame_rosarduino_node robogame_rosarduino_gencpp ${${PROJECT
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(robogame_rosarduino_node
+	${catkin_LIBRARIES}
+)
+
+target_link_libraries(robogame_rosarduino_LED_node
 	${catkin_LIBRARIES}
 )
 
