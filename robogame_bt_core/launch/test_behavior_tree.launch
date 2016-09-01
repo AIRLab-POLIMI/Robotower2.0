@@ -1,0 +1,5 @@
+<launch>
+  <node name="action" pkg="robogame_bt_leaves" type="ActionExample" />
+  <node name="condition" pkg="robogame_bt_leaves" type="ConditionExample" />
+  <node name="tree" pkg="robogame_bt_core" type="tree" />
+</launch>
