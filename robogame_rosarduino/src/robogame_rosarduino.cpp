@@ -23,7 +23,7 @@ void stateMessageReceived(const wiimote::State& msg){
 
 int main (int argc, char** argv){
 	// Initialize the ROS system and become a node .
-	ros::init(argc, argv, "ros-arduino_wiimote_listener");
+	ros::init(argc, argv, "ros_arduino_wiimote_listener");
 	ros::NodeHandle nh;
 
 	// Create a subscriber object.
