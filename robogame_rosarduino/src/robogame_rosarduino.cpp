@@ -8,15 +8,16 @@
 
 #include<time.h>
 
-const int MAXLED = 4;
+const int MAXLED = 4;									// Maximum LED number
 const int ON = 1;
 const int OFF = 0;
-int previousButtonState = 0;
+int prevShootBtState = 0;
+int prevRecharBtState = OFF;
 int rumble = OFF;
-bool AtStart = false;
 int bullets[4] = {ON,ON,ON,ON};
-int numBullets = 4;
+int numBullets = 4;										// four initial bullets available at game start
 int pressCounter;
+bool AtStart = false;
 std::time_t rumbleStart,rumbleEnd;
 
 // Create a publisher object for button state.
@@ -34,6 +35,7 @@ bool isAllOn(const boost::array<unsigned char,4>  LEDsState){
 	return (count == MAXLED);
 }
 
+// Update LED state based on the number of bullets
 void updateBullets(){
 	for(int i=0;i<MAXLED;i++){
 		if(i < numBullets){
@@ -44,65 +46,79 @@ void updateBullets(){
 	}
 }
 
+// Update Rumble state
+sensor_msgs::JoyFeedbackArray updateRumble(float state){
+	sensor_msgs::JoyFeedbackArray msg;
+	sensor_msgs::JoyFeedback rumble;
+	rumble.type = sensor_msgs::JoyFeedback::TYPE_RUMBLE;
+	rumble.id = 0;
+	rumble.intensity = state;
+	msg.array.push_back(rumble);
+	return msg;
+}
+
 // Receives a blank vector and fill it with the bullets data.
-void setLEDs(sensor_msgs::JoyFeedbackArray& LEDstates){
+sensor_msgs::JoyFeedbackArray setLEDs(){
+	sensor_msgs::JoyFeedbackArray msg;
 	for(int ledid=0;ledid<MAXLED;ledid++){
 		sensor_msgs::JoyFeedback led;
 		led.type = sensor_msgs::JoyFeedback::TYPE_LED;
 		led.id = ledid;
 		led.intensity = bullets[ledid];
-		LEDstates.array.push_back(led);
+		msg.array.push_back(led);
 	}
+	return msg;
 }
 
 // A callback function . Executed each time a wiimote message arrives
 void stateMessageReceived(const wiimote::State& msg){
 
-	//setting init
+	// SETTING GAME INIT
 	if(!AtStart){
 		if (isAllOn(msg.LEDs)){
 			AtStart = true;
 			numBullets = 4;
 			pressCounter = 0;
 		}else{
-			sensor_msgs::JoyFeedbackArray msg;
-			setLEDs(msg);
-			// Publish the message .
-			LEDRumble_pub.publish(msg);
+			// Publish LED state (all turned on -- 4 initial bullets).
+			LEDRumble_pub.publish(setLEDs());	// publish new LEDs state
 		}
 	}else{
-		int newButtonState = msg.buttons[5];
-		if (previousButtonState != newButtonState){
-			previousButtonState = newButtonState;
-			if ((newButtonState == ON) && (numBullets > 0)){
-				ROS_INFO_STREAM("Button pressed");
-				if(!((numBullets -1) < 0)) numBullets--;
-				ROS_INFO_STREAM("Bullets left: " << numBullets);
-				updateBullets();
-				sensor_msgs::JoyFeedbackArray msg;
-				setLEDs(msg);
-				LEDRumble_pub.publish(msg);					// publish new wiimote LED state
-				robogame_rosarduino::State buttonmsg;	// Create and fill in the message for arduino feedback (buzzer).
-				buttonmsg.state = newButtonState;
-				BUTTONpub.publish(buttonmsg);			// Publish the message.
-			}else if ((newButtonState == ON) && (numBullets == 0)){
+
+		/* SHOTTING BUTTON */
+		int newShootBtState = msg.buttons[5];								// Shoot button (back trigger button)
+		if (prevShootBtState != newShootBtState){
+			prevShootBtState = newShootBtState;
+			if ((newShootBtState == ON) && (numBullets > 0)){
+				if(!((numBullets -1) < 0)) numBullets--;					// decrease bullets (a bullet used)
+				updateBullets();											// update Bullets 
+				LEDRumble_pub.publish(setLEDs());							// publish new wiimote LED state
+				robogame_rosarduino::State buttonmsg;						// Create and fill in the message for arduino feedback (buzzer).
+				buttonmsg.shootButton = newShootBtState;
+				BUTTONpub.publish(buttonmsg);								// Publish the message.
+			}else if ((newShootBtState == ON) && (numBullets == 0)){		// turns rumble on when there is no bullets left
 				rumble = ON;
-				sensor_msgs::JoyFeedbackArray msg;
-				sensor_msgs::JoyFeedback rumble;
-				rumble.type = sensor_msgs::JoyFeedback::TYPE_RUMBLE;
-				rumble.id = 0;
-				rumble.intensity = 1;
-				msg.array.push_back(rumble);
-				LEDRumble_pub.publish(msg);
-			}else if ((newButtonState == OFF) && (rumble == ON)){
+				LEDRumble_pub.publish(updateRumble(1));						// turn rumble on
+			}else if ((newShootBtState == OFF) && (rumble == ON)){			// turns rumble off when the button is released
 				rumble = OFF;
-				sensor_msgs::JoyFeedbackArray msg;
-				sensor_msgs::JoyFeedback rumble;
-				rumble.type = sensor_msgs::JoyFeedback::TYPE_RUMBLE;
-				rumble.id = 0;
-				rumble.intensity = 0;
-				msg.array.push_back(rumble);
-				LEDRumble_pub.publish(msg);
+				LEDRumble_pub.publish(updateRumble(0));						// turn rumble off
+			}
+		}
+
+		/* RECHARGE BUTTON */
+		int newRecharBtState = msg.buttons[4];								// Recharge button (A button)
+		if (prevRecharBtState != newRecharBtState){
+			prevRecharBtState = newRecharBtState;
+			if ((newRecharBtState == ON) && (numBullets < MAXLED)){
+				numBullets++;												// increase #ofBullets
+				updateBullets();											// update bullets vector
+				LEDRumble_pub.publish(setLEDs());							// publish new LEDs state
+			}else if ((newRecharBtState == ON) && (numBullets == MAXLED)){
+				rumble = ON;
+				LEDRumble_pub.publish(updateRumble(1));						// turn rumble on
+			}else if ((newRecharBtState == OFF) && (rumble == ON)){
+				rumble = OFF;
+				LEDRumble_pub.publish(updateRumble(0));						// turn rumble off
 			}
 		}
 	}
@@ -119,7 +135,7 @@ int main (int argc, char** argv){
 	LEDRumble_pub = nh.advertise<sensor_msgs::JoyFeedbackArray>("/joy/set_feedback",1000);		// advertise LED and Rumble state
 
 	ROS_INFO_STREAM("Listening to wiimote button event...");
-	ROS_INFO_STREAM("Obtained LED control...");
+	ROS_INFO_STREAM("This node controls LEDs and Rumble...");
 
 	// Let ROS take over .
 	ros::spin();

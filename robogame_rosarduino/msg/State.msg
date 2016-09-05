@@ -1,2 +1,3 @@
 std_msgs/Header header
-int8 state
+bool shootButton
+bool rechargeButton
