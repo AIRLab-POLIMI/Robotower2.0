@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>robogame_rosarduino</name>
+  <name>robogame_wiimote_listener</name>
   <version>0.0.1</version>
   <description>The robogame_rosarduino package is supposed to act as a wrapper for the wiimote/state message, which is too large to fit appropriatedly for the arduino memory.</description>
 

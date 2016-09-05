@@ -1,7 +1,7 @@
 // This program subscribes to wiimote and publishes the interested button state.
 #include<ros/ros.h>
 #include<wiimote/State.h>
-#include<robogame_rosarduino/State.h>
+#include<robogame_wiimote_listener/State.h>
 
 #include<sensor_msgs/JoyFeedbackArray.h>
 #include<sensor_msgs/JoyFeedback.h>
@@ -11,14 +11,12 @@
 const int MAXLED = 4;									// Maximum LED number
 const int ON = 1;
 const int OFF = 0;
-int prevShootBtState = 0;
+int prevShootBtState = OFF;
 int prevRecharBtState = OFF;
 int rumble = OFF;
 int bullets[4] = {ON,ON,ON,ON};
-int numBullets = 4;										// four initial bullets available at game start
-int pressCounter;
+int numBullets = 4;									// four initial bullets available at game start
 bool AtStart = false;
-std::time_t rumbleStart,rumbleEnd;
 
 // Create a publisher object for button state.
 ros::Publisher BUTTONpub;
@@ -78,7 +76,6 @@ void stateMessageReceived(const wiimote::State& msg){
 		if (isAllOn(msg.LEDs)){
 			AtStart = true;
 			numBullets = 4;
-			pressCounter = 0;
 		}else{
 			// Publish LED state (all turned on -- 4 initial bullets).
 			LEDRumble_pub.publish(setLEDs());	// publish new LEDs state
@@ -91,10 +88,10 @@ void stateMessageReceived(const wiimote::State& msg){
 			prevShootBtState = newShootBtState;
 
 			// Create and fill in the message for arduino feedback (buzzer).
-			robogame_rosarduino::State buttonmsg;						
+			robogame_wiimote_listener::State buttonmsg;						
 			buttonmsg.shootButton = newShootBtState;
 			buttonmsg.numBullets = numBullets;
-			BUTTONpub.publish(buttonmsg);								// Publish the message.
+			BUTTONpub.publish(buttonmsg);									// Publish the message.
 
 			if ((newShootBtState == ON) && (numBullets > 0)){
 				if(!((numBullets -1) < 0)) numBullets--;					// decrease bullets (a bullet used)
@@ -135,8 +132,8 @@ int main (int argc, char** argv){
 
 	// Create a subscriber object.
 	sub = nh.subscribe("wiimote/state", 1000, &stateMessageReceived);
-	BUTTONpub = nh.advertise<robogame_rosarduino::State>("wiimote/fit_arduino_state",1000);		// advertise button state for arduino listener
-	LEDRumble_pub = nh.advertise<sensor_msgs::JoyFeedbackArray>("/joy/set_feedback",1000);		// advertise LED and Rumble state
+	BUTTONpub = nh.advertise<robogame_wiimote_listener::State>("wiimote/fit_arduino_state",1000);		// advertise button state for arduino listener
+	LEDRumble_pub = nh.advertise<sensor_msgs::JoyFeedbackArray>("/joy/set_feedback",1000);				// advertise LED and Rumble state
 
 	ROS_INFO_STREAM("Listening to wiimote button event...");
 	ROS_INFO_STREAM("This node controls LEDs and Rumble...");

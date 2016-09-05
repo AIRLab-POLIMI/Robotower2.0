@@ -1,0 +1,197 @@
+#include <ros.h>
+#include <robogame_kinectfeatures_extractor/kinect_feat.h>
+#include<robogame_wiimote_listener/State.h>
+#include<robogame_arduino/State.h>
+#include<robogame_arduino/Voltage.h>
+
+ros::NodeHandle  nh;
+
+//RGB LED pins
+int ledDigitalOne[] = {10, 11, 9}; //the three digital pins of the digital LED 
+                                   //10 = redPin, 11 = greenPin, 9 = bluePin
+
+const boolean ON = HIGH;     //Define on as LOW (this is because we use a common 
+                            //Anode RGB LED (common pin is connected to +5 volts)
+const boolean OFF = LOW;   //Define off as HIGH
+boolean ledState = OFF;     // ledState used to set the LED
+boolean isBatButtonPressed = false;
+boolean batBuzzerState = OFF;
+
+//Predefined Colors
+const boolean RED[] = {ON, OFF, OFF};    
+const boolean GREEN[] = {OFF, ON, OFF}; 
+const boolean BLUE[] = {OFF, OFF, ON}; 
+const boolean YELLOW[] = {ON, ON, OFF}; 
+const boolean CYAN[] = {OFF, ON, ON}; 
+const boolean MAGENTA[] = {ON, OFF, ON}; 
+const boolean WHITE[] = {ON, ON, ON}; 
+const boolean COLOROFF[] = {OFF, OFF, OFF};
+
+//An Array that stores the predefined colors (allows us to later randomly display a color)
+const boolean* COLORS[] = {RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA, WHITE, COLOROFF};
+
+int currentColor;
+volatile boolean isButtonPressed = false;
+boolean gameOverSound = false;
+boolean isPlayerLost = true;
+boolean isTooClose = false;
+int blinkInterval = 250;           // interval at which to blink (milliseconds)
+const long tooCloseInterval = 1000;
+float distanceThreshold = 1.10;
+
+// Generally, we should use "unsigned long" for variables that hold time
+// The value will quickly become too large for an int to store
+unsigned long previousMillis = 0;        // will store last time LED was updated;
+unsigned long previousPSeenTime = 0;
+unsigned long timeUntilReset = 0;
+unsigned long timeForBuzzer = 0;
+unsigned long previousTimeForBatBeeping = 0;
+
+long randNumber;
+
+void messageCb( const robogame_kinectfeatures_extractor::kinect_feat& msg){
+  if(msg.distance < 0){
+    isPlayerLost = true;
+  }else if (!isTooClose && (msg.distance < distanceThreshold) && ((millis() - previousPSeenTime) > tooCloseInterval)){
+    isTooClose = true;
+    isPlayerLost = false;
+  }else if (msg.distance > distanceThreshold){
+    previousPSeenTime = millis();
+    isPlayerLost =false;
+    isTooClose = false;
+  }
+}
+
+void messageWiimote(const robogame_wiimote_listener::State& msg){
+  if ((msg.shootButton == true) && (msg.numBullets > 0)) {
+      beep(20);
+  }else{
+      beep(0);
+  }
+}
+
+//ros::Subscriber<robogame_kinectfeatures_extractor::kinect_feat> sub("kinect_features", &messageCb );
+ros::Subscriber<robogame_wiimote_listener::State> wiiSub("wiimote/fit_arduino_state", &messageWiimote);
+robogame_arduino::State rechargerState;
+robogame_arduino::Voltage voltageState;
+ros::Publisher rechargerPub("rechargerState", &rechargerState);
+ros::Publisher voltagePub("robot_battery_voltage", &voltageState);
+
+void setup(){
+  Serial.begin(57600);
+  for(int i = 0; i < 3; i++){
+   pinMode(ledDigitalOne[i], OUTPUT);   //Set the three LED pins as outputs
+  }
+
+  // if analog input pin 0 is unconnected, random analog
+  // noise will cause the call to randomSeed() to generate
+  // different seed numbers each time the sketch runs.
+  // randomSeed() will then shuffle the random function.
+  randomSeed(analogRead(0));
+  
+  attachInterrupt(1,batButtonPressed,RISING);
+  currentColor = 1;
+  // declare pin 5 to be an output (for buzzer)
+  pinMode(5, OUTPUT);
+  nh.initNode();
+  //nh.subscribe(sub);
+  nh.subscribe(wiiSub);
+  nh.advertise(rechargerPub);
+  nh.advertise(voltagePub);
+}
+
+void loop(){
+
+  /* Checking battery (a voltage less then 1.77 correspond to battery level at 20V */
+  float voltage = (analogRead(A2) * 5.015) / 1024.0;
+  voltageState.raw_voltage = voltage;
+  voltageState.voltage = (20*voltage)/1.77;
+  if (voltage <= 1.77){
+    unsigned long currentBatMillis = millis();
+    if (!isBatButtonPressed){
+      if ((millis() - previousTimeForBatBeeping) > 400){
+        previousTimeForBatBeeping = currentBatMillis;
+        if (batBuzzerState == OFF) {
+          batBuzzerState = ON;
+          beep(200);
+        } else {
+          batBuzzerState = OFF;
+          beep(0);
+        }
+      }
+    }
+  }
+  //.... 
+
+  /* LED COLOR CONTROL  */
+  if (isPlayerLost){
+    currentColor = 0;
+    blinkInterval = 250;
+  }else if (isTooClose){
+    currentColor = 0;
+    blinkInterval = 125;
+  }else if(!isPlayerLost && !isTooClose){
+    currentColor = 1;
+    blinkInterval = 250;
+
+    rechargerState.isRechargeTime = 0;
+    rechargerState.timer = 300;
+  } 
+  /* --- */
+  
+  // check to see if it's time to blink the LED; that is, if the
+  // difference between the current time and last time you blinked
+  // the LED is bigger than the interval at which you want to
+  // blink the LED.
+  unsigned long currentMillis = millis();
+  if((currentMillis - previousMillis) >= blinkInterval) {
+      // save the last time you blinked the LED
+      previousMillis = currentMillis;
+
+      // if the LED is off turn it on and vice-versa:
+      if (ledState == OFF) {
+        ledState = ON;
+        setColor(ledDigitalOne, COLORS[currentColor]);    //Set the color of LED one
+      } else {
+        ledState = OFF;
+        setColor(ledDigitalOne, COLOROFF); // turn off light
+      }
+  }
+
+  rechargerPub.publish(&rechargerState);
+  voltagePub.publish(&voltageState);            // Publish robot battery info.
+  nh.spinOnce();
+  delay(1);
+
+}
+
+
+/* Sets an led to any color
+   led - a three element array defining the three color pins (led[0] = redPin, led[1] = greenPin, led[2] = bluePin)
+   color - a three element boolean array (color[0] = red value (LOW = on, HIGH = off), color[1] = green value, color[2] =blue value)
+*/
+void setColor(int* led, boolean* color){
+ for(int i = 0; i < 3; i++){
+   digitalWrite(led[i], color[i]);
+ }
+}
+
+/* A version of setColor that allows for using const boolean colors
+*/
+void setColor(int* led, const boolean* color){
+  boolean tempColor[] = {color[0], color[1], color[2]};
+  setColor(led, tempColor);
+}
+
+void beep(unsigned char delayms){
+  analogWrite(5, delayms);      // Almost any value can be used except 0 and 255
+}
+
+void batButtonPressed() {
+  static unsigned long lastMillis = 0;
+  unsigned long newMillis = millis();
+  if(newMillis - lastMillis < 60){}
+  else{
+    isBatButtonPressed = !isBatButtonPressed;
+  }
+}

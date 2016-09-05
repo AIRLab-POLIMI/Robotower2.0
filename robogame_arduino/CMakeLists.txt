@@ -1,19 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(robogame_rosarduino)
+project(robogame_arduino)
 
 set(CMAKE_CXX_FLAGS "-std=c++11")
-
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-    roscpp
-    rospy
-    std_msgs
-    message_generation
-    sensor_msgs
-    wiimote
-)
+find_package(catkin REQUIRED COMPONENTS roscpp std_msgs
+    message_generation)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -50,8 +43,9 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## Generate messages in the 'msg' folder
 add_message_files(
-   FILES
-   State.msg
+  FILES
+  State.msg
+  Voltage.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -70,8 +64,8 @@ add_message_files(
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
-   DEPENDENCIES
-   std_msgs  # Or other packages containing msgs
+  DEPENDENCIES
+  std_msgs  # Or other packages containing msgs
 )
 
 ################################################
@@ -105,7 +99,7 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES wiimote_button_listener
+#  LIBRARIES robogame_arduino
    CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
@@ -116,37 +110,29 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS})
+# include_directories(include)
 
 ## Declare a C++ library
-add_executable(robogame_rosarduino_node
-                    src/robogame_rosarduino.cpp
-                    )
-
-add_executable(robogame_rosarduino_LED_node
-                    src/robogame_rosarduino_LED.cpp
-                    )
+# add_library(robogame_arduino
+#   src/${PROJECT_NAME}/robogame_arduino.cpp
+# )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(wiimote_button_listener ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(robogame_arduino ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(wiimote_button_listener_node src/wiimote_button_listener_node.cpp)
+# add_executable(robogame_arduino_node src/robogame_arduino_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(robogame_rosarduino_node robogame_rosarduino_gencpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(robogame_arduino_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(robogame_rosarduino_node
-	${catkin_LIBRARIES}
-)
-
-target_link_libraries(robogame_rosarduino_LED_node
-	${catkin_LIBRARIES}
-)
+# target_link_libraries(robogame_arduino_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -163,7 +149,7 @@ target_link_libraries(robogame_rosarduino_LED_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS wiimote_button_listener wiimote_button_listener_node
+# install(TARGETS robogame_arduino robogame_arduino_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -188,7 +174,7 @@ target_link_libraries(robogame_rosarduino_LED_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_wiimote_button_listener.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_robogame_arduino.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
