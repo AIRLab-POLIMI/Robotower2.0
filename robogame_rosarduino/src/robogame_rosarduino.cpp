@@ -89,13 +89,17 @@ void stateMessageReceived(const wiimote::State& msg){
 		int newShootBtState = msg.buttons[5];								// Shoot button (back trigger button)
 		if (prevShootBtState != newShootBtState){
 			prevShootBtState = newShootBtState;
+
+			// Create and fill in the message for arduino feedback (buzzer).
+			robogame_rosarduino::State buttonmsg;						
+			buttonmsg.shootButton = newShootBtState;
+			buttonmsg.numBullets = numBullets;
+			BUTTONpub.publish(buttonmsg);								// Publish the message.
+
 			if ((newShootBtState == ON) && (numBullets > 0)){
 				if(!((numBullets -1) < 0)) numBullets--;					// decrease bullets (a bullet used)
 				updateBullets();											// update Bullets 
 				LEDRumble_pub.publish(setLEDs());							// publish new wiimote LED state
-				robogame_rosarduino::State buttonmsg;						// Create and fill in the message for arduino feedback (buzzer).
-				buttonmsg.shootButton = newShootBtState;
-				BUTTONpub.publish(buttonmsg);								// Publish the message.
 			}else if ((newShootBtState == ON) && (numBullets == 0)){		// turns rumble on when there is no bullets left
 				rumble = ON;
 				LEDRumble_pub.publish(updateRumble(1));						// turn rumble on
