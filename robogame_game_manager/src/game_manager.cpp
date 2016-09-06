@@ -57,7 +57,7 @@ void handleWiiMessage(const wiimote::State& msg){
 	if(!AtStart){
 		if (isAllOn(msg.LEDs)){
 			AtStart = true;
-			numBullets = 4;
+			numBullets = 4;                     // player has 4 bullets at the beggining.
 		}else{
 			// Publish LED state (all turned on -- 4 initial bullets).
 			LEDRumble_pub.publish(setLEDs());	// publish new LEDs state
