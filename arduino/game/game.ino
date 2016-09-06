@@ -1,7 +1,5 @@
 #include <ros.h>
-#include <robogame_kinectfeatures_extractor/kinect_feat.h>
-#include<robogame_wiimote_listener/State.h>
-#include<robogame_arduino/State.h>
+#include<robogame_arduino/interState.h>
 #include<robogame_arduino/Voltage.h>
 
 ros::NodeHandle  nh;
@@ -14,8 +12,12 @@ const boolean ON = HIGH;     //Define on as LOW (this is because we use a common
                             //Anode RGB LED (common pin is connected to +5 volts)
 const boolean OFF = LOW;   //Define off as HIGH
 boolean ledState = OFF;     // ledState used to set the LED
-boolean isBatButtonPressed = false;
+volatile boolean isBatButtonPressed = false;
 boolean batBuzzerState = OFF;
+
+
+boolean isPlayerLost;
+boolean isPlayerTooClose;
 
 //Predefined Colors
 const boolean RED[] = {ON, OFF, OFF};    
@@ -33,49 +35,33 @@ const boolean* COLORS[] = {RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA, WHITE, COLOR
 int currentColor;
 volatile boolean isButtonPressed = false;
 boolean gameOverSound = false;
-boolean isPlayerLost = true;
-boolean isTooClose = false;
 int blinkInterval = 250;           // interval at which to blink (milliseconds)
-const long tooCloseInterval = 1000;
 float distanceThreshold = 1.10;
 
 // Generally, we should use "unsigned long" for variables that hold time
 // The value will quickly become too large for an int to store
 unsigned long previousMillis = 0;        // will store last time LED was updated;
-unsigned long previousPSeenTime = 0;
-unsigned long timeUntilReset = 0;
 unsigned long timeForBuzzer = 0;
 unsigned long previousTimeForBatBeeping = 0;
 
-long randNumber;
+/* MANAGES WIIMOTE INCOME MESSAGES*/
+void handleGameState(const robogame_arduino::interState& msg){
 
-void messageCb( const robogame_kinectfeatures_extractor::kinect_feat& msg){
-  if(msg.distance < 0){
-    isPlayerLost = true;
-  }else if (!isTooClose && (msg.distance < distanceThreshold) && ((millis() - previousPSeenTime) > tooCloseInterval)){
-    isTooClose = true;
-    isPlayerLost = false;
-  }else if (msg.distance > distanceThreshold){
-    previousPSeenTime = millis();
-    isPlayerLost =false;
-    isTooClose = false;
-  }
-}
-
-void messageWiimote(const robogame_wiimote_listener::State& msg){
-  if ((msg.shootButton == true) && (msg.numBullets > 0)) {
+  isPlayerLost = msg.isPlayerLost;
+  isPlayerTooClose = msg.isPlayerTooClose;
+  blinkInterval = msg.blinkInterval;
+  if ((msg.beep == true)){
       beep(20);
   }else{
       beep(0);
   }
 }
 
-//ros::Subscriber<robogame_kinectfeatures_extractor::kinect_feat> sub("kinect_features", &messageCb );
-ros::Subscriber<robogame_wiimote_listener::State> wiiSub("wiimote/fit_arduino_state", &messageWiimote);
-robogame_arduino::State rechargerState;
+/* SET PUBLISHERS AND SUBSCRIBERS*/
+ros::Subscriber<robogame_arduino::interState> sub("robogame/iteraction_state", &handleGameState);
 robogame_arduino::Voltage voltageState;
-ros::Publisher rechargerPub("rechargerState", &rechargerState);
 ros::Publisher voltagePub("robot_battery_voltage", &voltageState);
+/* ..... */
 
 void setup(){
   Serial.begin(57600);
@@ -94,50 +80,13 @@ void setup(){
   // declare pin 5 to be an output (for buzzer)
   pinMode(5, OUTPUT);
   nh.initNode();
-  //nh.subscribe(sub);
-  nh.subscribe(wiiSub);
-  nh.advertise(rechargerPub);
+  nh.subscribe(sub);
   nh.advertise(voltagePub);
 }
 
 void loop(){
 
-  /* Checking battery (a voltage less then 1.77 correspond to battery level at 20V */
-  float voltage = (analogRead(A2) * 5.015) / 1024.0;
-  voltageState.raw_voltage = voltage;
-  voltageState.voltage = (20*voltage)/1.77;
-  if (voltage <= 1.77){
-    unsigned long currentBatMillis = millis();
-    if (!isBatButtonPressed){
-      if ((millis() - previousTimeForBatBeeping) > 400){
-        previousTimeForBatBeeping = currentBatMillis;
-        if (batBuzzerState == OFF) {
-          batBuzzerState = ON;
-          beep(200);
-        } else {
-          batBuzzerState = OFF;
-          beep(0);
-        }
-      }
-    }
-  }
-  //.... 
-
-  /* LED COLOR CONTROL  */
-  if (isPlayerLost){
-    currentColor = 0;
-    blinkInterval = 250;
-  }else if (isTooClose){
-    currentColor = 0;
-    blinkInterval = 125;
-  }else if(!isPlayerLost && !isTooClose){
-    currentColor = 1;
-    blinkInterval = 250;
-
-    rechargerState.isRechargeTime = 0;
-    rechargerState.timer = 300;
-  } 
-  /* --- */
+  checkBattery();
   
   // check to see if it's time to blink the LED; that is, if the
   // difference between the current time and last time you blinked
@@ -158,7 +107,8 @@ void loop(){
       }
   }
 
-  rechargerPub.publish(&rechargerState);
+
+  /* PUBLISH RELEVANT TOPICS */
   voltagePub.publish(&voltageState);            // Publish robot battery info.
   nh.spinOnce();
   delay(1);
@@ -195,3 +145,28 @@ void batButtonPressed() {
     isBatButtonPressed = !isBatButtonPressed;
   }
 }
+
+/* Check battery level and publish corresponding info*/
+void checkBattery(){
+  /* Checking battery (a voltage less then 1.77 correspond to battery level at 20V */
+  float voltage = (analogRead(A2) * 5.015) / 1024.0;
+  voltageState.raw_voltage = voltage;
+  voltageState.voltage = (20*voltage)/1.77;
+  if (voltage <= 1.77){
+    unsigned long currentBatMillis = millis();
+    if (!isBatButtonPressed){
+      if ((millis() - previousTimeForBatBeeping) > 400){
+        previousTimeForBatBeeping = currentBatMillis;
+        if (batBuzzerState == OFF) {
+          batBuzzerState = ON;
+          beep(200);
+        } else {
+          batBuzzerState = OFF;
+          beep(0);
+        }
+      }
+    }
+  }
+  //.... 
+}
+
