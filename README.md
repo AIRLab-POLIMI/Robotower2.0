@@ -8,7 +8,6 @@ This is the repository for the robogame project during my PhD studies at Politec
 * `robogame` -- metapackage. <br/>
 * `robogame_bt_core` -- where the behavior tree (bt) main code resides. <br/>
 * `robogame_bt_leaves` -- where actions and conditions (bt leaves) codes are defined. <br/>
-* `robogame_simulator` -- has codes for bringing up the gazebo simulator. <br/>
 
 Dependencies
 ============
