@@ -14,8 +14,15 @@
  
 #include<sensor_msgs/JoyFeedbackArray.h>
 #include<sensor_msgs/JoyFeedback.h>
+#include<cstdlib>
 #include "utils.h"
 #include "commons.h"
+#include<time.h>
+
+bool isRechargePause = false;
+float rechargeDuration = 0;
+float rechargePauseDuration = 0;
+
 
 /* A callback function executed each time a wiimote message arrives in order
 to get the target buttons from the controller.*/
@@ -68,4 +75,57 @@ sensor_msgs::JoyFeedbackArray setLEDs(){
 		msg.array.push_back(led);
 	}
 	return msg;
+}
+
+
+/*
+std::time_t pauseInit;
+std::time_t currentTime;
+
+enum eventType {RECHARGEON, RECHARGEOFF};
+int eventchoice[2] = {RECHARGEON, RECHARGEOFF};*/
+
+/* A function to generate a recharging period for bullets*/
+float generateRechargeTime(float probability){
+    /*/* This function is supposed to say when the recharge time is on.
+     IDEA:
+            - decise if you are going to enter the recharge time
+            - choose a duration.
+            - choose a pause time.
+            - repeat.
+   
+    
+    if (!isRechargePause){
+        int divisor = 10000;
+        float duration = (std::rand() % divisor);
+        float prob = ((double) std::rand() / RAND_MAX) +1;
+        if (prob < probability){
+            return duration;
+        }
+    }else if (rechargePauseDuration){
+        std::time(&currentTime);
+        
+    }
+    
+    bool hasEvent = false;
+    
+    
+        
+    // choose pause duration
+    if (!hasEvent){
+        int eventChoosen = eventchoice[((double) std::rand() / RAND_MAX) +1];
+        hasEvent = !hasEvent;
+        if (eventChoosen == ev
+        float pauseDuration = (std::rand() % 60000);
+        std::time(&pauseInit);
+        isRechargeInPause = true;
+    }else if (isRechargeInPause){
+        std::time(&currentTime);
+        if (std::difftime(currentTime,pauseInit) > pauseDuration){
+            isRechargeInPause = false;
+        }
+    }else if (isRechargeTime){
+        
+    } */
+    
 }

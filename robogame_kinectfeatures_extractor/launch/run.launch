@@ -10,9 +10,8 @@
 	<node name="robogame_arduino" pkg="robogame_arduino" type="robogame_arduino_node" respawn="true" output="screen"/>
 	
 	<node name="robogame_game_manager" pkg="robogame_game_manager" type="robogame_game_manager_node" respawn="true" output="screen"/>
-	
-	<!--
+
 	<node name="kinect_feat_extractor" pkg="robogame_kinectfeatures_extractor" type="robogame_kinectfeatures_extractor_node" respawn="true"/>
 	<node pkg="rosbag" type="record" name="rosbag_record_kinect_features" respawn="true"
-       	args="-o $(find robogame_kinectfeatures_extractor)/bags/ /kinect_features/ /camera/image" />	-->
+       	args="-o $(find robogame_kinectfeatures_extractor)/bags/ /kinect_features/ /camera/image /imu/data" />
 </launch>

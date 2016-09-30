@@ -19,6 +19,9 @@ extern const int MAXLED;        // maximum number of LEDs on wiimote.
 extern int bullets[4];          // keeps track of the bullets status (Corresponds to the LEDs on the wiimote)
 extern const int ON;
 extern const int OFF;
+extern bool isRechargePause;
+extern float rechargeDuration;
+extern float rechargePauseDuration;
 
 typedef struct {
     bool shoot = 0;

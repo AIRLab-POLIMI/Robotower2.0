@@ -6,6 +6,7 @@
 #include<robogame_game_manager/gameState.h>
 #include <robogame_kinectfeatures_extractor/kinect_feat.h>
 #include<time.h>
+#include<cstdlib>
 
 #include "commons.h"
 #include "utils.h"
@@ -37,7 +38,7 @@ void handleKinFeatMessage(const robogame_kinectfeatures_extractor::kinect_feat& 
   std::time(&currentTime);
   if(msg.distance <= 0){
     gameState.isPlayerLost = true;
-    //gameState.blinkInterval = 250;
+    gameState.blinkInterval = 250;
   }else if (!!gameState.isPlayerTooClose && (msg.distance < distanceThreshold) && (std::difftime(currentTime,previousTime) > tooCloseInterval)){
     gameState.isPlayerTooClose = true;
     gameState.blinkInterval = 125;
@@ -46,7 +47,7 @@ void handleKinFeatMessage(const robogame_kinectfeatures_extractor::kinect_feat& 
     std::time(&previousTime);
     gameState.isPlayerLost = false;
     gameState.isPlayerTooClose = false;
-    //gameState.blinkInterval = 250;
+    gameState.blinkInterval = 250;
   }
 }
 
@@ -71,7 +72,7 @@ void handleWiiMessage(const wiimote::State& msg){
 		/* MANAGING SHOTTING BUTTON */
 		if (prevShootBtState != buttons.shoot){
 			prevShootBtState = buttons.shoot;
-			if ((buttons.shoot == ON) && (numBullets > 0)){
+			if ((buttons.shoot == ON) && (numBullets > 0) && ((msg.ir_tracking[0].x != -1) || ((msg.ir_tracking[0].y != -1)))){
 				if(!((numBullets -1) < 0)){
 				    numBullets--;					                        // decrease bullets (a bullet used)
 				    gameState.beep = ON;                                    // make it beep to reflect bullet usage.
@@ -116,7 +117,7 @@ void handleWiiMessage(const wiimote::State& msg){
         gameState.shootButton = buttons.shoot;
         gameState.rechargeButton = buttons.recharge;
 
-        gameState.LEDColorindex	= 1;
+        gameState.LEDColorindex	= (((msg.ir_tracking[0].x != -1) || ((msg.ir_tracking[0].y != -1))) ? 0 : 1);   // LED set to red when the wiimote is pointed to the kinect
         gamepub.publish(gameState);
         /**/
 	}
@@ -126,6 +127,8 @@ int main (int argc, char** argv){
 	// Initialize the ROS system and become a node .
 	ros::init(argc, argv, "game_manager");
 	ros::NodeHandle nh;
+	
+	srand((int) time(0));
 
 	// Create a subscriber object.
 	ros::Subscriber kinsub = nh.subscribe("kinect_features",1000, &handleKinFeatMessage);
@@ -136,6 +139,6 @@ int main (int argc, char** argv){
     //ROS_INFO_STREAM("Listening to wiimote button event...");
 	//ROS_INFO_STREAM("This node controls LEDs and Rumble...");
 
-	// Let ROS take over .
+	// Let ROS take over.
 	ros::spin();
 }

@@ -32,8 +32,7 @@ const boolean COLOROFF[] = {OFF, OFF, OFF};
 //An Array that stores the predefined colors (allows us to later randomly display a color)
 const boolean* COLORS[] = {RED, GREEN, BLUE, YELLOW, CYAN, MAGENTA, WHITE, COLOROFF};
 
-int currentColor;
-volatile boolean isButtonPressed = false;
+int currentColor=4;
 boolean gameOverSound = false;
 int blinkInterval = 250;           // interval at which to blink (milliseconds)
 float distanceThreshold = 1.10;
@@ -47,8 +46,7 @@ unsigned long previousTimeForBatBeeping = 0;
 /* MANAGES WIIMOTE INCOME MESSAGES*/
 void handleGameState(const robogame_arduino::interState& msg){
 
-  isPlayerLost = msg.isPlayerLost;
-  isPlayerTooClose = msg.isPlayerTooClose;
+  currentColor = msg.LEDColorindex;
   blinkInterval = msg.blinkInterval;
   if ((msg.beep == true)){
       beep(20);
@@ -60,7 +58,7 @@ void handleGameState(const robogame_arduino::interState& msg){
 /* SET PUBLISHERS AND SUBSCRIBERS*/
 ros::Subscriber<robogame_arduino::interState> sub("robogame/iteraction_state", &handleGameState);
 robogame_arduino::Voltage voltageState;
-ros::Publisher voltagePub("robot_battery_voltage", &voltageState);
+ros::Publisher voltagePub("robogame/battery_state", &voltageState);
 /* ..... */
 
 void setup(){
@@ -76,7 +74,6 @@ void setup(){
   randomSeed(analogRead(0));
   
   attachInterrupt(1,batButtonPressed,RISING);
-  currentColor = 1;
   // declare pin 5 to be an output (for buzzer)
   pinMode(5, OUTPUT);
   nh.initNode();
@@ -86,7 +83,26 @@ void setup(){
 
 void loop(){
 
-  checkBattery();
+  /* Checking battery (a voltage less then 1.77 correspond to battery level at 20V */
+  float voltage = (analogRead(A2) * 5.015) / 1024.0;
+  voltageState.raw_voltage = voltage;
+  voltageState.voltage = (20*voltage)/1.77;
+  if (voltage <= 1.77){
+    unsigned long currentBatMillis = millis();
+    if (!isBatButtonPressed){
+      if ((millis() - previousTimeForBatBeeping) > 400){
+        previousTimeForBatBeeping = currentBatMillis;
+        if (batBuzzerState == OFF) {
+          batBuzzerState = ON;
+          beep(200);
+        } else {
+          batBuzzerState = OFF;
+          beep(0);
+        }
+      }
+    }
+  }
+  //.... 
   
   // check to see if it's time to blink the LED; that is, if the
   // difference between the current time and last time you blinked
@@ -145,28 +161,3 @@ void batButtonPressed() {
     isBatButtonPressed = !isBatButtonPressed;
   }
 }
-
-/* Check battery level and publish corresponding info*/
-void checkBattery(){
-  /* Checking battery (a voltage less then 1.77 correspond to battery level at 20V */
-  float voltage = (analogRead(A2) * 5.015) / 1024.0;
-  voltageState.raw_voltage = voltage;
-  voltageState.voltage = (20*voltage)/1.77;
-  if (voltage <= 1.77){
-    unsigned long currentBatMillis = millis();
-    if (!isBatButtonPressed){
-      if ((millis() - previousTimeForBatBeeping) > 400){
-        previousTimeForBatBeeping = currentBatMillis;
-        if (batBuzzerState == OFF) {
-          batBuzzerState = ON;
-          beep(200);
-        } else {
-          batBuzzerState = OFF;
-          beep(0);
-        }
-      }
-    }
-  }
-  //.... 
-}
-
