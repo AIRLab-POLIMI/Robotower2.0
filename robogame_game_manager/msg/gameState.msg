@@ -7,9 +7,13 @@
 std_msgs/Header header
 
 #-----------------------------
+# General game state
+#----------------------
+bool isGameON        # says if the game is on or not.
+
+#-----------------------------
 # Player resources
 #----------------------
-
 int8 numBullets		#number of shots (button presses) the player still has.
 
 #-----------------------------

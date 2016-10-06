@@ -18,8 +18,9 @@ int prevShootBtState = OFF;
 int prevRecharBtState = OFF;
 int rumble = OFF;
 int bullets[4] = {ON,ON,ON,ON};
-int numBullets = 4;									            // four initial bullets available at game start
-bool AtStart = false;
+int numBullets = 4;
+bool isGameON = false;								            // four initial bullets available at game start
+bool at_pregame = false;
 std::time_t previousTime = 0;
 std::time_t currentTime;
 double tooCloseInterval = 1;
@@ -33,7 +34,9 @@ ros::Publisher gamepub;
 // Create a LED publisher object.
 ros::Publisher LEDRumble_pub;
 
-/* MANAGES PLAYER POSITION BASED ON KINECT TOPICS*/
+/* MANAGES PLAYER POSITION BASED ON KINECT TOPICS
+    This message manages the LED color based on distance to the player.
+*/
 void handleKinFeatMessage(const robogame_kinectfeatures_extractor::kinect_feat& msg){
   std::time(&currentTime);
   if(msg.distance <= 0){
@@ -54,21 +57,24 @@ void handleKinFeatMessage(const robogame_kinectfeatures_extractor::kinect_feat& 
 /* MANAGES GAME STATE BASED ON THE WIIMOTE*/
 void handleWiiMessage(const wiimote::State& msg){
 
+    wiiButtons buttons;
+
 	// SETTING GAME INIT
-	if(!AtStart){
+	if(!isGameON){
+        //This is the pregame step where the code tries to make the wiimote
+        // turn on all the 4 LED (initial condition)
 		if (isAllOn(msg.LEDs)){
-			AtStart = true;
+            isGameON = true;
 			numBullets = 4;                     // player has 4 bullets at the beggining.
 		}else{
 			// Publish LED state (all turned on -- 4 initial bullets).
 			LEDRumble_pub.publish(setLEDs());	// publish new LEDs state
+            isGameON = false;
 		}
 	}else{
 
         /* GETTING WIIMOTE TARGET BUTTONS STATE*/
-        wiiButtons buttons;
         getTargetButtonState(msg, buttons);
-        
 		/* MANAGING SHOTTING BUTTON */
 		if (prevShootBtState != buttons.shoot){
 			prevShootBtState = buttons.shoot;
@@ -77,7 +83,7 @@ void handleWiiMessage(const wiimote::State& msg){
 				    numBullets--;					                        // decrease bullets (a bullet used)
 				    gameState.beep = ON;                                    // make it beep to reflect bullet usage.
 				}
-				updateBullets(numBullets);									// update Bullets 
+				updateBullets(numBullets);									// update Bullets
 				LEDRumble_pub.publish(setLEDs());							// publish new wiimote LED state
 			}else if ((buttons.shoot == ON) && (numBullets == 0)){		    // turns rumble on when there is no bullets left
 				rumble = ON;
@@ -91,43 +97,46 @@ void handleWiiMessage(const wiimote::State& msg){
 			}
 		}
 
+
 		/* MANAGING RECHARGE BUTTON */
-		if (prevRecharBtState != buttons.recharge){
-			prevRecharBtState = buttons.recharge;
-			if ((buttons.recharge == ON) && (numBullets < MAXLED)){
-				numBullets++;												// increase #ofBullets
-				updateBullets(numBullets);									// update bullets vector
-				LEDRumble_pub.publish(setLEDs());							// publish new LEDs state
-			}else if ((buttons.recharge == ON) && (numBullets == MAXLED)){
-				rumble = ON;
-				LEDRumble_pub.publish(updateRumble(1));						// turn rumble on
-			}else if ((buttons.recharge == OFF) && (rumble == ON)){
-				rumble = OFF;
-				LEDRumble_pub.publish(updateRumble(0));						// turn rumble off
-			}
-		}
-			
-		/* PUBLISH GAME STATE*/ 
-		gameState.numBullets = numBullets;
+        // NOTE: $$$$ THIS FUNCTION WAS DEACTIVATE FOR THIS FIRST EXPERIMENT $$$$$
 
-        gameState.isRecharger = false;
-        gameState.startedAt   = 0;
-        gameState.duration    = 0;
-
-        gameState.shootButton = buttons.shoot;
-        gameState.rechargeButton = buttons.recharge;
-
-        gameState.LEDColorindex	= (((msg.ir_tracking[0].x != -1) || ((msg.ir_tracking[0].y != -1))) ? 0 : 1);   // LED set to red when the wiimote is pointed to the kinect
-        gamepub.publish(gameState);
-        /**/
+		// if (prevRecharBtState != buttons.recharge){
+		// 	prevRecharBtState = buttons.recharge;
+		// 	if ((buttons.recharge == ON) && (numBullets < MAXLED)){
+		// 		numBullets++;												// increase #ofBullets
+		// 		updateBullets(numBullets);									// update bullets vector
+		// 		LEDRumble_pub.publish(setLEDs());							// publish new LEDs state
+		// 	}else if ((buttons.recharge == ON) && (numBullets == MAXLED)){
+		// 		rumble = ON;
+		// 		LEDRumble_pub.publish(updateRumble(1));						// turn rumble on
+		// 	}else if ((buttons.recharge == OFF) && (rumble == ON)){
+		// 		rumble = OFF;
+		// 		LEDRumble_pub.publish(updateRumble(0));						// turn rumble off
+		// 	}
+		// }
 	}
+
+    /* PUBLISH GAME STATE*/
+    gameState.numBullets = numBullets;
+    gameState.isGameON = isGameON;
+    gameState.isRecharger = false;
+    gameState.startedAt   = 0;
+    gameState.duration    = 0;
+
+    gameState.shootButton = buttons.shoot;
+    gameState.rechargeButton = buttons.recharge;
+
+    gameState.LEDColorindex	= (((msg.ir_tracking[0].x != -1) || ((msg.ir_tracking[0].y != -1))) ? 0 : 1);   // LED set to red when the wiimote is pointed to the kinect
+    gamepub.publish(gameState);
+    /**/
 }
 
 int main (int argc, char** argv){
 	// Initialize the ROS system and become a node .
 	ros::init(argc, argv, "game_manager");
 	ros::NodeHandle nh;
-	
+
 	srand((int) time(0));
 
 	// Create a subscriber object.
@@ -135,7 +144,7 @@ int main (int argc, char** argv){
 	ros::Subscriber wiisub = nh.subscribe("wiimote/state", 1000, &handleWiiMessage);
 	gamepub = nh.advertise<robogame_game_manager::gameState>("robogame/gameState",1000);		        // advertise button state for arduino listener
 	LEDRumble_pub = nh.advertise<sensor_msgs::JoyFeedbackArray>("/joy/set_feedback",1000);				// advertise LED and Rumble state
-	
+
     //ROS_INFO_STREAM("Listening to wiimote button event...");
 	//ROS_INFO_STREAM("This node controls LEDs and Rumble...");
 
