@@ -54,12 +54,12 @@
 /* ... */
 
 /* HSV space variables for blob detection */
-int hMin = 30;
-int sMin = 88;
-int vMin = 64;
-int hMax = 70;
-int sMax = 255;
-int vMax = 255;
+int hMin = 127;
+int sMin = 99;
+int vMin = 39;
+int hMax = 165;
+int sMax = 256;
+int vMax = 256;
 /* ... */
 
 cv::Point2f mainCenter;         // variable for blob center tracking
@@ -89,7 +89,7 @@ int main(int argc, char** argv)
     // Initialize the ROS system and become a node.
     ros::init(argc, argv, "publish_kinect");
     ros::NodeHandle nh;
-	
+
 	image_transport::ImageTransport it(nh);
 	image_transport::Publisher imgPub = it.advertise("camera/image", 1);
 	//image_transport::Publisher imgPub = it.advertise("camera/image/depth", 1);
@@ -228,7 +228,7 @@ int main(int argc, char** argv)
 
 		/* Publishes the image. NOTE:: Here, the rgb image  is in fact a bgr image (bgra8, i.e., CV8U4). see http://wiki.ros.org/cv_bridge/Tutorials/UsingCvBridgeToConvertBetweenROSImagesAndOpenCVImages */
 		sensor_msgs::ImagePtr imgmsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", im_gray).toImageMsg();
-		//sensor_msgs::ImagePtr depthmsg = cv_bridge::CvImage(std_msgs::Header(), "bgra8", rgbmat).toImageMsg();			
+		//sensor_msgs::ImagePtr depthmsg = cv_bridge::CvImage(std_msgs::Header(), "bgra8", rgbmat).toImageMsg();
 		imgPub.publish(imgmsg);
 		//imgPub.publish(depthmsg);
 
@@ -308,11 +308,13 @@ int main(int argc, char** argv)
             msg.ci = -1;
             msg.distance = -1;
             msg.proximity = -1;
+            //msg.crosstrack = -1;
         }else{
             msg.header.stamp = ros::Time::now();
             msg.ci = ci;
             msg.distance = meanDistance;
             msg.proximity = (1 - (meanDistance/4.500f)); // Normalize distance (proximity)
+            //msg.crosstrack = (registered.width/2) - mainCenter.x;
         }
 
         //Publish the message
