@@ -1,16 +1,24 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(robogame_imu_sensor)
+project(robogame_cam_recorder)
 
 set(CMAKE_CXX_FLAGS "-std=c++11")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs
-    message_generation)
+find_package(catkin REQUIRED)
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(catkin REQUIRED COMPONENTS
+    roscpp
+    std_msgs
+    message_generation
+    sensor_msgs
+    cv_bridge
+    image_transport
+)
 
+find_package(OpenCV REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -42,11 +50,11 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  imu_state.msg
-  imu_test.msg
-)
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -63,11 +71,10 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs  # Or other packages containing msgs
-  geometry_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -100,8 +107,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES robogame_imu_sensor
-    CATKIN_DEPENDS message_runtime
+#  LIBRARIES robogame_cam_recorder
+#  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
 
@@ -114,25 +121,27 @@ catkin_package(
 # include_directories(include)
 
 ## Declare a C++ library
-# add_library(robogame_imu_sensor
-#   src/${PROJECT_NAME}/robogame_imu_sensor.cpp
+# add_library(robogame_cam_recorder
+#   src/${PROJECT_NAME}/robogame_cam_recorder.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(robogame_imu_sensor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(robogame_cam_recorder ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(robogame_imu_sensor src/imu_sensor.cpp)
+add_executable(recorder_node src/main.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(robogame_arduino_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(robogame_cam_recorder_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(robogame_imu_sensor
+target_link_libraries(recorder_node
   ${catkin_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBS}
 )
 
 #############
@@ -150,7 +159,7 @@ target_link_libraries(robogame_imu_sensor
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS robogame_imu_sensor robogame_imu_sensor_node
+# install(TARGETS robogame_cam_recorder robogame_cam_recorder_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -175,7 +184,7 @@ target_link_libraries(robogame_imu_sensor
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_robogame_imu_sensor.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_robogame_cam_recorder.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

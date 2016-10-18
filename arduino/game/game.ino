@@ -87,7 +87,7 @@ void loop(){
   float voltage = (analogRead(A2) * 5.015) / 1024.0;
   voltageState.raw_voltage = voltage;
   voltageState.voltage = (20*voltage)/1.77;
-  if (voltage <= 1.77){
+  if (voltageState.voltage <= 20 && voltageState.voltage > 1){
     unsigned long currentBatMillis = millis();
     if (!isBatButtonPressed){
       if ((millis() - previousTimeForBatBeeping) > 400){
@@ -104,24 +104,7 @@ void loop(){
   }
   //.... 
   
-  // check to see if it's time to blink the LED; that is, if the
-  // difference between the current time and last time you blinked
-  // the LED is bigger than the interval at which you want to
-  // blink the LED.
-  unsigned long currentMillis = millis();
-  if((currentMillis - previousMillis) >= blinkInterval) {
-      // save the last time you blinked the LED
-      previousMillis = currentMillis;
-
-      // if the LED is off turn it on and vice-versa:
-      if (ledState == OFF) {
-        ledState = ON;
-        setColor(ledDigitalOne, COLORS[currentColor]);    //Set the color of LED one
-      } else {
-        ledState = OFF;
-        setColor(ledDigitalOne, COLOROFF); // turn off light
-      }
-  }
+  
 
 
   /* PUBLISH RELEVANT TOPICS */
