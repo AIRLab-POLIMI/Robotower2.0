@@ -1,8 +1,6 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <geometry_msgs/Twist.h>
-#include <robogame_kinectfeatures_extractor/kinect_feat.h>
-#include <cmath>
 
  class JoyTeleop
  {
@@ -10,19 +8,15 @@
 		JoyTeleop();
 
 	private:
-
 		void joyCallback(const sensor_msgs::Joy::ConstPtr &msg);
-        void kinCallback(const robogame_kinectfeatures_extractor::kinect_feat& msg);
 		void updateParameters();
 		void timerCallback(const ros::TimerEvent& e);
 		void publishZeroMessage();
 
-		double linearScale, angularScale, autoAngularScale;
+		double linearScale, angularScale;
 		int deadmanButton, linearXAxis, linearYAxis, angularAxis;
 		bool canMove;
-        float crosstrackerror;
 		ros::Subscriber joySub;
-        ros::Subscriber kinSub;
 		ros::Publisher twistPub;
 		ros::NodeHandle nh;
 		ros::Timer timeout;
@@ -30,22 +24,18 @@
 
 JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
-    kinSub = nh.subscribe("/kinect_features", 10, &JoyTeleop::kinCallback, this);
 	twistPub = nh.advertise<geometry_msgs::Twist>("spacenav/twist", 10);
 
 	updateParameters();
 }
 
-void JoyTeleop::kinCallback(const robogame_kinectfeatures_extractor::kinect_feat& msg){
-    crosstrackerror = msg.crosstrack;
-}
-
 void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 
 	// Send a message to rosout with the details.
-	//ROS_INFO_STREAM("Receiving joystick input..."    <<
-	//		        "\nCurrent LinearScale(x-axis):" << linearScale <<
-	//		        "\nCurrent AngularScale(y-axis):"<< angularScale);
+	ROS_INFO_STREAM("Receiving joystick input..."  <<
+			"\nCurrent LinearScale(x-axis):" <<
+			 linearScale			 <<
+			"\nCurrent AngularScale(y-axis):"<< angularScale);
 
 	// process and publish
 	geometry_msgs::Twist twistMsg;
@@ -67,28 +57,9 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 			ROS_INFO_STREAM("Decreasing linearScale by 0.5\%...");
 			angularScale -= angularScale * 0.05;
 		}
-
-        if (msg->buttons[7] == 1){
-            /*
-            ROS_INFO_STREAM("Automatic rotation ON");
-            ROS_INFO_STREAM("CTError: " << crosstrackerror);
-            twistMsg.linear.x = linearScale*msg->axes[linearXAxis];
-		    twistMsg.linear.y = linearScale*msg->axes[linearYAxis];
-            float cleanCrostrack = (crosstrackerror == -1 ? 0 : crosstrackerror/200);
-            float newrotation = std::pow(crosstrackerror,3);
-            if (newrotation < -0.3){
-                twistMsg.angular.z = 0.3;
-            }else if (newrotation > 0.3){
-                twistMsg.angular.z = -0.3;
-            }else{
-                twistMsg.angular.z = newrotation;
-            }
-            ROS_INFO_STREAM("Rotation: " << twistMsg.angular.z);*/
-        }else{
-		    twistMsg.linear.x = linearScale*msg->axes[linearXAxis];
-		    twistMsg.linear.y = linearScale*msg->axes[linearYAxis];
-		    twistMsg.angular.z = angularScale*msg->axes[angularAxis];
-        }
+		twistMsg.linear.x = linearScale*msg->axes[linearXAxis];
+		twistMsg.linear.y = linearScale*msg->axes[linearYAxis];
+		twistMsg.angular.z = angularScale*msg->axes[angularAxis];
 
 		twistPub.publish(twistMsg);
 
@@ -109,9 +80,6 @@ void JoyTeleop::updateParameters() {
 	// update the parameters for processing the joystick messages
 	if (!nh.getParam("linear_scale", linearScale))
 		linearScale = 1;
-
-    if (!nh.getParam("angular_scale", autoAngularScale))
-		autoAngularScale = 0.001;
 
 	if (!nh.getParam("angular_scale", angularScale))
 		angularScale = 0.5;

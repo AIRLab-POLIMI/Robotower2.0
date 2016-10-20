@@ -222,13 +222,15 @@ int main(int argc, char** argv)
         cv::Mat(registered.height, registered.width, CV_8UC4, registered.data).copyTo(regframe);
 
 		/*converting the rgb into grayscale.. Why? compression purposes*/
-		cv::Mat im_gray;
-		cvtColor(rgbmat,im_gray,CV_RGB2GRAY);
-		resize(im_gray, im_gray, cv::Size(512,424), 2.28, 2.28, cv::INTER_LANCZOS4);
+		//cv::Mat im_gray;
+		//cvtColor(rgbmat,im_gray,CV_RGB2GRAY);
+		//resize(im_gray, im_gray, cv::Size(512,424), 2.28, 2.28, cv::INTER_LANCZOS4);
+        resize(rgbmat, rgbmat, cv::Size(512,424));
 
-		/* Publishes the image. NOTE:: Here, the rgb image  is in fact a bgr image (bgra8, i.e., CV8U4). see http://wiki.ros.org/cv_bridge/Tutorials/UsingCvBridgeToConvertBetweenROSImagesAndOpenCVImages */
-		sensor_msgs::ImagePtr imgmsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", im_gray).toImageMsg();
-		//sensor_msgs::ImagePtr depthmsg = cv_bridge::CvImage(std_msgs::Header(), "bgra8", rgbmat).toImageMsg();
+		/* Publishes the image. NOTE:: Here, the rgb image  is in fact a bgr image (bgra8, i.e., CV8U4).
+        see http://wiki.ros.org/cv_bridge/Tutorials/UsingCvBridgeToConvertBetweenROSImagesAndOpenCVImages */
+		//sensor_msgs::ImagePtr imgmsg = cv_bridge::CvImage(std_msgs::Header(), "mono8", im_gray).toImageMsg();
+		sensor_msgs::ImagePtr imgmsg = cv_bridge::CvImage(std_msgs::Header(), "bgra8", rgbmat).toImageMsg();
 		imgPub.publish(imgmsg);
 		//imgPub.publish(depthmsg);
 

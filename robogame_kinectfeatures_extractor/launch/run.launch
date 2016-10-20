@@ -4,7 +4,7 @@
   <param name="~baud" value="57600" />
   </node>
 
-  <include file="$(find triskar_joystick)/launch/triskar-joystick.launch"/>
+  <include file="$(find robogame_joystick)/launch/joystick.launch"/>
 
   <!-- <node name="wiimote" pkg="robogame_wiimote" type="wiimote_node.py" respawn="true" output="screen"/> -->
   <node name="robogame_arduino" pkg="robogame_arduino" type="robogame_arduino_node" respawn="true" output="screen"/>
@@ -14,7 +14,8 @@
   <node name="kinect_feat_extractor" pkg="robogame_kinectfeatures_extractor" type="robogame_kinectfeatures_extractor_node" respawn="true"/>
 
   <node pkg="rosbag" type="record" name="rosbag_record_kinect_features" respawn="true"
-       	args="-o $(find robogame_kinectfeatures_extractor)/bags/ /kinect_features/ /imu/data"/>
+       	args="-o $(find robogame_kinectfeatures_extractor)/bags/ /camera/image/compressed /ext_usb_camera/image/compressed
+        /kinect_features/ robogame/imu_state"/>
         <!-- args="-o $(find robogame_kinectfeatures_extractor)/bags/ /kinect_features/ /camera/image /imu/data" /> -->
 
   <!-- /robot/pose_gt /player/pose_gt /tf " /> -->
