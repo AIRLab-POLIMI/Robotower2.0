@@ -1,11 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(robogame_joystick)
+project(robogame_proximity_sensor)
 
-set(CMAKE_CXX_FLAGS "-std=c++11")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp std_msgs)
+find_package(catkin REQUIRED COMPONENTS message_generation std_msgs)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -41,11 +40,11 @@ find_package(catkin REQUIRED roscpp std_msgs)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  DIRECTORY msg
+  FILES
+  proximity.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -62,10 +61,10 @@ find_package(catkin REQUIRED roscpp std_msgs)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -97,10 +96,7 @@ find_package(catkin REQUIRED roscpp std_msgs)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-# LIBRARIES robogame_joystick
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+  CATKIN_DEPENDS message_runtime
 )
 
 ###########
@@ -112,26 +108,26 @@ catkin_package(
 # include_directories(include)
 
 ## Declare a C++ library
-# add_library(robogame_joystick
-#  src/${PROJECT_NAME}/src/robogame_joystick.cpp
+# add_library(robogame_proximity_sensor
+#   src/${PROJECT_NAME}/robogame_proximity_sensor.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(robogame_joystick ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(robogame_proximity_sensor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(robogame_joystick_node src/joystick_node.cpp)
+# add_executable(robogame_proximity_sensor_node src/robogame_proximity_sensor_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(robogame_joystick_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(robogame_proximity_sensor_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(robogame_joystick_node
-  ${catkin_LIBRARIES}
-)
+# target_link_libraries(robogame_proximity_sensor_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -148,7 +144,7 @@ target_link_libraries(robogame_joystick_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS robogame_joystick robogame_joystick_node
+# install(TARGETS robogame_proximity_sensor robogame_proximity_sensor_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -173,7 +169,7 @@ target_link_libraries(robogame_joystick_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_robogame_joystick.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_robogame_proximity_sensor.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

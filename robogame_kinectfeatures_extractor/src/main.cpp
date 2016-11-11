@@ -31,6 +31,7 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <robogame_kinectfeatures_extractor/kinect_feat.h>
+#include<std_msgs/Int32.h>
 /* ... */
 
 /* OpenCV related includes */
@@ -96,6 +97,7 @@ int main(int argc, char** argv)
 
 	//Create a publisher object.
     ros::Publisher pub = nh.advertise<robogame_kinectfeatures_extractor::kinect_feat>("kinect_features",1000);
+    ros::Publisher position_pub = nh.advertise<std_msgs::Int32>("robogame/player_x_position",1000);
 
     std::cout << "Connecting to sensor..." << std::endl;
 
@@ -303,6 +305,8 @@ int main(int argc, char** argv)
 
         /* CREATE ROS MESSAGE*/
         robogame_kinectfeatures_extractor::kinect_feat msg;
+        std_msgs::Int32 xposition;
+        xposition.data = mainCenter.x;
 
         if (missedPlayer){
             ROS_WARN_STREAM("PLAYER IS MISSING!");
@@ -321,6 +325,7 @@ int main(int argc, char** argv)
 
         //Publish the message
         pub.publish(msg);
+        position_pub.publish(xposition);        // publishes blob x coordinate.
 
         //Send a message to rosout with the details.
         ROS_INFO_STREAM("KINECT FEATURES: "

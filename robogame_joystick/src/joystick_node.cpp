@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
+#include <std_msgs/Int32.h>
 #include <geometry_msgs/Twist.h>
 
  class JoyTeleop
@@ -12,29 +13,47 @@
 		void updateParameters();
 		void timerCallback(const ros::TimerEvent& e);
 		void publishZeroMessage();
+        void positionCallback(const std_msgs::Int32 &msg);
 
 		double linearScale, angularScale;
 		int deadmanButton, linearXAxis, linearYAxis, angularAxis;
 		bool canMove;
 		ros::Subscriber joySub;
+        ros::Subscriber pixelPosSub;
 		ros::Publisher twistPub;
 		ros::NodeHandle nh;
 		ros::Timer timeout;
+        const int ORIGIN = 256;
+        const int LEFT_BOUNDARY  = ORIGIN/2;
+        const int RIGHT_BOUNDARY = ORIGIN + ORIGIN/2;
+        int error = 0;
 };
 
 JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
+    pixelPosSub = nh.subscribe("/robogame/player_x_position", 10, &JoyTeleop::positionCallback, this);
 	twistPub = nh.advertise<geometry_msgs::Twist>("spacenav/twist", 10);
 
 	updateParameters();
+}
+
+void JoyTeleop::positionCallback(const std_msgs::Int32 &msg){
+    ROS_INFO_STREAM("Position received");
+    if ((msg.data > ORIGIN) && (msg.data - RIGHT_BOUNDARY > 0)){
+        error = msg.data - ORIGIN;
+    }else if ((msg.data < ORIGIN) && (msg.data - LEFT_BOUNDARY < 0)){
+        error = msg.data - ORIGIN;
+    }else{
+        error = 0;
+    }
 }
 
 void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 
 	// Send a message to rosout with the details.
 	ROS_INFO_STREAM("Receiving joystick input..."  <<
-			"\nCurrent LinearScale(x-axis):" <<
-			 linearScale			 <<
+			"\nCurrent LinearScale(x-axis):"       <<
+			 linearScale			               <<
 			"\nCurrent AngularScale(y-axis):"<< angularScale);
 
 	// process and publish
@@ -56,11 +75,16 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 		}else if (msg->buttons[1]==1){
 			ROS_INFO_STREAM("Decreasing linearScale by 0.5\%...");
 			angularScale -= angularScale * 0.05;
-		}
-		twistMsg.linear.x = linearScale*msg->axes[linearXAxis];
-		twistMsg.linear.y = linearScale*msg->axes[linearYAxis];
-		twistMsg.angular.z = angularScale*msg->axes[angularAxis];
+		}else if (msg->buttons[7]==1){
+            ROS_INFO_STREAM("Automatic rotation ON.");
+            twistMsg.angular.z = 0.005 * error;
+            ROS_INFO_STREAM(error);
+        }else{
+            twistMsg.angular.z = angularScale*msg->axes[angularAxis];
+        }
 
+        twistMsg.linear.x = linearScale*msg->axes[linearXAxis];
+        twistMsg.linear.y = linearScale*msg->axes[linearYAxis];
 		twistPub.publish(twistMsg);
 
 	} else if (canMove) {

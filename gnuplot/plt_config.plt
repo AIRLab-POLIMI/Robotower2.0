@@ -3,7 +3,7 @@ reset
 
 set xlabel "time"
 #set xrange [0:70]
-set yrange [0:0.1]
+#set yrange [0:0.1]
 
 #set term png
 #set output "time_stats_graph.png"
@@ -15,7 +15,7 @@ set key reverse Left
 set grid
 set style data linespoints
 set title "External USB camera -- Latency experiment (PCs Unsync, Airlab2 network)"
-set xlabel "Frames samples (total=03min:13secs)"
+set xlabel "Frames samples"
 set ylabel "Seconds"
 
 plot input_file using 1 title "Point difference", \
