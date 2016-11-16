@@ -5,7 +5,7 @@ PhD Robogame ROS stack
 
 This is the repository for the robogame project during my PhD studies at Politecnico di Milano, Italy.
 
-** Game related repositories:**<br/>
+**Game related repositories:**<br/>
 * `robogame` -- metapackage. <br/>
 * `robogame_arduino` --  <br/>
 * `robogame_game_manager` -- where actions and conditions (bt leaves) codes are defined. <br/>
@@ -15,14 +15,14 @@ This is the repository for the robogame project during my PhD studies at Politec
 * `robogame_proximity_sensor` -- for publishing robot ultrasound sensor data. <br/>
 * `robogame_video_recorder` -- for publishing image frames from a camera.<br/>
 
-** Robot base repositories:**</br>
+**Robot base repositories:**</br>
 * `triskarone` -- interprets velocity comands for moving the base.</br>
 * `r2p`	-- contains msgs used by the r2p (first version) boards</br>
 
-** Supporting repositories:**</br>
+**Supporting repositories:**</br>
 * `rosserial` --  used for allowing ros-arduino communication.</br>
 
-** extra folders (NOT REPOS): **</br>
+**Additional folders (NOT REPOS):**</br>
 * `_gnuplot` -- folder with some predefined config files for using gnuplot.</br>
 * `_arduino` -- folder containing arduino sketches used on onboard arduino boards.</br>
 * `_help` -- folder containing some infos regarding setup issues.</br>
