@@ -5,40 +5,30 @@ PhD Robogame ROS stack
 
 This is the repository for the robogame project during my PhD studies at Politecnico di Milano, Italy.
 
+** Game related repositories: <br/>
 * `robogame` -- metapackage. <br/>
-* `robogame_bt_core` -- where the behavior tree (bt) main code resides. <br/>
-* `robogame_bt_leaves` -- where actions and conditions (bt leaves) codes are defined. <br/>
+* `robogame_arduino` --  <br/>
+* `robogame_game_manager` -- where actions and conditions (bt leaves) codes are defined. <br/>
+* `robogame_imu_sensor` -- packages that pusblish data received from the MPU6050 (acceleromenter) attached to the player. <br/>
+* `robogame_joystick` -- for, of course, controlling the robot with a PS3-like joystick. <br/>
+* `robogame_kinectfeatures_extractor` -- for extracting and publishing player features using microsoft kinect 2.  <br/>
+* `robogame_proximity_sensor` -- for publishing robot ultrasound sensor data. <br/>
+* `robogame_video_recorder` -- for publishing image frames from a camera.<br/>
+
+** Robot base repositories: </br>
+* `triskarone` -- interprets velocity comands for moving the base.</br>
+* `r2p`	-- contains msgs used by the r2p (first version) boards</br>
+
+** Supporting repositories: </br>
+* `rosserial` --  used for allowing ros-arduino communication.</br>
+
+** extra folders (NOT REPOS): </br>
+* `_gnuplot` -- folder with some predefined config files for using gnuplot.</br>
+* `_arduino` -- folder containing arduino sketches used on onboard arduino boards.</br>
+* `_help` -- folder containing some infos regarding setup issues.</br>
 
 Dependencies
 ============
 
-* [Turtlebot ROS packages](http://wiki.ros.org/turtlebot_gazebo) <br/>
-
-Setup
-=====
-Git clone the repository into your catkin workspace: <br/>
-`$ cd path/to/catkin/repository` <br/>
-`$ cd src` <br/>
-`$ git clone https://github.com/ewerlopes/phd_robogame.git` <br/>
-
-Build: <br/>
-`$ cd ..` <br/>
-`$ catkin_make` <br/>
-
-
-How to use it
-=============
-**Bring up**  <br/>
-`$ roslaunch robogame_simulator robogame.launch` <br/>
-
-**Navigation** <br/>
-`$ roslaunch robogame_simulator nav_demo.launch` <br/>
-
-**For visualization:** <br/>
-`$ rosrun image_view image_view image:=/camera/depth/image_raw` <br/>
-`$ rosrun image_view image_view image:=/camera/rgb/image_raw` <br/>
-`$ roslaunch turtlebot_rviz_launchers view_navigation.launch` <br/>
-
-Additional Info
-===============
-At this point I am using the `turtlebot` as the target robot base. So, there's a large dependency on `turtlebot` ros packages. This dependency is going to be descontinued soon.
+* OpenCV
+* LibFreenect2
