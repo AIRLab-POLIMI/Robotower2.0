@@ -1,3 +1,7 @@
+/* A node that takes joystick (ps3) commands.
+	author: Ewerton Lopes (ewerlopes@gmail.com)
+*/
+
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Int32.h>
@@ -32,6 +36,11 @@
 JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
     pixelPosSub = nh.subscribe("/robogame/player_x_position", 10, &JoyTeleop::positionCallback, this);
+    /*NOTE: here the twist data type is published as "spacenav/twist" since the original forwarder (triskarone package) node
+    		uses the spacenav node (3Dconnexion mouse). Given that r2p and triskarone are packages (necessary for
+    		driving the triskar base) outside the collection of packages beloging to the robogame itself, we decided to
+    		keep out of the box compatibility with it.
+    */
 	twistPub = nh.advertise<geometry_msgs::Twist>("spacenav/twist", 10);
 
 	updateParameters();

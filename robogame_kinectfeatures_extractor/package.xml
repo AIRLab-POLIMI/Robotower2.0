@@ -1,44 +1,29 @@
 <?xml version="1.0"?>
 <package>
   <name>robogame_kinectfeatures_extractor</name>
-  <version>0.0.0</version>
-  <description>A package for getting player features using microsoft kinect</description>
+  <version>0.0.1</version>
+  <description>A package for getting player features using microsoft kinect 2. Using freenect2
+  library the code searches for a pre-set color blog on the RGB frame and using the aligned depth
+  frame gets the middle point of the blob in x-y pixel coordinates (representing its relative 
+  position on the camera). From that it uses region growing algorithm in order to segment the player
+  using the blob position as seed. The player is assumed to be wearing the color and the environment
+  assumed to be controlled (without other similar colors on sight of view). From the segmented image
+  the node publishes features like:
+  
+  	distance: the distance in meters from the camera to the seed. Calculated as an average of distance 
+  	values around the seed.
+  	proximity: the distance normalized [0,1]. Tends to 1 if the playes approaches the robot. Takes into
+  	consideration the kinect specs. Minimum distance of 0.5 and maximum of 4.5
+  	ci: 	contraction index. A normalized [0,1] measure of how open wide (legs and arms) the player is.
+  	Calculated as subtraction of surrounding rectangle. 
+  </description>
 
-  <!-- One maintainer tag required, multiple allowed, one person per tag -->
-  <!-- Example:  -->
-  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
-  <maintainer email="ewerlopes@gmail.com">airlab</maintainer>
-
-
-  <!-- One license tag required, multiple allowed, one license per tag -->
-  <!-- Commonly used license strings: -->
-  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>TODO</license>
-
-
-  <!-- Url tags are optional, but mutiple are allowed, one per tag -->
-  <!-- Optional attribute type can be: website, bugtracker, or repository -->
-  <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/kinect_feat_extractor</url> -->
-
-
-  <!-- Author tags are optional, mutiple are allowed, one per tag -->
-  <!-- Authors do not have to be maintianers, but could be -->
-  <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+  <maintainer email="ewerlopes@gmail.com">ewerlopes</maintainer>
 
 
-  <!-- The *_depend tags are used to specify dependencies -->
-  <!-- Dependencies can be catkin packages or system dependencies -->
-  <!-- Examples: -->
-  <!-- Use build_depend for packages you need at compile time: -->
-  <!--   <build_depend>message_generation</build_depend> -->
-  <!-- Use buildtool_depend for build tool packages: -->
-  <!--   <buildtool_depend>catkin</buildtool_depend> -->
-  <!-- Use run_depend for packages you need at runtime: -->
-  <!--   <run_depend>message_runtime</run_depend> -->
-  <!-- Use test_depend for packages you need only for testing: -->
-  <!--   <test_depend>gtest</test_depend> -->
+  <license>MIT</license>
+
+
   <build_depend>robogame_kinectfeatures_extractor/msg</build_depend>
   <run_depend>robogame_kinectfeatures_extractor/msg</run_depend>
   <build_depend>message_generation</build_depend>
@@ -49,9 +34,4 @@
   <run_depend>libfreenect2</run_depend>
   <buildtool_depend>catkin</buildtool_depend>
 
-  <!-- The export tag contains other, unspecified, tags -->
-  <export>
-    <!-- Other tools can request additional information be placed here -->
-
-  </export>
 </package>

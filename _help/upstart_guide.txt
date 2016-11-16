@@ -1,0 +1,13 @@
+#No underscores in the launch filename or path  
+rosrun robot_upstart install mystartup.launch --interface eth1
+
+#due to a pushd error manaul copy
+sudo cp mystartup.launch /etc/ros/indigo/mystartup.launch.d/
+
+#should start on boot, but to manually start run:
+mystartup.launch-start
+
+# To Uninstall
+sudo rm /etc/init/mystartup.launch.conf
+sudo rm -rf /etc/ros/indigo/mystartup.launch.d/
+sudo rm /usr/sbin/mystartup.launch-start /usr/sbin/mystartup.launch-stop
