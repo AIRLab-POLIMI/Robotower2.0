@@ -14,6 +14,7 @@ This is the repository for the robogame project during my PhD studies at Politec
 * `robogame_kinectfeatures_extractor` -- for extracting and publishing player features using microsoft kinect 2.  <br/>
 * `robogame_proximity_sensor` -- for publishing robot ultrasound sensor data. <br/>
 * `robogame_video_recorder` -- for publishing image frames from a camera.<br/>
+* 
 
 **Robot base repositories:**</br>
 * `triskarone` -- interprets velocity comands for moving the base.</br>
