@@ -18,6 +18,11 @@
 #include <boost/circular_buffer.hpp>
 #include <opencv2/opencv.hpp>
 
+#define MIN_DISTANCE 0.3
+#define MAX_DISTANCE 4.2
+#define TRAIL_BUFFER_SIZE 32
+
+
 extern int hMin;
 extern int sMin;
 extern int vMin;
@@ -25,8 +30,8 @@ extern int hMax;
 extern int sMax;
 extern int vMax;
 
-extern cv::Point2f mainCenter;
-extern bool missedPlayer;
+extern cv::Point2f blobCenter;
+extern bool isPlayerMissing;
 extern cv::Mat segmentedColorFrame;
 extern cv::Mat segmentedTarget;
 

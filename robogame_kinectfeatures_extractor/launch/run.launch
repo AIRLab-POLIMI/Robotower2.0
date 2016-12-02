@@ -8,17 +8,17 @@
 
   <!-- <node name="wiimote" pkg="robogame_wiimote" type="wiimote_node.py" respawn="true" output="screen"/> -->
   <node name="forwarder" pkg="triskarone" type="forwarder" respawn="true" />
-  
+
   <node name="robogame_arduino" pkg="robogame_arduino" type="robogame_arduino_node" respawn="true" output="screen"/>
 
   <node name="robogame_game_manager" pkg="robogame_game_manager" type="robogame_game_manager_node" respawn="true" output="screen"/>
 
-  <node name="kinect_feat_extractor" pkg="robogame_kinectfeatures_extractor" type="robogame_kinectfeatures_extractor_node" respawn="true"/>
+  <node name="kinect_feat_extractor" pkg="robogame_kinectfeatures_extractor" type="robogame_kinectfeatures_extractor_node" respawn="true" output="screen"/>
+  
   <node pkg="rosbag" type="record" name="rosbag_record_kinect_features" respawn="true"
-       	args="-o $(find robogame_kinectfeatures_extractor)/bags/ /ext_usb_camera/image/compressed
+       	args="-o $(find robogame_kinectfeatures_extractor)/bags/ /ext_usb_camera/image/compressed camera/image/player_segmented
         robogame/imu_state /kinect_features/"/>
-        <!-- args="-o $(find robogame_kinectfeatures_extractor)/bags/ /kinect_features/ /camera/image /imu/data" /> -->
-
+	
   <!-- /robot/pose_gt /player/pose_gt /tf " /> -->
 
     <!--

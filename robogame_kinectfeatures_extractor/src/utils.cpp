@@ -19,14 +19,14 @@
 #include "utils.h"
 #include "common.h"
 
-/* printMatImage -- a function to print a cv::Mat to console. It
-Basically serve as for debugging purposes*/
-void printMatImage(cv::Mat _m){
+/* printMatImage -- a function to print a cv::Mat to console. Used
+mostly for debugging purposes*/
+void printMatImage(cv::Mat frame){
     printf("\n --> Matrix type is CV_32F \n");
 
-    for( size_t i = 0; i < _m.rows; i++ ) {
-        for( size_t j = 0; j < _m.cols; j++ ) {
-   	    printf( " %.3f  ", _m.at<float>(i,j) );
+    for( size_t i = 0; i < frame.rows; i++ ) {
+        for( size_t j = 0; j < frame.cols; j++ ) {
+   	    printf( " %.3f  ", frame.at<float>(i,j) );
  	}
 	printf("\n");
     }
@@ -34,16 +34,16 @@ void printMatImage(cv::Mat _m){
 
 /* writeMatToFile -- a function to save a cv::Mat to file. Mainly
 used for frame saving purposes.*/
-void writeMatToFile(cv::Mat& m, const char* filename)
+void writeMatToFile(cv::Mat& frame, const char* filename)
 {
     std::ofstream fout(filename);           // Define file.
     if(!fout){
         std::cout << "File Not Opened" << std::endl;  return;
     }
     /*Loop through pixels in the cv::Mat file*/
-    for(unsigned int i=0; i<m.rows; i++){
-        for(unsigned int j=0; j<m.cols; j++){
-            fout << m.at<float>(i,j) << " ";
+    for(unsigned int i=0; i<frame.rows; i++){
+        for(unsigned int j=0; j<frame.cols; j++){
+            fout << frame.at<float>(i,j) << " ";
         }
         fout << std::endl;
     }
@@ -53,13 +53,13 @@ void writeMatToFile(cv::Mat& m, const char* filename)
 /* resize -- A helper function to resize image. Here, the width is
 default to 512 as it is the width of a kinect frame. That is the only
 reason for doing it.*/
-void resize(cv::Mat& image, cv::Mat& dst, int width=512, int height=-1){
+void resize(cv::Mat& sourceFrame, cv::Mat& resultingFrame, int width=512, int height=-1){
     // initialize the dimensions of the image to be resized and
     // grab the image size
 
 	cv::Size dim;
-    int h = image.size().height;
-	int w = image.size().width;
+    int h = sourceFrame.size().height;
+	int w = sourceFrame.size().width;
 
     // if both the width and height are None, then return the
     // original image
@@ -78,24 +78,24 @@ void resize(cv::Mat& image, cv::Mat& dst, int width=512, int height=-1){
 		else{
 		    // calculate the ratio of the width and construct the
 		    // dimensions
-		    float r = width / float(w);
-		    dim = cv::Size(width, int(h * r));
+		    float ratio = width / float(w);
+		    dim = cv::Size(width, int(h * ratio));
 		}
 		// resize the image
 		cv::Mat resized(dim,CV_8UC3);
-		cv::resize(image, resized, resized.size(),0,0, CV_INTER_AREA);
+		cv::resize(sourceFrame, resized, resized.size(),0,0, CV_INTER_AREA);
 
 		// return the resized image
-		dst = resized.clone();
+		resultingFrame = resized.clone();
 	}
 }
 
 /* trackUser -- Function used to track color blobs on a RGB image. */
-void trackUser(cv::Mat& src){
+void trackUser(cv::Mat& srcFrame){
 	/* resize the frame and convert it to the HSV
 	color space... */
-	cv::Mat frame(src.size(), src.type());                         // make copy
-	resize(src,frame);                                             // resize
+	cv::Mat frame(srcFrame.size(), srcFrame.type());               // make copy
+	resize(srcFrame,frame);                                        // resize
     cv::Mat hsv = cv::Mat::zeros(frame.size(), frame.type());      // define container for the converted Mat.
 	cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);                   // convert
     /* ... */
@@ -113,7 +113,7 @@ void trackUser(cv::Mat& src){
 	cv::dilate(mask, mask, dilateElement);
 	cv::dilate(mask, mask, dilateElement);
     /* ... */
-	cv::imshow("mask",mask);           // exihbit mask.
+	//cv::imshow("mask",mask);           // exihbit mask.
 
 
 	// find contours in the mask and initialize the current
@@ -127,7 +127,7 @@ void trackUser(cv::Mat& src){
 
     cv::Point2f center(-1000,-1000);                /* define center. Set to
                                                         arbitrary init value */
-    missedPlayer = true;                            /* flag to track the Player
+    isPlayerMissing = true;                            /* flag to track the Player
                                                         presence.*/
 
 	/* Only proceed if at least one contour was found, i.e., if at least one
@@ -144,10 +144,10 @@ void trackUser(cv::Mat& src){
            centroid.*/
 		for(int i=0; i < contours.size();i++){
 			// iterate through each contour.
-			double a = cv::contourArea(cv::Mat(contours[i]),false);  //  Find the area of contour
+			double contourArea = cv::contourArea(cv::Mat(contours[i]),false);  //  Find the area of contour
             /* if the area is bigger than the lready found one, update it.*/
-            if(a > largest_area){
-				largest_area=a;
+            if(contourArea > largest_area){
+				largest_area=contourArea;
 				largest_contour_index=i;
 			}
 		}
@@ -165,8 +165,8 @@ void trackUser(cv::Mat& src){
 			// then update the list of tracked points
 			cv::circle(frame, cv::Point(int(tempcenter.x), int(tempcenter.y)), int(radius), cv::Scalar(0, 255, 255), 2);
 			cv::circle(frame, center, 5, cv::Scalar(0, 0, 255), -1);
-            mainCenter = center;            // save the center of the detected circle.
-            missedPlayer = false;           // update the flag for the player presence.
+            blobCenter = center;            // save the center of the detected circle.
+            isPlayerMissing = false;           // update the flag for the player presence.
 		}
 	}
 
@@ -176,22 +176,22 @@ void trackUser(cv::Mat& src){
 	/* Loop over the set of tracked points (i.e, the history of points)
         in order to print a line in the frame representing the history of
         tracked points. This line color is set to RED*/
-	for (int i=1; i < (pts.size()-1); i++){
-		/* if either of the tracked points are NONE, ignore them.
-            NOTE: here at this code, a point set to NONE is the one
-                  set to -1000; */
-		cv::Point2f ptback = pts[i - 1];
-		cv::Point2f pt = pts[i];
-		if ((ptback.x == -1000) or (pt.x == -1000)){
-			continue;
-		}
-
-		/* otherwise, compute the thickness of the line and
-		    draw the connecting lines */
-		int thickness = int(sqrt(BUFFER / float(i + 1)) * 2.5);
-		line(frame, pts[i - 1], pts[i], cv::Scalar(0, 0, 255), thickness);
-	}
-	src = frame.clone();   // update the input frame.
+	// for (int i=1; i < (pts.size()-1); i++){
+	// 	/* if either of the tracked points are NONE, ignore them.
+    //         NOTE: here at this code, a point set to NONE is the one
+    //               set to -1000; */
+	// 	cv::Point2f ptback = pts[i - 1];
+	// 	cv::Point2f pt = pts[i];
+	// 	if ((ptback.x == -1000) or (pt.x == -1000)){
+	// 		continue;
+	// 	}
+    //
+	// 	/* otherwise, compute the thickness of the line and
+	// 	    draw the connecting lines */
+	// 	int thickness = int(sqrt(TRAIL_BUFFER_SIZE / float(i + 1)) * 2.5);
+	// 	line(frame, pts[i - 1], pts[i], cv::Scalar(0, 0, 255), thickness);
+	// }
+	srcFrame = frame.clone();   // update the input frame.
 }
 
 /* distanceFunction -- used to compute the similarity betweent the pixels.*/
@@ -207,38 +207,38 @@ bool distanceFunction(float a, float b, int threshold){
 	threshold --> the value to be used in the call to "distanceFunction" method. If distance
     is less than threshold then recursion proceeds, else stops.
 */
-void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int threshold)
+void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& ci, int threshold)
 {
 
-	long int pixels = 0;                           // segmented pixels counter variable.
-	std::vector< std::vector<int> > reach;	       // This is the binary mask for the segmentation.
-	for (int i = 0; i < input.rows; i++){	//They are set to 0 at first. Since no pixel is assigned to the segmentation yet.
-		reach.push_back(std::vector<int>(input.cols));
+	long int nPixels = 0;                           // segmented pixels counter variable.
+	std::vector< std::vector<int> > reached;	       // This is the binary mask for the segmentation.
+	for (int i = 0; i < inputFrame.rows; i++){	//They are set to 0 at first. Since no pixel is assigned to the segmentation yet.
+		reached.push_back(std::vector<int>(inputFrame.cols));
 	}
 
 	// Define the queue. NOTE: it is a BFS based algorithm.
 	std::queue< std::pair<int,int> > seg_queue;
 
 	// verify the depth value of the seed position.
-	float &in_pxl_pos = input.at<float>(sY,sX);
+	float &in_pxl_pos = inputFrame.at<float>(sY,sX);
 
     if(in_pxl_pos == 0){
         ROS_WARN_STREAM("THE SEED DEPTH VALUE IS ZERO!!!!!");
-    }else if (missedPlayer){
+    }else if (isPlayerMissing){
         ROS_INFO_STREAM("PLAYER IS MISSING!");          //Send a message to rosout
         ci = -1 ;                                       //Set the value indicating player missing.
     }else{
-        dst.at<float>(sY,sX) = 255;                     // add seed to output image.
+        resultingFrame.at<float>(sY,sX) = 255;                     // add seed to output image.
 
         // Mark the seed as 1, for the segmentation mask.
-    	reach[sY][sX] = 1;
-        pixels++;                                        // increase the pixel counter.
+    	reached[sY][sX] = 1;
+        nPixels++;                                        // increase the pixel counter.
 
     	// init the queue witht he seed.
         seg_queue.push(std::make_pair(sY,sX));
 
         /* Loop over the frame, based on the seed adding a
-            new pixel to the dst frame accordingly*/
+            new pixel to the resultingFrame accordingly*/
     	while(!seg_queue.empty())
     	{
             /* pop values */
@@ -252,85 +252,85 @@ void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int t
                 dst frame if they meet the threshold condition. */
 
     		// Right pixel
-    		if((x + 1 < input.cols) && (!reach[y][x + 1]) &&
-                distanceFunction(input.at<float>(sY,sX), input.at<float>(y, x + 1),
+    		if((x + 1 < inputFrame.cols) && (!reached[y][x + 1]) &&
+                distanceFunction(inputFrame.at<float>(sY,sX), inputFrame.at<float>(y, x + 1),
                 threshold)){
-                reach[y][x+1] = true;
+                reached[y][x+1] = true;
                 seg_queue.push(std::make_pair(y, x+1));
-    			float &pixel = dst.at<float>(y,x+1);
+    			float &pixel = resultingFrame.at<float>(y,x+1);
                 pixel = 255;
-    			pixels++;;
+    			nPixels++;;
 
     		}
 
     		//Below Pixel
-    		if((y+1 < input.rows) && (!reach[y+1][x]) &&
-                distanceFunction(input.at<float>(sY,sX), input.at<float>(y+1,x),
+    		if((y+1 < inputFrame.rows) && (!reached[y+1][x]) &&
+                distanceFunction(inputFrame.at<float>(sY,sX), inputFrame.at<float>(y+1,x),
                 threshold)){
-    			reach[y + 1][x] = true;
+    			reached[y + 1][x] = true;
     			seg_queue.push(std::make_pair(y+1,x));
-    			dst.at<float>(y+1,x) = 255;
-    			pixels++;;
+    			resultingFrame.at<float>(y+1,x) = 255;
+    			nPixels++;;
     		}
 
     		//Left Pixel
-    		if((x-1 >= 0) && (!reach[y][x-1]) &&
-                distanceFunction(input.at<float>(sY,sX), input.at<float>(y,x-1),
+    		if((x-1 >= 0) && (!reached[y][x-1]) &&
+                distanceFunction(inputFrame.at<float>(sY,sX), inputFrame.at<float>(y,x-1),
                 threshold)){
-    			reach[y][x-1] = true;
+    			reached[y][x-1] = true;
     			seg_queue.push(std::make_pair(y,x-1));
-    			dst.at<float>(y,x-1) = 255;
-    			pixels++;;
+    			resultingFrame.at<float>(y,x-1) = 255;
+    			nPixels++;;
     		}
 
     		//Above Pixel
-    		if((y-1 >= 0) && (!reach[y - 1][x]) &&
-                distanceFunction(input.at<float>(sY,sX), input.at<float>(y-1,x),
+    		if((y-1 >= 0) && (!reached[y - 1][x]) &&
+                distanceFunction(inputFrame.at<float>(sY,sX), inputFrame.at<float>(y-1,x),
                 threshold)){
-    			reach[y-1][x] = true;
+    			reached[y-1][x] = true;
     			seg_queue.push(std::make_pair(y-1,x));
-    			dst.at<float>(y-1,x) = 255;
-    			pixels++;;
+    			resultingFrame.at<float>(y-1,x) = 255;
+    			nPixels++;;
     		}
 
     		//Bottom Right Pixel
-    		if((x+1 < input.cols) && (y+1 < input.rows) && (!reach[y+1][x+1]) &&
-                distanceFunction(input.at<float>(sY,sX), input.at<float>(y+1,x+1),
+    		if((x+1 < inputFrame.cols) && (y+1 < inputFrame.rows) && (!reached[y+1][x+1]) &&
+                distanceFunction(inputFrame.at<float>(sY,sX), inputFrame.at<float>(y+1,x+1),
                 threshold)){
-    			reach[y+1][x+1] = true;
+    			reached[y+1][x+1] = true;
     			seg_queue.push(std::make_pair(y+1,x+1));
-    			dst.at<float>(y+1,x+1) = 255;
-    			pixels++;
+    			resultingFrame.at<float>(y+1,x+1) = 255;
+    			nPixels++;
     		}
 
     		//Upper Right Pixel
-    		if((x+1 < input.cols) && (y-1 >= 0) && (!reach[y-1][x+1]) &&
-                distanceFunction(input.at<float>(sY,sX), input.at<float>(y-1,x+1),
+    		if((x+1 < inputFrame.cols) && (y-1 >= 0) && (!reached[y-1][x+1]) &&
+                distanceFunction(inputFrame.at<float>(sY,sX), inputFrame.at<float>(y-1,x+1),
                 threshold)){
-    			reach[y-1][x+1] = true;
+    			reached[y-1][x+1] = true;
     			seg_queue.push(std::make_pair(y-1,x+1));
-    			dst.at<float>(y-1,x+1) = 255;
-    			pixels++;
+    			resultingFrame.at<float>(y-1,x+1) = 255;
+    			nPixels++;
     		}
 
     		//Bottom Left Pixel
-    		if((x-1 >= 0) && (y + 1 < input.rows) && (!reach[y+1][x-1]) &&
-                distanceFunction(input.at<float>(sY,sX), input.at<float>(y+1,x-1),
+    		if((x-1 >= 0) && (y + 1 < inputFrame.rows) && (!reached[y+1][x-1]) &&
+                distanceFunction(inputFrame.at<float>(sY,sX), inputFrame.at<float>(y+1,x-1),
                 threshold)){
-    			reach[y+1][x-1] = true;
+    			reached[y+1][x-1] = true;
     			seg_queue.push(std::make_pair(y+1,x-1));
-    			dst.at<float>(y+1,x-1) = 255;
-    			pixels++;
+    			resultingFrame.at<float>(y+1,x-1) = 255;
+    			nPixels++;
     		}
 
     		//Upper left Pixel
-    		if((x-1 >= 0) && (y-1 >= 0) && (!reach[y-1][x-1]) &&
-                distanceFunction(input.at<float>(sY,sX), input.at<float>(y-1,x-1),
+    		if((x-1 >= 0) && (y-1 >= 0) && (!reached[y-1][x-1]) &&
+                distanceFunction(inputFrame.at<float>(sY,sX), inputFrame.at<float>(y-1,x-1),
                 threshold)){
-    			reach[y-1][x-1] = true;
+    			reached[y-1][x-1] = true;
     			seg_queue.push(std::make_pair(y-1,x-1));
-    			dst.at<float>(y-1,x-1) = 255;
-                pixels++;
+    			resultingFrame.at<float>(y-1,x-1) = 255;
+                nPixels++;
     		}
     	}
 
@@ -340,8 +340,8 @@ void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int t
             calculation.*/
         std::vector<std::vector<cv::Point> > contours;
     	std::vector<cv::Vec4i> hierarchy;
-        cv::Mat bwImage(input.size(),CV_8UC1);
-        dst.convertTo(bwImage,CV_8U,255.0/(255-0));
+        cv::Mat bwImage(inputFrame.size(),CV_8UC1);
+        resultingFrame.convertTo(bwImage,CV_8U,255.0/(255-0));
     	cv::findContours(bwImage, contours, hierarchy,
                      CV_RETR_EXTERNAL,
                      CV_CHAIN_APPROX_SIMPLE);
@@ -352,8 +352,8 @@ void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int t
 
             cv::Mat erodeElement = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(3,3));
             cv::Mat dilateElement = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(8,8));
-            cv::erode(dst, dst, erodeElement);
-            cv::dilate(dst, dst, dilateElement);
+            cv::erode(resultingFrame, resultingFrame, erodeElement);
+            cv::dilate(resultingFrame, resultingFrame, dilateElement);
 
             int largest_area=0;
     		int largest_contour_index=0;
@@ -363,9 +363,9 @@ void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int t
     		// centroid
     		for(int i=0; i < contours.size();i++){
     			// iterate through each contour.
-                double a = cv::contourArea(cv::Mat(contours[i]),false);  //  Find the area of contour
-    			if( a > largest_area){
-    				largest_area=a;
+                double coutorsArea = cv::contourArea(cv::Mat(contours[i]),false);  //  Find the area of contour
+    			if( coutorsArea > largest_area){
+    				largest_area=coutorsArea;
     				largest_contour_index=i;   //Store the index of largest contour
     			}
     		}
@@ -382,13 +382,15 @@ void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int t
             between the bounding rectangle area and the segmented object
             in the segmentation frame, normalized by
             the area of the rectangle. */
-            cv::Mat roiSeg = cv::Mat(dst,rect);
+            cv::Mat roiSeg = cv::Mat(resultingFrame,rect);
             int roiSegarea = roiSeg.total();
-            ci = float(roiSegarea-pixels)/float(roiSegarea);
+            ci = float(roiSegarea-nPixels)/float(roiSegarea);
             /* ... */
 
-            /* COMPUTING THE MIDDLE POINT ON THE TOP OF THE SEGMENTED IMAGE */
-            cv::Mat test = cv::Mat(dst,rect);
+            /* THIS COMMENTED PIECE OF CODE HAS BEEN DEVELOPED FOR THE PURPOSE
+             * OF PUTTING A MARKER ON THE PLAYER HEAD. HOWEVER, IT WAS DEPRECATED
+             *
+            cv::Mat test = cv::Mat(resultingFrame,rect);
             int begin = 0;
             int loop_counter = 0;
             bool sign = false;
@@ -404,42 +406,52 @@ void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int t
                     break;
                 }
             }
-            /* --- */
-            //writeMatToFile(test,"test.txt");
-
             int mid = std::ceil(loop_counter/2);
             int topPoint = begin + (mid-1);
 
+            *************************************************************/
+
             /* APPLY COLOR TO THE FRAME*/
-            std::vector<cv::Mat> tempcolorFrame(3);                         // Used to print a colored segmented frame.
-            cv::Mat black = cv::Mat::zeros(dst.rows, dst.cols, dst.type());
-            tempcolorFrame.at(0) = black; //for blue channel
-            tempcolorFrame.at(1) = dst;   //for green channel
-            tempcolorFrame.at(2) = black;  //for red channel
-
-            cv::merge(tempcolorFrame, segmentedColorFrame);
-            // Draws the rect in the segmentedColorFrame image
-            cv::circle(segmentedColorFrame, cv::Point(sX,sY),5, cv::Scalar(0,0,255),CV_FILLED, 8,0);
-            segmentedTarget = cv::Mat(segmentedColorFrame,rect);
-            cv::circle(segmentedTarget, cv::Point(topPoint,10),5, cv::Scalar(0,0,255),CV_FILLED, 8,0); // TAGGING THE POINT
-            /* ---- */
-
-            cv::rectangle(segmentedColorFrame, pt1, pt2, cv::Scalar(255,255,255), 2,8,0);// the selection white rectangle
-
-            /* ... */
-
-
-            /* put the CI value to frame */
-            cv::putText(segmentedColorFrame,
-            std::to_string(ci),
-            cv::Point(rect.x,rect.y-5), // Coordinates
-            cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
-            0.9, // Scale. 2.0 = 2x bigger
-            cv::Scalar(255,255,255), // Color
-            1 // Thickness
-            ); // Anti-alias
-            /*... */
-
+            // std::vector<cv::Mat> tSegmentedInColor(3);                   // Used to print a colored
+            // 														  	 //  segmented frame.
+            // cv::Mat black = cv::Mat::zeros(resultingFrame.rows,
+            // 								resultingFrame.cols,
+			// 								resultingFrame.type());
+            // tSegmentedInColor.at(0) = black; 							 //for blue channel
+            // tSegmentedInColor.at(1) = resultingFrame;   				 //for green channel
+            // tSegmentedInColor.at(2) = black;  							 //for red channel
+            //
+            // cv::merge(tSegmentedInColor, segmentedColorFrame);
+            //
+            // /* PRINTS THE MARKERS CALCULATED ABOVE.
+            // cv::circle(segmentedColorFrame, cv::Point(sX,sY),5,
+            // 			cv::Scalar(0,0,255),CV_FILLED, 8,0);
+            // segmentedTarget = cv::Mat(segmentedColorFrame,rect);
+            // cv::circle(segmentedTarget, cv::Point(topPoint,10),5,
+            // 			cv::Scalar(0,0,255),CV_FILLED, 8,0); // TAGGING THE POINT */
+            //
+            // // Draws the rect in the segmentedColorFrame image
+            // cv::rectangle(segmentedColorFrame, pt1, pt2, cv::Scalar(255,255,255), 2,8,0);// the selection white rectangle
+            //
+            // //
+			// cv::putText(segmentedColorFrame,
+			// 			std::to_string((int)blobCenter.x),			// The text to be printed, in this case, CI.
+			// 			cv::Point(blobCenter.x,blobCenter.y), 	// Coordinates
+			// 			cv::FONT_HERSHEY_COMPLEX_SMALL, 		// Font
+			// 			0.5, 									// Scale. 2.0 = 2x bigger
+			// 			cv::Scalar(255,255,255),				// Color
+			// 			1 										// Thickness
+			// 			); 										// Anti-alias
+            //
+            // /* put the CI value to frame */
+            // cv::putText(segmentedColorFrame,
+            // 			std::to_string(ci),				// The text to be printed, in this case, CI.
+			// 			cv::Point(rect.x,rect.y-5), 	// Coordinates
+			// 			cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+			// 			0.9, 							// Scale. 2.0 = 2x bigger
+			// 			cv::Scalar(255,255,255),		// Color
+			// 			1 								// Thickness
+            // 			); 								// Anti-alias
         }
     }
 }

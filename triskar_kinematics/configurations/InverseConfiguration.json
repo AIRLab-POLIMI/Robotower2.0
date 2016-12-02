@@ -1,0 +1,44 @@
+{
+  "name": "InverseConfiguration",
+  "description": "Inverse kinematics node configuration",
+  "namespace": "@",
+  "fields": [
+    {
+      "name": "velocity_input",
+      "description": "Velocity setpoint topic name",
+      "type": "CHAR",
+      "size": 16
+    },
+    {
+      "name": "output_0",
+      "description": "Wheel 0 output topic name",
+      "type": "CHAR",
+      "size": 16
+    },
+    {
+      "name": "output_1",
+      "description": "Wheel 1 output topic name",
+      "type": "CHAR",
+      "size": 16
+    },
+    {
+      "name": "output_2",
+      "description": "Wheel 2 output topic name",
+      "type": "CHAR",
+      "size": 16
+    },
+    {
+      "name": "center_distance",
+      "description": "Distance between wheels and center of the robot [m]",
+      "type": "FLOAT32",
+      "size": 1
+    },
+    {
+      "name": "wheel_radius",
+      "description": "Wheel radius [m]",
+      "type": "FLOAT32",
+      "size": 1
+    }
+    
+ ]
+}

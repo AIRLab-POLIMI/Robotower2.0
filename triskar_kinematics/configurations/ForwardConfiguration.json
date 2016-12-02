@@ -1,0 +1,43 @@
+{
+  "name": "ForwardConfiguration",
+  "description": "Forward kinematics node configuration",
+  "namespace": "@",
+  "fields": [
+    {
+      "name": "input_0",
+      "description": "Wheel 0 topic name",
+      "type": "CHAR",
+      "size": 16
+    },
+    {
+      "name": "input_1",
+      "description": "Wheel 1 topic name",
+      "type": "CHAR",
+      "size": 16
+    },
+    {
+      "name": "input_2",
+      "description": "Wheel 2 topic name",
+      "type": "CHAR",
+      "size": 16
+    },
+    {
+      "name": "output",
+      "description": "Output topic name",
+      "type": "CHAR",
+      "size": 16
+    },
+    {
+      "name": "center_distance",
+      "description": "Distance between wheels and center of the robot [m]",
+      "type": "FLOAT32",
+      "size": 1
+    },
+    {
+      "name": "wheel_radius",
+      "description": "Wheel radius [m]",
+      "type": "FLOAT32",
+      "size": 1
+    }
+  ]
+}

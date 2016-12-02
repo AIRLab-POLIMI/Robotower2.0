@@ -409,7 +409,7 @@ void loop() {
             data.q.y = q.y;
             data.q.z = q.z;
           
-            //RFtransmitter.write(&data, sizeof(data));
+            RFtransmitter.write(&data, sizeof(data));
             delay(5);
         #endif
     }

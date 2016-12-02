@@ -54,6 +54,8 @@
 #include "common.h"
 /* ... */
 
+// TODO: Refactor this node.
+
 /* HSV space variables for blob detection */
 int hMin = 127;
 int sMin = 99;
@@ -63,11 +65,15 @@ int sMax = 256;
 int vMax = 256;
 /* ... */
 
-cv::Point2f mainCenter;         // variable for blob center tracking
-bool missedPlayer;              // a flag for the player presence.
+cv::Point2f blobCenter;         // variable for blob center tracking at time t.
+cv::Point2f previousBlobCenter;
+// previous feature values
+float previousDistance;         // variable for distance at time t-1.
+float previousCI;               // variable for ci at time t-1.
+// ..
+bool isPlayerMissing;              // a flag for the player presence.
 
-const int BUFFER = 32;          // the object trail size
-boost::circular_buffer<cv::Point2f> pts(BUFFER);    // The blob location history
+boost::circular_buffer<cv::Point2f> pts(TRAIL_BUFFER_SIZE);    // The blob location history
 
 cv::Mat segmentedColorFrame;    // the segmented color frame.
 cv::Mat segmentedTarget;
@@ -93,6 +99,7 @@ int main(int argc, char** argv)
 
 	image_transport::ImageTransport it(nh);
 	image_transport::Publisher imgPub = it.advertise("camera/image", 1);
+	image_transport::Publisher segmentationPub = it.advertise("camera/image/player_segmented", 1);
 	//image_transport::Publisher imgPub = it.advertise("camera/image/depth", 1);
 
 	//Create a publisher object.
@@ -236,6 +243,7 @@ int main(int argc, char** argv)
 		imgPub.publish(imgmsg);
 		//imgPub.publish(depthmsg);
 
+
         /* Search for the color blob representing the human. */
         trackUser(regframe);
 
@@ -249,11 +257,11 @@ int main(int argc, char** argv)
             THE trackUser METHOD. THE IDEA IS THEN TO ASSESS THE MEAN DISTANCE (PIXEL VALUES)
             DEFINED IN THIS AREA AND THUS OBTAIN THE DISTANCE FEATURE. THE SAME LOOP ALSO CALL THE
             segmentDepth METHOD IN ORDER TO OBTAIN THE CONTRACTION INDEX FEATURE.*/
-        if ((mainCenter.x != -1000) && (mainCenter.x != 0)){
+        if ((blobCenter.x != -1000) && (blobCenter.x != 0)){
             int radius = 5;
 
             //get the Rect containing the circle:
-            cv::Rect r(mainCenter.x-radius, mainCenter.y-radius, radius*2,radius*2);
+            cv::Rect r(blobCenter.x-radius, blobCenter.y-radius, radius*2,radius*2);
             // obtain the image ROI:
             cv::Mat roi(undistortedFrame, r);
 
@@ -273,59 +281,84 @@ int main(int argc, char** argv)
 
             /* perform segmentation in order to get the contraction index featue.
                 The result will be saved in ci variable*/
-            segmentDepth(undistortedFrame, segmat, mainCenter.x, mainCenter.y, ci, 300);
+            segmentDepth(undistortedFrame, segmat, blobCenter.x, blobCenter.y, ci, 300);
         }
 
         /* A LOOP TO PRINT THE DISTANCE AND HISTORY TRACE IN THE DEPTH FRAME. IT JUST SERVES AS A
          VISUAL AID OF WHAT IS GOING ON.*/
-    	for (int i=1; i < (pts.size()-1); i++){
-    		// if either of the tracked points are None, ignore
-    		// them
+    	// for (int i=1; i < (pts.size()-1); i++){
+    	// 	// if either of the tracked points are None, ignore
+    	// 	// them
+        //
+    	// 	cv::Point2f ptback = pts[i - 1];
+    	// 	cv::Point2f pt = pts[i];
+    	// 	if ((ptback.x == -1000) or (pt.x == -1000)){
+        //         continue;
+    	// 	}
+        //
+    	// 	// otherwise, compute the thickness of the line and
+    	// 	// draw the connecting lines
+    	// 	int thickness = int(sqrt(TRAIL_BUFFER_SIZE / float(i + 1)) * 2.5);
+    	// 	line(undistortedFrame, pts[i - 1], pts[i], cv::Scalar(0, 0, 255), thickness);
+        //     // Write distance
+        //     cv::putText(undistortedFrame,
+        //     std::to_string(meanDistance),
+        //     cv::Point((512/2)-60,85), // Coordinates
+        //     cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+        //     1.0, // Scale. 2.0 = 2x bigger
+        //     cv::Scalar(255,255,255), // Color
+        //     1 // Thickness
+        //     ); // Anti-alias
+    	// }
 
-    		cv::Point2f ptback = pts[i - 1];
-    		cv::Point2f pt = pts[i];
-    		if ((ptback.x == -1000) or (pt.x == -1000)){
-                continue;
-    		}
-
-    		// otherwise, compute the thickness of the line and
-    		// draw the connecting lines
-    		int thickness = int(sqrt(BUFFER / float(i + 1)) * 2.5);
-    		line(undistortedFrame, pts[i - 1], pts[i], cv::Scalar(0, 0, 255), thickness);
-            // Write distance
-            cv::putText(undistortedFrame,
-            std::to_string(meanDistance),
-            cv::Point((512/2)-60,85), // Coordinates
-            cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
-            1.0, // Scale. 2.0 = 2x bigger
-            cv::Scalar(255,255,255), // Color
-            1 // Thickness
-            ); // Anti-alias
-    	}
 
         /* CREATE ROS MESSAGE*/
         robogame_kinectfeatures_extractor::kinect_feat msg;
+        msg.header.stamp = ros::Time::now();
         std_msgs::Int32 xposition;
-        xposition.data = mainCenter.x;
 
-        if (missedPlayer){
-            ROS_WARN_STREAM("PLAYER IS MISSING!");
-            msg.header.stamp = ros::Time::now();
-            msg.ci = -1;
-            msg.distance = -1;
-            msg.proximity = -1;
-            //msg.crosstrack = -1;
+        ROS_INFO_STREAM(isPlayerMissing << "--" << previousDistance << "--" << meanDistance);
+        if (isPlayerMissing){
+            // Trims values given missing player.
+            if(previousDistance <= MIN_DISTANCE){
+                ROS_WARN_STREAM("PLAYER TOO CLOSE!");
+                msg.ci = previousCI;
+                msg.distance = MIN_DISTANCE;
+                msg.proximity = (1 - (MIN_DISTANCE/4.500f));
+            }else if(previousDistance >= MAX_DISTANCE){
+                ROS_WARN_STREAM("PLAYER TOO FAR AWAY!");
+                msg.ci = previousDistance;
+                msg.distance = MAX_DISTANCE;
+                msg.proximity = (1 - (MAX_DISTANCE/4.500f));
+            }
+
+            if (blobCenter.x < 256 ){
+            	xposition.data = 0;
+            }else{
+            	xposition.data = 512;
+            }
+
         }else{
-            msg.header.stamp = ros::Time::now();
             msg.ci = ci;
             msg.distance = meanDistance;
             msg.proximity = (1 - (meanDistance/4.500f)); // Normalize distance (proximity)
-            //msg.crosstrack = (registered.width/2) - mainCenter.x;
+
+            // saves previous distance value.
+            previousDistance = meanDistance;
+            // saves previous ci value.
+            previousCI = ci;
+            xposition.data = blobCenter.x;
         }
 
         //Publish the message
         pub.publish(msg);
         position_pub.publish(xposition);        // publishes blob x coordinate.
+        previousBlobCenter = blobCenter;
+
+        segmentedColorFrame.convertTo(segmentedColorFrame, CV_8UC4);
+        sensor_msgs::ImagePtr segmentationmsg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", segmentedColorFrame).toImageMsg();
+        segmentationPub.publish(segmentationmsg);
+
 
         //Send a message to rosout with the details.
         ROS_INFO_STREAM("KINECT FEATURES: "
@@ -334,9 +367,9 @@ int main(int argc, char** argv)
             << " proximity=" << msg.proximity);
 
         /* Update/show images */
-        cv::imshow("undistorted", undistortedFrame);
-        cv::imshow("registered", regframe);;
-        cv::imshow("segmentation", segmentedColorFrame);
+        //cv::imshow("undistorted", undistortedFrame);
+        //cv::imshow("registered", regframe);;
+        //cv::imshow("segmentation", segmentedColorFrame);
 
         int key = cv::waitKey(1);
 

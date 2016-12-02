@@ -8,7 +8,7 @@
         <param name="autorepeat_rate" value="60" />
 	</node>
 
-	<node pkg="robogame_joystick" type="robogame_joystick_node" name="robogame_joystick" output="screen">
+	<node pkg="robogame_joystick" type="robogame_joystick_node" name="robogame_joystick">
 		<param name="linear_scale" value="1" />
 		<param name="angular_scale" value="2.57" />
 		<param name="axis_deadman" value="5"/>
