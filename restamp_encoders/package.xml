@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>robogame_encoder_time</name>
+  <name>restamp_encoders</name>
   <version>0.0.0</version>
   <description>The robogame_encoder_time package</description>
 

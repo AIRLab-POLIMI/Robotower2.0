@@ -6,7 +6,6 @@
 
   <include file="$(find robogame_joystick)/launch/joystick.launch"/>
 
-  <!-- <node name="wiimote" pkg="robogame_wiimote" type="wiimote_node.py" respawn="true" output="screen"/> -->
   <node name="forwarder" pkg="triskarone" type="forwarder" respawn="true" />
 
   <node name="robogame_arduino" pkg="robogame_arduino" type="robogame_arduino_node" respawn="true" output="screen"/>

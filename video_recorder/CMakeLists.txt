@@ -1,15 +1,17 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(robogame_encoder_time)
+project(video_recorder)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-#  r2p_msgs
-   roscpp
-   std_msgs
-)
-
+find_package(catkin REQUIRED COMPONENTS roscpp
+        rospy
+        std_msgs
+        message_generation
+        sensor_msgs
+        cv_bridge
+        image_transport)
+find_package(OpenCV REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -102,7 +104,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES robogame_encoder_time
+#  LIBRARIES video_recorder
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
@@ -116,26 +118,27 @@ catkin_package(
 # include_directories(include)
 
 ## Declare a C++ library
-# add_library(robogame_encoder_time
-#   src/${PROJECT_NAME}/robogame_encoder_time.cpp
+# add_library(video_recorder
+#   src/${PROJECT_NAME}/video_recorder.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(robogame_encoder_time ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(video_recorder ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
- add_executable(encoder_time_node src/main.cpp)
+add_executable(video_recorder_node src/video_recorder_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(robogame_encoder_time_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(video_recorder_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-  target_link_libraries(encoder_time_node
+target_link_libraries(video_recorder_node
    ${catkin_LIBRARIES}
- )
+   ${OpenCV_LIBS}
+)
 
 #############
 ## Install ##
@@ -152,7 +155,7 @@ catkin_package(
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS robogame_encoder_time robogame_encoder_time_node
+# install(TARGETS video_recorder video_recorder_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -177,7 +180,7 @@ catkin_package(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_robogame_encoder_time.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_video_recorder.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
