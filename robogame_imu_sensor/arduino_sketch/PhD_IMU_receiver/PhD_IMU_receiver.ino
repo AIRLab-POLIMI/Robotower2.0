@@ -19,10 +19,6 @@ const boolean OFF = LOW;   //Define off as HIGH
 boolean ledState = OFF;     // ledState used to set the LED
 boolean battery_buzzer_state = OFF;
 
-
-boolean isPlayerLost;
-boolean isPlayerTooClose;
-
 //Predefined Colors
 const boolean RED[] = {ON, OFF, OFF};    
 const boolean GREEN[] = {OFF, ON, OFF}; 
