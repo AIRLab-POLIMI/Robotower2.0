@@ -7,7 +7,7 @@ This is the repository for the robogame project during my PhD studies at Politec
 
 **Game related repositories:**<br/>
 * `robogame` -- metapackage. <br/>
-* `robogame_arduino` --  <br/>
+* `robogame_arduino` -- The robogame_arduino package defines msgs that the arduino module attached to the robot is going to use.  <br/>
 * `robogame_game_manager` -- where actions and conditions (bt leaves) codes are defined. <br/>
 * `robogame_imu_sensor` -- packages that pusblish data received from the MPU6050 (acceleromenter) attached to the player. <br/>
 * `robogame_kinectfeatures_extractor` -- for extracting and publishing player features using microsoft kinect 2.  <br/>
@@ -27,7 +27,7 @@ This is the repository for the robogame project during my PhD studies at Politec
 
 **Additional folders (NOT REPOS):**</br>
 * `_gnuplot` -- folder with some predefined config files for using gnuplot.</br>
-* `_arduino` -- folder containing arduino sketches used on onboard arduino boards.</br>
+* `_arduino` -- folder containing arduino sketches used on onboard arduino and the ones located on the game towers.</br>
 * `_help` -- folder containing some infos regarding setup issues.</br>
 * `_scripts` -- folder containing some useful scripts and programs.</br>
 
