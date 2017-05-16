@@ -1,14 +1,13 @@
 //This sketch is from a tutorial video for networking more than two nRF24L01 tranciever modules on the ForceTronics YouTube Channel
 //the code was leverage from the following code http://maniacbug.github.io/RF24/starping_8pde-example.html
 //This sketch is free to the public to use and modify at your own risk
-#define BUZZER_PIN 6
-#define WARNING_LED 9
-
+#define WARNING_LED 8
+#define BUZZER_PIN  6
 #define OFF 0
 #define ON 1
 
 ////// TRANSCEIVER PINS ///////
-#define CSN_PIN         8//This pin is used to set the nRF24 to standby (0) or active mode (1)
+#define CSN_PIN         9    //This pin is used to set the nRF24 to standby (0) or active mode (1)
 #define CE_PIN          10   //This pin is used to tell the nRF24 whether the SPI communication is a command or message to send out
 #define MOSI_PIN        11
 #define MISO_PIN        12
@@ -40,12 +39,13 @@ struct acc_package acc_data;
 
 RF24 RFtransmitter(CE_PIN, CSN_PIN);
 int timeout_limit = 250; // in millis
-int nTransmitters = 5; // the number of transmitters;
-boolean battery_buzzer_state = OFF;
+int nTransmitters = 5; // the number of transmitters
+unsigned long started_waiting_at;
+unsigned long previousTimeForBatBeeping;
+int battery_buzzer_state;
+bool timeout;
+float voltage;
 
-unsigned long previous_time = 0;        // will store last time LED was updated;
-unsigned long timeForBuzzer = 0;
-unsigned long previousTimeForBatBeeping = 0;
 
 /*rAddress and wAddress are com pipe addresses for the towers and accelerometer.
  * rAddress[] = {tower, tower, tower, tower, accelerometer};
@@ -55,6 +55,7 @@ const uint64_t rAddress[] = {0xF0F0F0F0A1LL, 0xF0F0F0F0A2LL, 0xF0F0F0F0B4LL, 0xF
 const uint64_t wAddress[] = {0xB00B1E50D2LL, 0xB00B1E50C3LL, 0xB00B1E50B1LL, 0xB00B1E50A4LL, 0xB00B1E50C4LL};
 
 const int ACC_PIPE_INDEX = 5;   // accelerometer communication pipe rAddress index.
+const int ACC_BAT_INDEX  = 6;
 
 void setup()   
 {
@@ -63,22 +64,24 @@ void setup()
 
   RFtransmitter.setPALevel(RF24_PA_MAX);
   RFtransmitter.setDataRate( RF24_250KBPS ) ;
-
-  pinMode(WARNING_LED, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
+  
+  for (int i=1;i<nTransmitters+1;i++){
+    RFtransmitter.openReadingPipe(i,rAddress[i-1]);      //open pipe o for recieving meassages with pipe address
+  }
   
   RFtransmitter.startListening();                 // Start listening for messages
+  pinMode(WARNING_LED, OUTPUT); 
+  pinMode(BUZZER_PIN, OUTPUT);  
 }
 
 void loop()  
 {   
     byte pipeNum = 0; //variable to hold which reading pipe sent data
+    started_waiting_at = millis();
+    timeout = false;
     
-    unsigned long started_waiting_at = millis();
-    bool timeout = false;
-  
     /* Checking battery (a voltage less then 1.77 correspond to battery level at 20V, 1.947 correspond to battery level at 22V) */
-    float voltage = (analogRead(A2) * 5.015) / 1024.0;
+    voltage = (analogRead(A2) * 5.015) / 1024.0;
     voltage = (22*voltage)/1.947;         // Converted voltage (approx).
     if (voltage <= 22 && voltage >= 10){
       unsigned long currentBatMillis = millis();
@@ -97,21 +100,25 @@ void loop()
     }
 
 
-    while(!RFtransmitter.available(&pipeNum) && !timeout){
+    /* PUBLIC THE VOLTAGE */
+    Serial.print(ACC_BAT_INDEX);
+    Serial.print(F(","));
+    Serial.print(voltage);
+    Serial.print(F("\n"));
+
+    while (!RFtransmitter.available() && !timeout){
       if (millis() - started_waiting_at > 250)
         timeout = true;
     }
   
     if (timeout) {
-      //Serial.println("Failed, reponse time out.");
-      digitalWrite(WARNING_LED, HIGH);
+      digitalWrite(WARNING_LED, LOW);
     }else{
     
       //Check if received data from transmitters.
       while(RFtransmitter.available(&pipeNum)){
-
-          digitalWrite(WARNING_LED, LOW);
-           
+            digitalWrite(WARNING_LED, HIGH);
+  
           /* 0-3 represent the towers.*/
           if (pipeNum != ACC_PIPE_INDEX){ 
             RFtransmitter.read(&tower_data, sizeof(tower_data));
@@ -140,6 +147,8 @@ void loop()
             Serial.print(tower_data.ledMask[3]);
             Serial.print(F(","));
             Serial.print(tower_data.pressCounter);
+            Serial.print(F(","));
+            Serial.print(voltage);
             Serial.print(F("\n"));
           }else{
             RFtransmitter.read(&acc_data, sizeof(acc_data));
@@ -164,10 +173,12 @@ void loop()
             Serial.print(acc_data.q.y);
             Serial.print(F(","));
             Serial.print(acc_data.q.z);
+            Serial.print(F(","));
+            Serial.print(voltage);
             Serial.print(F("\n"));
           }
       }
-    }
+   }
 }
 
 //This function turns the reciever into a transmitter briefly to tell one of the nRF24s

@@ -11,10 +11,11 @@
 /////// CONSTANTS /////////////
 #define TRIGGER_DELAY   20
 #define N_CHARGE_LEDS   4             // How many LEDs are for display charging time.
-#define SCHMITT_TRIGGER_INTERRUPT 0   //Digital pin 2 on Arduino UNO
-#define LED_CHARGING_TIME 1000        // How much time (IN MILLIS) for turning on a LED on button press. 
+#define SCHMITT_TRIGGER_INTERRUPT 0   // Digital pin 2 on Arduino UNO
+#define LED_CHARGING_TIME 2500        // How much time (IN MILLIS) for turning on a LED on button press. 
 #define TOTAL_CHARGING_TIME 10        // Total time for charging the tower (in SECONDS).
-#define BLINKING_INTERVAL 500         // RED LED blinking interval (IN MILLIS). 
+#define BLINKING_INTERVAL 500         // RED LED blinking interval (IN MILLIS).
+#define CHARGE_BLINKING_INTERVAL 150  // Charging LED blinking interval (IN MILLIS). 
 ///////////////////////////////
 
 /////// LED PINS //////////
@@ -60,7 +61,9 @@
 
 // RF Trasmitter definition.
 RF24 RFtransmitter(CE_PIN, CSN_PIN);
-byte addresses[][6] = {"0"};  // RF pipe at address 0.
+const uint64_t wAddress = 0xF0F0F0F0A1LL;              // Pipe to write or transmit on
+const uint64_t rAddress = 0xB00B1E50D2LL;
+
 
 // Ultrasound sensors.
 NewPing sonar_center(TRIGGER_CENTER, ECHO_CENTER, 200);
@@ -77,10 +80,12 @@ enum timerOrientation{
 // Data to be sent by the RF module.
 struct package{
   boolean isTowerDown;
-  boolean hasWon;
-  boolean isGameActive;
+  boolean isCaptured;
+  boolean isTowerEnable;
+  boolean isButtonPressed;
   float distances[3]; // 0 - left sensor, 1- center sensor, 2- right sensor
   int ledMask[4];   // which LEDs are on.
+  int pressCounter;
 }data;
 
 //// LEDs VARIABLES ///////
@@ -88,26 +93,27 @@ int led_array[] = {GREEN_LED, RED_LED, CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, CH
 int charge_LEDs[] = {CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, CHARGE_LED4};                         // All charge LEDs.
 int ledMask[N_CHARGE_LEDS];                 // which charge LEDs are on.
 int blink_state   = LOW;                    // keeps the RED/GREEN LED blink state.
+int charge_blink_state   = LOW;             // keeps the charging LED blink state.
 ///////////////////////////
 
 ///// BUTTON CONTROL //////
 volatile int button_state = LOW;            // Keeps the current button state (LOW/HIGH)
 int previous_button_state = LOW;            // Controls the previous state of the button (LOW/HIGH)
+int press_counter = 0;                      // Counts the ammount of button presses;
 ///////////////////////////    
 
 ///// TIMER ///////////////
-static unsigned long led_timer = 0;         // Controls "turn on" time between LEDs.
+static unsigned long press_timer = 0;       // Controls "turn on" time between LEDs.
 static unsigned long blink_timer = 0;       // Control the blink time of the tower RED/GREEN LED.
-int secs_counter = 0;                       // keeps how many seconds has been passed.
-timerOrientation timerState = halt;         // Controls in which direction to update the LEDs charging timer.
+static unsigned long charge_blink_timer = 0;// Control the blink time of the tower charging LED.
+int n_leds_ON = 0;                          // keeps how many charging LEDs are on.
 ///////////////////////////
 
 ///// GAME VARIABLES //////
-bool isGameActive = true;                   // Keeps the state of the game: True (Game is ON).
+bool isTowerEnable = true;                   // Keeps the state of the game: True (Game is ON).
 bool isTowerDown = false;                   // True if the tower has fallen.
-bool hasWon = false;                        // True if player has charged the LEDs and the tower did not fall.
+bool isCaptured = false;                        // True if player has charged the LEDs and the tower did not fall.
 ///////////////////////////
-
 
 
 void setup() {
@@ -125,14 +131,15 @@ void setup() {
   attachInterrupt(SCHMITT_TRIGGER_INTERRUPT, handleButton, CHANGE);
   // set the RED_LED ON, at the beginning.
   digitalWrite(RED_LED,HIGH);
+  digitalWrite(SCHMITT_TRIGGER_PIN,LOW);
   
   // Set the transceiver properties.
   delay(1000);
-  RFtransmitter.begin();  
-  RFtransmitter.setChannel(115); 
+  RFtransmitter.begin();
+  //RFtransmitter.setChannel(115); 
   RFtransmitter.setPALevel(RF24_PA_MAX);
   RFtransmitter.setDataRate( RF24_250KBPS ) ; 
-  RFtransmitter.openWritingPipe( addresses[0]);
+  RFtransmitter.openWritingPipe(wAddress);
   delay(1000);
 }
 
@@ -145,22 +152,8 @@ void loop() {
     data.distances[1] = sonar_center.ping_cm();
     delay(TRIGGER_DELAY);
     data.distances[2] = sonar_right.ping_cm();
-
-    // Setting properties when LED_CHARGING_TIME is reached.
-    if (secs_counter == (TOTAL_CHARGING_TIME-1)){
-      if((millis() - led_timer) > LED_CHARGING_TIME){
-        led_timer = millis();
-        secs_counter = (secs_counter + 1) % TOTAL_CHARGING_TIME;
-        updateLEDs(secs_counter);
-        digitalWrite(RED_LED,LOW);
-        turnONChargeLEDs();
-        digitalWrite(GREEN_LED,HIGH);
-        isGameActive = false;
-        hasWon = true;
-      }
-    }
     
-    if(isGameActive) {
+    if(isTowerEnable) {
       // Check interval for RED LED blinking.
       if((millis() - blink_timer) > BLINKING_INTERVAL){
           blink_timer = millis();           // reset the timer
@@ -168,35 +161,60 @@ void loop() {
           digitalWrite(RED_LED,blink_state);
       }
       
-      // Check, using the LDR, whether the tower has fallen. 
-      if ((digitalRead(TILT_SENSOR_PIN) == HIGH) && isGameActive){
-          digitalWrite(RED_LED,LOW);
-          isGameActive = false;
-          turnOFFChargeLEDs();
+      // Check using the TILT Sensor, whether the tower has fallen. 
+      if ((digitalRead(TILT_SENSOR_PIN) == HIGH) && isTowerEnable){
+          digitalWrite(RED_LED,HIGH);
+          isTowerEnable = false;
+          isTowerDown   = true;
+          setOFFAllChargeLEDs();
       }else{
-        // If tower was not detected as a "fallen tower", check and update LEDs.
-        
-        if (((previous_button_state == LOW) && (button_state == HIGH)) || ((previous_button_state == HIGH) && (button_state == HIGH))){
-          timerState = increase;
-        }else if (previous_button_state == HIGH && button_state == LOW){
-          timerState = halt;
-        }else if ((previous_button_state == LOW) && (button_state == LOW) && secs_counter != 0){
-          timerState=halt;
-        }else{
-          timerState=halt;
-        }
-        // Save current button state
-        previous_button_state = button_state;
-        //
-        updateTimer(timerState);
-        updateLEDs(secs_counter);
+
+          // Count button presses by monitoring changes in the button
+          if (previous_button_state != digitalRead(SCHMITT_TRIGGER_PIN)){
+              if (digitalRead(SCHMITT_TRIGGER_PIN) == HIGH){
+                  press_counter += 1;
+              }
+          }
+
+          // If tower was not detected as a "fallen tower", check and update LEDs. 
+          if (digitalRead(SCHMITT_TRIGGER_PIN) == HIGH){
+              previous_button_state = HIGH;
+              
+              if((millis() - charge_blink_timer) > CHARGE_BLINKING_INTERVAL){
+                  charge_blink_timer = millis();                  // reset the timer
+                  charge_blink_state = !charge_blink_state;       // invert the blinking_state.
+                  digitalWrite(GREEN_LED,charge_blink_state);
+              }
+               
+              if ((millis() - press_timer) > LED_CHARGING_TIME){
+                press_timer = millis();
+                n_leds_ON += 1;
+                if (n_leds_ON == N_CHARGE_LEDS){
+                  // Setting properties when LED_CHARGING_TIME is reached.
+                  digitalWrite(RED_LED,LOW);
+                  setONAllChargeLEDs();
+                  digitalWrite(GREEN_LED,HIGH);
+                  isTowerEnable = false;
+                  isCaptured = true;
+                  setONAllChargeLEDs();
+                }
+              }
+          }else{
+              digitalWrite(GREEN_LED,LOW);
+              press_timer = millis();
+              previous_button_state = LOW;
+          }
       }
     }
 
+    updateChargeLEDs();
+    
     //Setting the remaining data to be transmitted.
-    data.isGameActive = isGameActive;
-    data.hasWon = hasWon;
+    data.isTowerEnable = isTowerEnable;
+    data.isCaptured = isCaptured;
+    data.isButtonPressed = digitalRead(SCHMITT_TRIGGER_PIN);
     data.isTowerDown = isTowerDown;
+    data.pressCounter = press_counter;
     for(int i=0;i<N_CHARGE_LEDS; i++){
       data.ledMask[i] = ledMask[i]; 
     }
@@ -205,47 +223,29 @@ void loop() {
     RFtransmitter.write(&data, sizeof(data));
 }
 
-/* Updates the timer (secs_counter) based on how many time 
- * has been passed between leds. Basically, controls the 
- * charging time for the tower.
- */
-void updateTimer(timerOrientation orientation){ 
-  if (orientation == increase){
-    if((millis() - led_timer) > LED_CHARGING_TIME){
-        led_timer = millis();
-        secs_counter = (secs_counter + 1) % TOTAL_CHARGING_TIME;
-    }
-  }else if (orientation == decrease){
-    if((millis() - led_timer) > LED_CHARGING_TIME){
-        led_timer = millis();
-        secs_counter = (secs_counter - 1) % TOTAL_CHARGING_TIME;
-    }
-  }
-}
 
 /*
  * Turns OFF ALL the charge LEDs by setting them to LOW.
  */
-void turnOFFChargeLEDs(){
+void setOFFAllChargeLEDs(){
   for(int i=0; i < N_CHARGE_LEDS; i++){
-    digitalWrite(charge_LEDs[i],LOW);
+    ledMask[i] = 0;
   }
 }
 
 /*
  * Turns ON ALL the charge LEDs by setting them to HIGH.
  */
-void turnONChargeLEDs(){
+void setONAllChargeLEDs(){
   for(int i=0; i < N_CHARGE_LEDS; i++){
-    digitalWrite(charge_LEDs[i],HIGH);
+    ledMask[i] = 1;
   }
 }
 
-// Updates Charge LEDs based on the timer. 
-void updateLEDs(int counting){
-  int up = (N_CHARGE_LEDS*counting)/9;
+// Updates Charge LEDs based on the current settings. 
+void updateChargeLEDs(){
   for(int i=0; i < N_CHARGE_LEDS; i++){
-    if (i < up){
+    if (i < n_leds_ON){
       digitalWrite(charge_LEDs[i],HIGH);
       ledMask[i] = 1;
     }else{
@@ -260,5 +260,5 @@ void updateLEDs(int counting){
  * Updates the state of the button. LOW (Not pressed), HIGH (Pressed).
  */
 void handleButton() {
-    button_state = !button_state;
+    button_state = digitalRead(SCHMITT_TRIGGER_PIN);
 }

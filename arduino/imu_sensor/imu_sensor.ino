@@ -114,7 +114,7 @@ MPU6050 mpu;
 
 
 
-#define LED_PIN 10 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
+#define LED_PIN 3 // (Arduino is 13, Teensy is 11, Teensy++ is 6)
 bool blinkState = false;
 
 // MPU control/status vars
@@ -144,8 +144,12 @@ struct package{
 typedef struct package IMU_package;
 IMU_package data;
 
-RF24 RFtransmitter (7, 8);
-byte addresses[][6] = {"0"};
+const int pinCE = 7; //This pin is used to set the nRF24 to standby (0) or active mode (1)
+const int pinCSN = 8; //This pin is used to tell the nRF24 whether the SPI communication is a command or message to send out
+
+RF24 RFtransmitter (pinCE, pinCSN);         // Create your nRF24 object or wireless SPI connection
+const uint64_t wAddress = 0xF0F0F0F0B9LL;   // Pipe to write or transmit on
+const uint64_t rAddress = 0xB00B1E50C4LL;   //pipe to recive data on
 
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\n' };
@@ -161,7 +165,8 @@ void dmpDataReady() {
     mpuInterrupt = true;
 }
 
-
+#define LOOP_INTERVAL 20                   // Loop interval (IN MILLIS). 
+static unsigned long loop_timer = 0;       // Control the loop time of the tower RED/GREEN LED.
 
 // ================================================================
 // ===                      INITIAL SETUP                       ===
@@ -183,10 +188,10 @@ void setup() {
     Serial.begin(19200);
     delay(1000);
     RFtransmitter.begin();  
-    RFtransmitter.setChannel(115); 
+    //RFtransmitter.setChannel(115); 
     RFtransmitter.setPALevel(RF24_PA_MAX);
     RFtransmitter.setDataRate( RF24_250KBPS ) ; 
-    RFtransmitter.openWritingPipe( addresses[0]);
+    RFtransmitter.openWritingPipe(wAddress);        //open writing or transmit pipe
     delay(1000);
     
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
@@ -264,151 +269,155 @@ void setup() {
 // ================================================================
 
 void loop() {
-    // if programming failed, don't try to do anything
-    if (!dmpReady) return;
 
-    // wait for MPU interrupt or extra packet(s) available
-    while (!mpuInterrupt) {// && fifoCount < packetSize) {
-        // other program behavior stuff here
-        // .
-        // .
-        // .
-        // if you are really paranoid you can frequently test in between other
-        // stuff to see if mpuInterrupt is true, and if so, "break;" from the
-        // while() loop to immediately process the MPU data
-        // .
-        // .
-        // .
-    }
-
-    // reset interrupt flag and get INT_STATUS byte
-    mpuInterrupt = false;
-    mpuIntStatus = mpu.getIntStatus();
-
-    // get current FIFO count
-    fifoCount = mpu.getFIFOCount();
-
-    // check for overflow (this should never happen unless our code is too inefficient)
-    if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
-        // reset so we can continue cleanly
-        mpu.resetFIFO();
-        Serial.println(F("FIFO overflow!"));
-
-    // otherwise, check for DMP data ready interrupt (this should happen frequently)
-    } else if (mpuIntStatus & 0x02) {
-        // wait for correct available data length, should be a VERY short wait
-        while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
-
-        // read a packet from FIFO
-        mpu.getFIFOBytes(fifoBuffer, packetSize);
-        
-        // track FIFO count here in case there is > 1 packet available
-        // (this lets us immediately read more without waiting for an interrupt)
-        fifoCount -= packetSize;
-
-        #ifdef OUTPUT_READABLE_QUATERNION
-            // display quaternion values in easy matrix form: w x y z
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            Serial.print("quat\t");
-            Serial.print(q.w);
-            Serial.print("\t");
-            Serial.print(q.x);
-            Serial.print("\t");
-            Serial.print(q.y);
-            Serial.print("\t");
-            Serial.println(q.z);
-        #endif
-
-        #ifdef OUTPUT_READABLE_EULER
-            // display Euler angles in degrees
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetEuler(euler, &q);
-            Serial.print("euler\t");
-            Serial.print(euler[0] * 180/M_PI);
-            Serial.print("\t");
-            Serial.print(euler[1] * 180/M_PI);
-            Serial.print("\t");
-            Serial.println(euler[2] * 180/M_PI);
-        #endif
-
-        #ifdef OUTPUT_READABLE_YAWPITCHROLL
-            // display Euler angles in degrees
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-            Serial.print("ypr\t");
-            Serial.print(ypr[0] * 180/M_PI);
-            Serial.print("\t");
-            Serial.print(ypr[1] * 180/M_PI);
-            Serial.print("\t");
-            Serial.println(ypr[2] * 180/M_PI);
-        #endif
-
-        #ifdef OUTPUT_READABLE_REALACCEL
-            // display real acceleration, adjusted to remove gravity
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetAccel(&aa, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-            Serial.print("areal\t");
-            Serial.print(aaReal.x);
-            Serial.print("\t");
-            Serial.print(aaReal.y);
-            Serial.print("\t");
-            Serial.println(aaReal.z);
-        #endif
-
-        #ifdef OUTPUT_READABLE_WORLDACCEL
-            // display initial world-frame acceleration, adjusted to remove gravity
-            // and rotated based on known orientation from quaternion
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetAccel(&aa, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
-            mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
-            Serial.print("aworld\t");
-            Serial.print(aaWorld.x);
-            Serial.print("\t");
-            Serial.print(aaWorld.y);
-            Serial.print("\t");
-            Serial.println(aaWorld.z);
-            // display quaternion values in easy matrix form: w x y z
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            Serial.print("quat\t");
-            Serial.print(q.w);
-            Serial.print("\t");
-            Serial.print(q.x);
-            Serial.print("\t");
-            Serial.print(q.y);
-            Serial.print("\t");
-            Serial.println(q.z);
-            mpu.dmpGetGyro(&gyro, fifoBuffer);
-            Serial.print("gyro\t");
-            Serial.print(gyro.x);
-            Serial.print("\t");
-            Serial.print(gyro.y);
-            Serial.print("\t");
-            Serial.println(gyro.z);
-            
-
-            //Accelerometer data
-            data.aaWorld.x = aaWorld.x;
-            data.aaWorld.y = aaWorld.y;
-            data.aaWorld.z = aaWorld.z;
-            
-            //Gyroscope data
-            data.gyro.x = gyro.x;
-            data.gyro.y = gyro.y;
-            data.gyro.z = gyro.z;;
-            
-            //Quaternion data
-            data.q.w = q.w;
-            data.q.x = q.x;
-            data.q.y = q.y;
-            data.q.z = q.z;
+  
+      //Serial.println("Checking if dmpReady failed!");
+      // if programming failed, don't try to do anything
+      if (!dmpReady) return;
+  
+      // wait for MPU interrupt or extra packet(s) available
+      while (!mpuInterrupt) {// && fifoCount < packetSize) {
+          // other program behavior stuff here
+          // .
+          // .
+          // .
+          // if you are really paranoid you can frequently test in between other
+          // stuff to see if mpuInterrupt is true, and if so, "break;" from the
+          // while() loop to immediately process the MPU data
+          // .
+          // .
+          // .
+      }
+  
+      //Serial.println("After mpuInterrupt while");
+      // reset interrupt flag and get INT_STATUS byte
+      mpuInterrupt = false;
+      mpuIntStatus = mpu.getIntStatus();
+  
+      // get current FIFO count
+      fifoCount = mpu.getFIFOCount();
+  
+      // check for overflow (this should never happen unless our code is too inefficient)
+      if ((mpuIntStatus & 0x10) || fifoCount == 1024) {
+          // reset so we can continue cleanly
+          mpu.resetFIFO();
+          //Serial.println(F("FIFO overflow!"));
+  
+      // otherwise, check for DMP data ready interrupt (this should happen frequently)
+      } else if (mpuIntStatus & 0x02) {
+          // wait for correct available data length, should be a VERY short wait
+          while (fifoCount < packetSize) fifoCount = mpu.getFIFOCount();
+  
+          // read a packet from FIFO
+          mpu.getFIFOBytes(fifoBuffer, packetSize);
           
-            RFtransmitter.write(&data, sizeof(data));
-            delay(5);
-        #endif
-    }
+          // track FIFO count here in case there is > 1 packet available
+          // (this lets us immediately read more without waiting for an interrupt)
+          fifoCount -= packetSize;
+  
+          #ifdef OUTPUT_READABLE_QUATERNION
+              // display quaternion values in easy matrix form: w x y z
+              mpu.dmpGetQuaternion(&q, fifoBuffer);
+              Serial.print("quat\t");
+              Serial.print(q.w);
+              Serial.print("\t");
+              Serial.print(q.x);
+              Serial.print("\t");
+              Serial.print(q.y);
+              Serial.print("\t");
+              Serial.println(q.z);
+          #endif
+  
+          #ifdef OUTPUT_READABLE_EULER
+              // display Euler angles in degrees
+              mpu.dmpGetQuaternion(&q, fifoBuffer);
+              mpu.dmpGetEuler(euler, &q);
+              Serial.print("euler\t");
+              Serial.print(euler[0] * 180/M_PI);
+              Serial.print("\t");
+              Serial.print(euler[1] * 180/M_PI);
+              Serial.print("\t");
+              Serial.println(euler[2] * 180/M_PI);
+          #endif
+  
+          #ifdef OUTPUT_READABLE_YAWPITCHROLL
+              // display Euler angles in degrees
+              mpu.dmpGetQuaternion(&q, fifoBuffer);
+              mpu.dmpGetGravity(&gravity, &q);
+              mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+              Serial.print("ypr\t");
+              Serial.print(ypr[0] * 180/M_PI);
+              Serial.print("\t");
+              Serial.print(ypr[1] * 180/M_PI);
+              Serial.print("\t");
+              Serial.println(ypr[2] * 180/M_PI);
+          #endif
+  
+          #ifdef OUTPUT_READABLE_REALACCEL
+              // display real acceleration, adjusted to remove gravity
+              mpu.dmpGetQuaternion(&q, fifoBuffer);
+              mpu.dmpGetAccel(&aa, fifoBuffer);
+              mpu.dmpGetGravity(&gravity, &q);
+              mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+              Serial.print("areal\t");
+              Serial.print(aaReal.x);
+              Serial.print("\t");
+              Serial.print(aaReal.y);
+              Serial.print("\t");
+              Serial.println(aaReal.z);
+          #endif
+  
+          #ifdef OUTPUT_READABLE_WORLDACCEL
+              // display initial world-frame acceleration, adjusted to remove gravity
+              // and rotated based on known orientation from quaternion
+              mpu.dmpGetQuaternion(&q, fifoBuffer);
+              mpu.dmpGetAccel(&aa, fifoBuffer);
+              mpu.dmpGetGravity(&gravity, &q);
+              mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
+              mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
+              mpu.dmpGetGyro(&gyro, fifoBuffer);
+              mpu.dmpGetQuaternion(&q, fifoBuffer);
+  //            Serial.print("aworld\t");
+  //            Serial.print(aaWorld.x);
+  //            Serial.print("\t");
+  //            Serial.print(aaWorld.y);
+  //            Serial.print("\t");
+  //            Serial.println(aaWorld.z);
+  //            // display quaternion values in easy matrix form: w x y z
+  //            Serial.print("quat\t");
+  //            Serial.print(q.w);
+  //            Serial.print("\t");
+  //            Serial.print(q.x);
+  //            Serial.print("\t");
+  //            Serial.print(q.y);
+  //            Serial.print("\t");
+  //            Serial.println(q.z);
+  //            Serial.print("gyro\t");
+  //            Serial.print(gyro.x);
+  //            Serial.print("\t");
+  //            Serial.print(gyro.y);
+  //            Serial.print("\t");
+  //            Serial.println(gyro.z);
+              
+  
+              //Accelerometer data
+              data.aaWorld.x = aaWorld.x;
+              data.aaWorld.y = aaWorld.y;
+              data.aaWorld.z = aaWorld.z;
+              
+              //Gyroscope data
+              data.gyro.x = gyro.x;
+              data.gyro.y = gyro.y;
+              data.gyro.z = gyro.z;;
+              
+              //Quaternion data
+              data.q.w = q.w;
+              data.q.x = q.x;
+              data.q.y = q.y;
+              data.q.z = q.z;
+            
+              RFtransmitter.write(&data, sizeof(data));
+              delay(5);
+          #endif
+      }
 }
