@@ -110,8 +110,8 @@ void loop()
   /* Checking battery (a voltage less then 1.77 correspond to battery level at 20V */
   float voltage = (analogRead(A2) * 5.015) / 1024.0;
   voltageState.raw_voltage = voltage;
-  voltageState.voltage = (20*voltage)/1.77;         // Converted voltage (approx).
-  if (voltageState.voltage <= 20 && voltageState.voltage >= 10){
+  voltageState.voltage = (22*voltage)/1.77;         // Converted voltage (approx).
+  if (voltageState.voltage <= 22 && voltageState.voltage >= 10){
     unsigned long currentBatMillis = millis();
     if ((millis() - previousTimeForBatBeeping) > 400){
       previousTimeForBatBeeping = currentBatMillis;

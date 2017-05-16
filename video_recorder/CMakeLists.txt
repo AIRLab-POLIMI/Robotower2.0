@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS roscpp
         image_transport)
 find_package(OpenCV REQUIRED)
 
+include_directories(${catkin_INCLUDE_DIRS})
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 

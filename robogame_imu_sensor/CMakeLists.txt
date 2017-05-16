@@ -8,6 +8,8 @@ set(CMAKE_CXX_FLAGS "-std=c++11")
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs geometry_msgs
     message_generation)
 
+include_directories(${catkin_INCLUDE_DIRS})
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -101,7 +103,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES robogame_imu_sensor
-    CATKIN_DEPENDS message_runtime
+   CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 
@@ -125,6 +127,7 @@ catkin_package(
 
 ## Declare a C++ executable
 add_executable(robogame_imu_sensor src/imu_sensor.cpp)
+add_dependencies(robogame_imu_sensor robogame_imu_sensor_msgs_generate_messages_cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

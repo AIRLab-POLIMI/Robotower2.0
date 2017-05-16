@@ -10,8 +10,8 @@
   <buildtool_depend>catkin</buildtool_depend>
   <run_depend>robogame_arduino</run_depend>
   <run_depend>robogame_arduino</run_depend>
-  <run_depend>robogame_game_manager</run_depend>
-  <run_depend>robogame_game_manager</run_depend>
+  <!-- <run_depend>robogame_game_manager</run_depend>
+  <run_depend>robogame_game_manager</run_depend> -->
   <run_depend>robogame_joystick</run_depend>
   <run_depend>robogame_joystick</run_depend>
   <run_depend>robogame_imu_sensor</run_depend>

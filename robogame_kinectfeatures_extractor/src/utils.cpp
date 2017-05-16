@@ -412,7 +412,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
             *************************************************************/
 
             /* APPLY COLOR TO THE FRAME*/
-            // std::vector<cv::Mat> tSegmentedInColor(3);                   // Used to print a colored
+            //std::vector<cv::Mat> tSegmentedInColor(3);                   // Used to print a colored
             // 														  	 //  segmented frame.
             // cv::Mat black = cv::Mat::zeros(resultingFrame.rows,
             // 								resultingFrame.cols,

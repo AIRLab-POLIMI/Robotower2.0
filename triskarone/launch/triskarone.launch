@@ -1,5 +1,0 @@
-<launch>
-	<!--node name="spacenav" pkg="spacenav_node" type="spacenav_node" /!-->
-	<include file="$(find robogame_joystick)/launch/joystick.launch"/>
-	<node name="forwarder" pkg="triskarone" type="forwarder_v2" />
-</launch>

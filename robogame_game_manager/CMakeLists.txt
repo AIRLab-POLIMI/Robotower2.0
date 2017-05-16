@@ -8,6 +8,8 @@ set(CMAKE_CXX_FLAGS "-std=c++11")
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs
     message_generation)
 
+include_directories(${catkin_INCLUDE_DIRS})
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -125,7 +127,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ executable
 add_executable(robogame_game_manager_node src/game_manager.cpp src/utils.cpp)
-
+add_dependencies(robogame_game_manager_node robogame_game_manager_msgs_generate_messages_cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(robogame_game_manager_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

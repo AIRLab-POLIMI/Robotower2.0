@@ -41,7 +41,7 @@ JoyTeleop::JoyTeleop() {
     		driving the triskar base) outside the collection of packages beloging to the robogame itself, we decided to
     		keep out of the box compatibility with it.
     */
-	twistPub = nh.advertise<geometry_msgs::Twist>("spacenav/twist", 10);
+	twistPub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 
 	updateParameters();
 }

@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     cv_bridge
     image_transport
+    tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -30,6 +31,19 @@ add_definitions(${Boost_DEFINITIONS})
 if(NOT Boost_FOUND)
     message(ERROR " Boost not found!")
 endif(NOT Boost_FOUND)
+
+# Explicitly link to OpenCL (in case of CUDA installed)
+FIND_PACKAGE(OpenCL REQUIRED)
+IF(OpenCL_FOUND)
+	SET(LIBRARIES
+		${OpenCL_LIBRARIES}
+		${LIBRARIES}
+	)
+ENDIF(OpenCL_FOUND)
+
+if(NOT OpenCL_FOUND)
+    message(ERROR "OpenCL not found!")
+endif(NOT OpenCL_FOUND)
 
 find_package(OpenCV REQUIRED)
 find_package(freenect2 REQUIRED)
@@ -163,6 +177,7 @@ add_dependencies(robogame_kinectfeatures_extractor_node robogame_kinectfeatures_
 target_link_libraries(robogame_kinectfeatures_extractor_node
    ${catkin_LIBRARIES}
    ${OpenCV_LIBS}
+   ${OpenCL_LIBRARIES}
    ${freenect2_LIBRARIES}
 )
 
@@ -195,11 +210,10 @@ target_link_libraries(robogame_kinectfeatures_extractor_node
 # )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+  PATTERN ".svn" EXCLUDE
+)
 
 #############
 ## Testing ##

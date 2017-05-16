@@ -54,6 +54,8 @@
 #include "common.h"
 /* ... */
 
+#include <tf/transform_broadcaster.h>
+
 // TODO: Refactor this node.
 
 /* HSV space variables for blob detection */
@@ -360,6 +362,16 @@ int main(int argc, char** argv)
         segmentationPub.publish(segmentationmsg);
 
 
+		// TF-Broadcaster
+		
+		static tf::TransformBroadcaster br;
+  		tf::Transform transform;
+  		transform.setOrigin( tf::Vector3(msg.distance, 0.0, 0.0) );
+  		tf::Quaternion q;
+  		q.setRPY(0, 0, 0);
+  		transform.setRotation(q);
+  		br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "base_link", "player_link"));
+		
         //Send a message to rosout with the details.
         ROS_INFO_STREAM("KINECT FEATURES: "
             << " ci="  << msg.ci
@@ -367,9 +379,10 @@ int main(int argc, char** argv)
             << " proximity=" << msg.proximity);
 
         /* Update/show images */
-        //cv::imshow("undistorted", undistortedFrame);
-        //cv::imshow("registered", regframe);;
+        cv::imshow("undistorted", undistortedFrame);
+        cv::imshow("registered", regframe);;
         //cv::imshow("segmentation", segmentedColorFrame);
+        cv::imshow("rgb", rgbmat);
 
         int key = cv::waitKey(1);
 
