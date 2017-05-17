@@ -36,7 +36,7 @@
 JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
     pixelPosSub = nh.subscribe("/joystick", 10, &JoyTeleop::positionCallback, this);
-	twistPub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 10);
+	twistPub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 
 	updateParameters();
 }
