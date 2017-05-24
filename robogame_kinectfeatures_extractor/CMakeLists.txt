@@ -16,6 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     cv_bridge
     image_transport
+    message_filters 
+    message_generation
+    ground_plane_estimation
     tf
 )
 
@@ -141,8 +144,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES robogame_kinectfeatures_extractor
-   CATKIN_DEPENDS message_runtime
-#  DEPENDS system_lib
+   CATKIN_DEPENDS message_runtime ground_plane_estimation
 )
 
 ###########
@@ -161,7 +163,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(robogame_kinectfeatures_extractor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(robogame_kinectfeatures_extractor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 add_executable(robogame_kinectfeatures_extractor_node
@@ -171,7 +173,11 @@ add_executable(robogame_kinectfeatures_extractor_node
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(robogame_kinectfeatures_extractor_node robogame_kinectfeatures_extractor_gencpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(robogame_kinectfeatures_extractor_node 
+				 robogame_kinectfeatures_extractor_gencpp 
+				 ${${PROJECT_NAME}_EXPORTED_TARGETS}
+				 ${ground_plane_estimation_EXPORTED_TARGETS}
+				 ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(robogame_kinectfeatures_extractor_node
