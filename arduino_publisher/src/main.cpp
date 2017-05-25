@@ -154,4 +154,5 @@ int main (int argc, char** argv){
     // Issue heartbeat.
     hb.alive();
     hb.stop();
+    return 0;
 }

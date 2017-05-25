@@ -20,6 +20,8 @@ find_package(catkin REQUIRED COMPONENTS
     tf
 )
 
+find_package(heartbeat REQUIRED)
+
 ## System dependencies are found with CMake's conventions
 
 #########################################################
@@ -151,7 +153,7 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${heartbeat_INCLUDE_DIRS})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}_node
@@ -172,7 +174,8 @@ add_executable(${PROJECT_NAME}_node
 ## same as for the library above
 add_dependencies(${PROJECT_NAME}_node 
 				 ${${PROJECT_NAME}_EXPORTED_TARGETS}
-				 ${ground_plane_estimation_EXPORTED_TARGETS}
+				 ${heartbeat_EXPORTED_TARGETS}
+                 ${ground_plane_estimation_EXPORTED_TARGETS}
 				 ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
@@ -180,7 +183,8 @@ target_link_libraries(${PROJECT_NAME}_node
 					  ${catkin_LIBRARIES}
 					  ${OpenCV_LIBS}
 					  ${OpenCL_LIBRARIES}
-					  ${freenect2_LIBRARIES})
+					  ${freenect2_LIBRARIES}
+                      ${heartbeat_LIBRARIES})
 
 #############
 ## Install ##

@@ -42,6 +42,7 @@
 #include <sensor_msgs/CameraInfo.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <ground_plane_estimation/GroundPlane.h>
+#include <heartbeat/HeartbeatClient.h>
 
 /* OpenCV related includes */
 #include <opencv2/opencv.hpp>
@@ -102,6 +103,7 @@ boost::circular_buffer<cv::Point2f> pts(TRAIL_BUFFER_SIZE); // The blob location
 
 // ..
 bool isPlayerMissing;              // a flag for the player presence.
+bool isExit(false);
 
 cv::Mat segmentedColorFrame;    // the segmented color frame.
 cv::Mat segmentedTarget;
@@ -250,12 +252,20 @@ void connectCallback(message_filters::Subscriber<CameraInfo> &sub_cam,
 
 }
 
+// Replacement SIGINT handler
+void onShutdown(int sig){
+    ROS_INFO_STREAM("Exiting...");
+    isExit = true;
+}
+
 int main(int argc, char** argv)
 {
     // Initialize the ROS system and become a node.
-    ros::init(argc, argv, "publish_kinect");
+    ros::init(argc, argv, "kinect_tracker");
     ros::NodeHandle nh;
-	
+	// Loop at 100Hz until the node is shutdown.
+    ros::Rate rate(100);
+    
 	playerPosePublisher = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_global_position",1000);
   	
   	tfListener = new tf::TransformListener();
@@ -272,7 +282,16 @@ int main(int argc, char** argv)
 	cv::createTrackbar("sMax", "mask", &sMax, 256);
 	cv::createTrackbar("vMax", "mask", &vMax, 256);*/
     
-    signal(SIGINT, sigint_handler);             // Set interruption handler
+    // Override the default ros sigint handler.
+    // This must be set after the first NodeHandle is created.
+    signal(SIGINT, onShutdown);
+    
+    // HeartbeatClient Initialize.
+    HeartbeatClient hb(nh, 0.2);
+	hb.start();
+
+    heartbeat::State::_value_type state = heartbeat::State::INIT;
+    hb.setState(state);
     
     // Declare variables that can be modified by launch file or command line.
     int queue_size;
@@ -346,6 +365,20 @@ int main(int argc, char** argv)
     // Register one callback for all topics
     sync.registerCallback(boost::bind(&callback, _1, _2, _3, _4));
     
-	ros::spin();
+    // set heartbeat node state to started
+    state = heartbeat::State::STARTED;
+    bool success = hb.setState(state);
+
+    while(ros::ok() && !isExit){
+        // Issue heartbeat.
+        hb.alive();
+	    ros::spinOnce();
+        // Wait until it's time for another iteration.
+        rate.sleep() ;
+    }
+    success = hb.setState(heartbeat::State::STOPPED);
+    // Issue heartbeat.
+    hb.alive();
+    hb.stop();
     return 0;
 }
