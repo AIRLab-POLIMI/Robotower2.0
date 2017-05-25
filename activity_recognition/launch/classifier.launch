@@ -1,0 +1,29 @@
+<launch>
+
+    <rosparam 
+        command="load"
+        file="$(find activity_recognition)/config/prediction_semantics.yaml"
+    />
+
+    <param name="enable_statistics" value="true" />
+
+    <node 
+        pkg="activity_recognition" 
+        type="classifier.py" 
+        name="activity_recognition_node"
+        output="screen"
+        respawn="true"
+        >
+    </node>
+
+    <!--
+    <node 
+        pkg="logger" 
+        type="GUI2.py" 
+        name="logger_GUI"
+        respawn="false"
+        >
+    </node>
+    -->
+
+</launch>
