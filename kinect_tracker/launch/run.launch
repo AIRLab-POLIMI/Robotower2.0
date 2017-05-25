@@ -10,7 +10,7 @@
 
   <include file="$(find ground_plane_estimation)/launch/ground_plane_fixed.launch"/>
 
-  <node name="kinect_feat_extractor" pkg="robogame_kinectfeatures_extractor" type="robogame_kinectfeatures_extractor_node" respawn="true" output="screen">
+  <node name="kinect_tracker" pkg="kinect_tracker" type="kinect_tracker_node" respawn="true" output="screen">
 	<param name="show_frame"        type="bool"   value="$(arg show_frame)"/>
 	<param name="ground_plane"       type="str"    value="$(arg ground_plane)"/>
 	<param name="camera_namespace"   type="str"    value="$(arg camera_namespace)"/>

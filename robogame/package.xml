@@ -8,16 +8,17 @@
 
 
   <buildtool_depend>catkin</buildtool_depend>
-  <run_depend>robogame_arduino</run_depend>
-  <run_depend>robogame_arduino</run_depend>
-  <!-- <run_depend>robogame_game_manager</run_depend>
-  <run_depend>robogame_game_manager</run_depend> -->
-  <run_depend>robogame_joystick</run_depend>
-  <run_depend>robogame_joystick</run_depend>
-  <run_depend>robogame_imu_sensor</run_depend>
-  <run_depend>robogame_imu_sensor</run_depend>
-  <run_depend>robogame_kinectfeatures_extractor</run_depend>
-  <run_depend>robogame_proximity_sensor</run_depend>
+  <run_depend>activity_recognition</run_depend>
+  <run_depend>arduino_publisher</run_depend>
+  <run_depend>heartbeat</run_depend>
+  <run_depend>joystick</run_depend>
+  <run_depend>kinect_tracker</run_depend>
+  <run_depend>logger</run_depend>
+  <run_depend>navigation</run_depend>
+  <run_depend>player_feature</run_depend>
+  <run_depend>tower_manager</run_depend>
+  <run_depend>video_recorder</run_depend>
+  
 
   <export>
     <metapackage/>

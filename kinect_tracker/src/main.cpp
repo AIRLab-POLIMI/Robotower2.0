@@ -29,7 +29,6 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <cv_bridge/cv_bridge.h>
-#include <robogame_kinectfeatures_extractor/kinect_feat.h>
 #include <std_msgs/Int32.h>
 /* ... */
 
@@ -70,17 +69,13 @@
 #define WIDTH_FOV 70.6*M_PI/180;
 #define HEIGHT_FOV 60.0*M_PI/180;
 
-
-ros::Publisher pub_message;
-image_transport::Publisher pub_result_image;
-ros::Publisher pub_centres;
-ros::Publisher playerPosePublisher;
-
-std::string topic_color_image;
-
 //Create a publisher object.
 ros::Publisher pub;
-ros::Publisher position_pub;
+ros::Publisher pub_message;
+ros::Publisher pub_centres;
+ros::Publisher playerPosePublisher;
+image_transport::Publisher pub_result_image;
+std::string topic_color_image;
 
 // TODO: Refactor this node.
 
@@ -261,8 +256,6 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "publish_kinect");
     ros::NodeHandle nh;
 	
-	pub = nh.advertise<robogame_kinectfeatures_extractor::kinect_feat>("kinect_features",1000);
-	position_pub = nh.advertise<std_msgs::Int32>("robogame/player_x_position",1000);
 	playerPosePublisher = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_global_position",1000);
   	
   	tfListener = new tf::TransformListener();

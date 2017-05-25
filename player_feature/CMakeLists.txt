@@ -9,7 +9,6 @@ add_definitions(-std=c++11)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
-  message_generation
   roscpp
   std_msgs
   tower_manager
@@ -109,8 +108,7 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  CATKIN_DEPENDS
-  message_runtime
+#  CATKIN_DEPENDS
 #  INCLUDE_DIRS include
 #  LIBRARIES tower_manager
 #  CATKIN_DEPENDS other_catkin_pkg
@@ -152,7 +150,9 @@ add_executable(${PROJECT_NAME}_node src/player_feature_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_node
+				 ${${PROJECT_NAME}_EXPORTED_TARGETS}
+				 ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>robogame_joystick</name>
+  <name>joystick</name>
   <version>0.0.1</version>
   <description>The triskar_joystick package. It is supposed to listen to a PS3 like joystick and 
   publish twist messages for controlling the triskar robot base. Those messages have linear and 
