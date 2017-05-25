@@ -4,20 +4,13 @@ PhD Robogame ROS stack
 
 This is the repository for the robogame project during my PhD studies at Politecnico di Milano, Italy.
 
-**Game related repositories:**<br/>
+**Game related packages:**<br/>
 * `robogame` -- metapackage. <br/>
 * `arduino_sketches` -- contains arduino programs used on game towers, player imu sensor (transmitter/receiver).  <br/>
 * `kinect_tracker` -- detects and publisher player position.  <br/>
 * `tower_manager` -- a node to publish useful game tower data. <br/>
 
-**Robot base repositories:**</br>
-* `triskarone` -- interprets velocity comands for moving the base.</br>
-  * `r2p`-- contains msgs used by the r2p (first version) boards</br>
-* `restamp_encoders` -- subscribe to encoder messages and re-stamp them. The original encoder topics are not stamped. <br/>
-* `triskar_kinematics` -- subscribe to stamped encoder topics and publishes the robot velocity.<br/>
-
-
-**Supporting repositories:**</br>
+**Supporting packages:**</br>
 
 * `heartbeat` -- package to monitor nodes status. <br/>
 
@@ -26,7 +19,7 @@ This is the repository for the robogame project during my PhD studies at Politec
 * `record_bag` - a package to record bag files by pressing a joystick button.
 * `video_recorder` -- for publishing image frames from a external USB camera.<br/>
 
-**Additional folders (NOT REPOS):**</br>
+**Additional folders (NOT PACKAGES):**</br>
 
 Inside auxiliary folder, we have:
 
