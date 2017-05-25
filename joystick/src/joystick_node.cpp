@@ -3,21 +3,24 @@
 */
 
 #include <ros/ros.h>
-#include <sensor_msgs/Joy.h>
+#include <cmath>
+#include <time.h>
+#include <signal.h>
 #include <std_msgs/Int32.h>
 #include <geometry_msgs/Twist.h>
 #include <tf/transform_listener.h>
-#include <cmath>
+#include <sensor_msgs/Joy.h>
+#include <heartbeat/HeartbeatClient.h>
 
 
 // Global tf listener pointer
 tf::TransformListener* tfListener;
 
-
  class JoyTeleop
  {
 	public:
 		JoyTeleop();
+		ros::NodeHandle nh;
 
 	private:
 		void joyCallback(const sensor_msgs::Joy::ConstPtr &msg);
@@ -28,20 +31,16 @@ tf::TransformListener* tfListener;
 		double linearScale, angularScale;
 		int deadmanButton, linearXAxis, linearYAxis, angularAxis;
 		bool canMove;
+		bool isExit = false;
 		ros::Subscriber joySub;
         ros::Subscriber pixelPosSub;
 		ros::Publisher twistPub;
-		ros::NodeHandle nh;
 		ros::Timer timeout;
-		float previous_angle;
-        
- 	
 };
 
 JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
 	twistPub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
-
 	updateParameters();
 }
 
@@ -151,12 +150,34 @@ void JoyTeleop::publishZeroMessage() {
 }
 
 int main(int argc, char** argv) {
-	ros::init(argc, argv, "triskar_joy_node");
-	JoyTeleop joy_teleop_node;
+	ros::init(argc, argv, "teleop_node");
+	JoyTeleop teleop;
+
+	// This must be set after the first NodeHandle is created.
+	// HeartbeatClient Initialize.
+	HeartbeatClient hb(teleop.nh, 0.2);
+	hb.start();
+	heartbeat::State::_value_type state = heartbeat::State::INIT;
+	hb.setState(state);
 
 	tfListener = new tf::TransformListener();
-  		
-	ros::spin();
+  	// Loop at 100Hz until the node is shutdown.
+    ros::Rate rate(100);
+	// set heartbeat node state to started
+    state = heartbeat::State::STARTED;
+    bool success = hb.setState(state);
+	
+	while(ros::ok()){
+        // Issue heartbeat.
+        hb.alive();
+		ros::spinOnce();
+        // Wait until it's time for another iteration.
+        rate.sleep() ;
+    }
 
+    success = hb.setState(heartbeat::State::STOPPED);
+    // Issue heartbeat.
+    hb.alive();
+    hb.stop();
 	return 0;
 }

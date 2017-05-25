@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS "-std=c++11")
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED roscpp std_msgs tf geometry_msgs)
-include_directories(${catkin_INCLUDE_DIRS})
+find_package(heartbeat REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -101,7 +101,7 @@ catkin_package(
 #  INCLUDE_DIRS include
 # LIBRARIES joystick
 #  CATKIN_DEPENDS other_catkin_pkg
-  DEPENDS geometry_msgs
+  DEPENDS geometry_msgs heartbeat
 )
 
 ###########
@@ -110,7 +110,7 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
+include_directories(${catkin_INCLUDE_DIRS} ${heartbeat_INCLUDE_DIRS})
 
 ## Declare a C++ library
 # add_library(joystick
@@ -132,6 +132,7 @@ add_executable(joystick_node src/joystick_node.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(joystick_node
   ${catkin_LIBRARIES}
+  ${heartbeat_LIBRARIES}
 )
 
 
