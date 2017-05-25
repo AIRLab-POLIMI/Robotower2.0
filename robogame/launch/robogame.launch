@@ -1,60 +1,25 @@
 <launch>
 
-    <rosparam 
-        command="load"
-        file="$(find arduino_publisher)/config/arduino.yaml"
-    />
-
-    <rosparam 
-        command="load"
-        file="$(find tower_manager)/config/tower_config.yaml"
-    />
+    <rosparam command="load" file="$(find arduino_publisher)/config/arduino.yaml" />
+    <rosparam command="load" file="$(find tower_manager)/config/tower_config.yaml" />
 
     <param name="enable_statistics" value="true" />
-    <!--
-    <node 
-        pkg="heartbeat" 
-        type="server_node" 
-        name="heartbeat_server"
-        respawn="true"
-        >
-    </node> -->
 
-    <node 
-        pkg="arduino_publisher" 
-        type="arduino_publisher_node" 
-        name="arduino_publisher"
-        output="screen"
-        respawn="true"
-        >
-    </node>
+    <include file="$(find joystick)/launch/joystick.launch"/>
+    <include file="$(find kinect_tracker)/launch/run.launch"/>
+    
+    <!-- Heartbeat server -->
+    <node pkg="heartbeat" type="server_node" name="heartbeat_server" respawn="true" />
 
-    <node 
-        pkg="player_feature" 
-        type="player_feature_node" 
-        name="player_feature"
-        output="screen"
-        respawn="true"
-        >
-    </node>
+    <node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" output="screen" respawn="true" />
 
-    <node 
-        pkg="tower_manager" 
-        type="tower_manager_node" 
-        name="tower_manager"
-        output="screen"
-        respawn="true"
-        >
-    </node>
+    <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
+
+    <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
+    
+    <node pkg="activity_recognition" type="classifier.py" name="activity_classifier" output="screen" respawn="true" />
 
     <!--
-    <node 
-        pkg="logger" 
-        type="GUI2.py" 
-        name="logger_GUI"
-        respawn="false"
-        >
-    </node>
-    -->
+    <node pkg="logger" type="GUI2.py" name="logger_GUI" respawn="false" /> -->
 
 </launch>
