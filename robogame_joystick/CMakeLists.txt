@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS "-std=c++11")
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp std_msgs)
+find_package(catkin REQUIRED roscpp std_msgs tf geometry_msgs)
 include_directories(${catkin_INCLUDE_DIRS})
 
 ## System dependencies are found with CMake's conventions
@@ -101,7 +101,7 @@ catkin_package(
 #  INCLUDE_DIRS include
 # LIBRARIES robogame_joystick
 #  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+  DEPENDS system_lib geometry_msgs
 )
 
 ###########

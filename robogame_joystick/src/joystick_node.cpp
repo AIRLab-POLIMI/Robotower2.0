@@ -6,6 +6,13 @@
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Int32.h>
 #include <geometry_msgs/Twist.h>
+#include <tf/transform_listener.h>
+#include <cmath>
+
+
+// Global tf listener pointer
+tf::TransformListener* tfListener;
+
 
  class JoyTeleop
  {
@@ -17,7 +24,6 @@
 		void updateParameters();
 		void timerCallback(const ros::TimerEvent& e);
 		void publishZeroMessage();
-        void positionCallback(const std_msgs::Int32 &msg);
 
 		double linearScale, angularScale;
 		int deadmanButton, linearXAxis, linearYAxis, angularAxis;
@@ -27,34 +33,16 @@
 		ros::Publisher twistPub;
 		ros::NodeHandle nh;
 		ros::Timer timeout;
-        const int ORIGIN = 256;
-        const int LEFT_BOUNDARY  = ORIGIN/2;
-        const int RIGHT_BOUNDARY = ORIGIN + ORIGIN/2;
-        int error = 0;
+		float previous_angle;
+        
+ 	
 };
 
 JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
-    pixelPosSub = nh.subscribe("/robogame/player_x_position", 10, &JoyTeleop::positionCallback, this);
-    /*NOTE: here the twist data type is published as "spacenav/twist" since the original forwarder (triskarone package) node
-    		uses the spacenav node (3Dconnexion mouse). Given that r2p and triskarone are packages (necessary for
-    		driving the triskar base) outside the collection of packages beloging to the robogame itself, we decided to
-    		keep out of the box compatibility with it.
-    */
 	twistPub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 
 	updateParameters();
-}
-
-void JoyTeleop::positionCallback(const std_msgs::Int32 &msg){
-    ROS_INFO_STREAM("Position received");
-    if ((msg.data > ORIGIN) && (msg.data - RIGHT_BOUNDARY > 0)){
-        error = msg.data - ORIGIN;
-    }else if ((msg.data < ORIGIN) && (msg.data - LEFT_BOUNDARY < 0)){
-        error = msg.data - ORIGIN;
-    }else{
-        error = 0;
-    }
 }
 
 void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
@@ -71,6 +59,7 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 	// check deadman switch
 	bool switchActive = (msg->buttons[deadmanButton] == 1);
 
+  		
 	if (switchActive) {
 		if (msg->buttons[3]==1){
 			ROS_INFO_STREAM("Increasing linearScale by 0.5\%...");
@@ -86,8 +75,27 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 			angularScale -= angularScale * 0.05;
 		}else if (msg->buttons[7]==1){
             ROS_INFO_STREAM("Automatic rotation ON.");
-            twistMsg.angular.z = 0.005 * error;
-            ROS_INFO_STREAM(error);
+            
+	  		tf::StampedTransform playerTransform;
+	  		
+            try{
+				tfListener->waitForTransform("/kinect2_link", ros::Time(0), "/player_link", ros::Time(0), "/map", ros::Duration(1.0));
+				tfListener->lookupTransform("/kinect2_link", "/player_link", ros::Time(0), playerTransform);
+			} catch (tf::TransformException ex) {
+				ROS_ERROR("%s",ex.what());
+			}
+		
+			float angle_diff = atan2( playerTransform.getOrigin().y(), playerTransform.getOrigin().x());
+			
+			if (std::abs(angle_diff) > (5*M_PI/180)){
+				twistMsg.angular.z = 4.0 * angle_diff;
+				ROS_INFO_STREAM("Threshold activated!");
+			}
+			            
+            ROS_INFO_STREAM("Robot<->Player angle mismatch: " << angle_diff << " rad");
+            ROS_INFO_STREAM("Angular action threshold: " << (5*M_PI/180) << " rad");
+            ROS_INFO_STREAM("Angular value: " << twistMsg.angular.z << " rad");
+            
         }else{
             twistMsg.angular.z = angularScale*msg->axes[angularAxis];
         }
@@ -146,6 +154,8 @@ int main(int argc, char** argv) {
 	ros::init(argc, argv, "triskar_joy_node");
 	JoyTeleop joy_teleop_node;
 
+	tfListener = new tf::TransformListener();
+  		
 	ros::spin();
 
 	return 0;
