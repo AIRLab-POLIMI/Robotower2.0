@@ -15,27 +15,27 @@ isPressed = False
 def joyCallback(data):
 	global isRecording
 	global isPressed
-	if data.buttons[9] == 1 and not isPressed:
-		print 'Start button pressed'
+	if data.buttons[5] and data.buttons[8] == 1 and not isPressed:
+		rospy.loginfo('Start button pressed')
 		rospy.wait_for_service('/record/cmd')
 		try:
-			print 'Sending request'
+			rospy.loginfo('Sending request')
 			service = rospy.ServiceProxy('/record/cmd', String_cmd)
 			if not isRecording:
-				print'record'
+				rospy.loginfo('Recording...')
 				service('record')
 				isRecording = True
 				## PUBLISH LED MESSAGE
 				#pub.publish(msg)
 			else:
-				print 'stop'
+				rospy.loginfo('Stop recording');
 				service('stop')
 			
 		except rospy.ServiceException, e:
 			isRecording = False
 			## PUBLISH LED MESSAGE HERE
 		isPressed = True
-	elif data.buttons[9] == 0:
+	elif data.buttons[5] and data.buttons[8] == 0:
 		isPressed = False
 
 
