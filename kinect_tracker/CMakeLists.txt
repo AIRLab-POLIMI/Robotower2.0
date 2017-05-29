@@ -169,6 +169,10 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${heartbeat_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME}_node
 				src/main.cpp
                 src/utils.cpp)
+          
+add_executable(${PROJECT_NAME}_setBlob_node
+				src/setBlob.cpp)
+				
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -185,6 +189,10 @@ target_link_libraries(${PROJECT_NAME}_node
 					  ${OpenCL_LIBRARIES}
 					  ${freenect2_LIBRARIES}
                       ${heartbeat_LIBRARIES})
+
+target_link_libraries(${PROJECT_NAME}_setBlob_node
+					  ${catkin_LIBRARIES}
+					  ${OpenCV_LIBS})
 
 #############
 ## Install ##
