@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <tower_manager/TowerButtonPressInfo.h>
 #include <signal.h>
+#include <std_msgs/Float32.h>
 #include <heartbeat/HeartbeatClient.h>
 #include <stdlib.h>
 #include <vector>
@@ -8,10 +9,15 @@
 #include <time.h>
 #include <math.h>       /* log2 */
 
+//Publisher
+ros::Publisher pub_mean;
+ros::Publisher pub_var;
+ros::Publisher pub_entropy;
+
 int num_tower(0);
 bool isExit = false;
 
-int num_topics = 0;   // signal_size
+long int num_topics = 0;   // signal_size
 //For Welford's 
 float mean_ = 0.0;
 float var_ = 0.0;
@@ -42,12 +48,16 @@ float entropy(std::vector<double> dist){
 }
 
 // A callback function. Executed each time a new tower pose message arrives.
+// Publishes entropy, mean and var of tower info.
 void messageReceived(const tower_manager::TowerButtonPressInfo& msg){
     updateMeanVar(msg.delta);
-    ROS_INFO_STREAM("LAST PRESS_DIFF: "<< msg.delta);
-    ROS_INFO_STREAM("Mean: " << mean_);
-    ROS_INFO_STREAM("Var: " << var_);
-    ROS_INFO_STREAM("Entropy: " << entropy(msg.press_distribution));
+    std_msgs::Float32 new_msg;
+    new_msg.data = mean_;
+    pub_mean.publish(new_msg);
+    new_msg.data = var_;
+    pub_var.publish(new_msg);
+    new_msg.data = entropy(msg.press_distribution);
+    pub_entropy.publish(new_msg);
 }
 
 // Replacement SIGINT handler
@@ -77,6 +87,12 @@ int main (int argc, char** argv){
 
     // Create a subscriber object.
     ros::Subscriber sub = nh.subscribe("player/tower_button_info", 1000, &messageReceived);
+    
+    // Define publisher object.
+    pub_mean    = nh.advertise<std_msgs::Float32>("/tower_button_press_mean", 10);
+    pub_var     = nh.advertise<std_msgs::Float32>("/tower_button_press_var", 10);
+    pub_entropy = nh.advertise<std_msgs::Float32>("/tower_button_press_entropy", 10);
+    
     // set heartbeat node state to started
     state = heartbeat::State::STARTED;
     bool success = hb.setState(state);

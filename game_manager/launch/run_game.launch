@@ -5,14 +5,8 @@
 
     <param name="enable_statistics" value="true" />
 
-    <include file="$(find joystick)/launch/joystick.launch"/>
     <include file="$(find kinect_tracker)/launch/run.launch"/>
     <include file="$(find record_ros)/launch/record_ros.launch"/>
-    
-    <!-- Heartbeat server -->
-    <node pkg="heartbeat" type="server_node" name="heartbeat_server" respawn="true" />
-
-    <node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" output="screen" respawn="true" />
 
     <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
 

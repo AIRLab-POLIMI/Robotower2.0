@@ -1,6 +1,7 @@
 import sys
 import meta_features as mf
 import numpy as np
+import os
 from sklearn.externals import joblib
 
 class MotionPrimitive():
@@ -12,8 +13,7 @@ class MotionPrimitive():
         self.threshold = threshold
         self.current_state = MotionPrimitive.SIGNALS['EMPTY']
         self.initial_reference_time = init_time
-        self.clf = joblib.load('/home/ewerlopes/catkin_ws/src/activity_recognition/src/classifier.pkl')
-
+        self.clf = joblib.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'classifier.pkl'))
     def expand(self,value, value_time):
         if value > self.threshold:
             if self.current_state == MotionPrimitive.SIGNALS['CLOSED']:

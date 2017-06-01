@@ -7,6 +7,8 @@
     <arg name="camera_namespace" default="/kinect2" />
     <arg name="ground_plane" default="/ground_plane" />
     <arg name="show_frame" default="false"/>
+    
+  <include file="$(find triskar)/launch/kinect_nodes.launch"/>
 
   <include file="$(find ground_plane_estimation)/launch/ground_plane_fixed.launch"/>
 

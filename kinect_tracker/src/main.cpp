@@ -74,7 +74,8 @@
 ros::Publisher pub;
 ros::Publisher pub_message;
 ros::Publisher pub_centres;
-ros::Publisher playerPosePublisher;
+ros::Publisher player_global_pose_pub;
+ros::Publisher player_local_pose_pub;
 image_transport::Publisher pub_result_image;
 std::string topic_color_image;
 
@@ -221,7 +222,15 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
 		playerPoseMsg.pose.position.y = playerTransform.getOrigin().y();
 		playerPoseMsg.pose.position.z = playerTransform.getOrigin().z();
 		
-		playerPosePublisher.publish(playerPoseMsg);
+		player_global_pose_pub.publish(playerPoseMsg);
+		
+		playerPoseMsg.header.stamp = now;
+		playerPoseMsg.header.frame_id = "/kinect2_link";
+		playerPoseMsg.pose.position.x = framePlayerTransform.getOrigin().x();
+		playerPoseMsg.pose.position.y = framePlayerTransform.getOrigin().y();
+		playerPoseMsg.pose.position.z = framePlayerTransform.getOrigin().z();
+		player_local_pose_pub.publish(playerPoseMsg);
+		
     }
    
    	if (show_frame){
@@ -266,8 +275,9 @@ int main(int argc, char** argv)
 	// Loop at 100Hz until the node is shutdown.
     ros::Rate rate(100);
     
-	playerPosePublisher = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_global_position",1000);
-  	
+	player_global_pose_pub = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_global_position",1000);
+  	player_local_pose_pub  = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_local_position",1000);
+  	 
   	tfListener = new tf::TransformListener();
  	
  	// Create the blob detection image panel together with the
