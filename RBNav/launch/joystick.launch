@@ -4,7 +4,7 @@
 
 <launch>
 
-	<param name="linear_scale" value="0.75" />
+	<param name="linear_scale" value="0.25" />
 	<param name="angular_scale" value="1.5" />
 	<param name="axis_deadman" value="5"/>
 	<param name="linear_x_axis" value="1"/>

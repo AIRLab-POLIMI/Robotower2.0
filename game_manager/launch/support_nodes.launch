@@ -7,4 +7,7 @@
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
 	<node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" respawn="true"/>
 	
+	<!-- D. Orru's map_odom_listener node -->
+	<node pkg="map_odom_listener" type="map_odom_listener_node" name="map_odom_listener" />
+	
 </launch> 

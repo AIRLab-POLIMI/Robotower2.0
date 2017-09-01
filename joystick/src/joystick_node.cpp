@@ -29,6 +29,7 @@ tf::TransformListener* tfListener;
 		void publishZeroMessage();
 
 		double linearScale, angularScale;
+		double maxLinearScale = 0, maxAngularScale = 0;
 		int deadmanButton, linearXAxis, linearYAxis, angularAxis;
 		bool canMove;
 		bool isExit = false;
@@ -62,33 +63,37 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 	if (switchActive) {
 		if (msg->buttons[3]==1){
 			ROS_INFO_STREAM("Increasing linearScale by 0.5\%...");
-			linearScale += linearScale * 0.05;
+			linearScale += 0.01;//linearScale * 0.05;
 		}else if (msg->buttons[2]==1){
 			ROS_INFO_STREAM("Decreasing linearScale by 0.5\%...");
-			linearScale -= linearScale * 0.05;
+			linearScale -= 0.01;// linearScale * 0.05;
 		}else if (msg->buttons[0]==1){
 			ROS_INFO_STREAM("Increasing angularScale by 0.5\%...");
-			angularScale += angularScale * 0.05;
+			angularScale += 0.01;// angularScale * 0.05;
 		}else if (msg->buttons[1]==1){
 			ROS_INFO_STREAM("Decreasing linearScale by 0.5\%...");
-			angularScale -= angularScale * 0.05;
+			angularScale -= 0.01;// angularScale * 0.05;
 		}else if (msg->buttons[7]==1){
             ROS_INFO_STREAM("Automatic rotation ON.");
             
 	  		tf::StampedTransform playerTransform;
-	  		
+	  		float angle_diff = 0;
+
             try{
 				tfListener->waitForTransform("/kinect2_link", ros::Time(0), "/player_link", ros::Time(0), "/map", ros::Duration(1.0));
 				tfListener->lookupTransform("/kinect2_link", "/player_link", ros::Time(0), playerTransform);
+				angle_diff = atan2( playerTransform.getOrigin().y(), playerTransform.getOrigin().x());
 			} catch (tf::TransformException ex) {
 				ROS_ERROR("%s",ex.what());
+				angle_diff = 0;
 			}
 		
-			float angle_diff = atan2( playerTransform.getOrigin().y(), playerTransform.getOrigin().x());
 			
 			if (std::abs(angle_diff) > (5*M_PI/180)){
 				twistMsg.angular.z = 4.0 * angle_diff;
 				ROS_INFO_STREAM("Threshold activated!");
+			} else {
+				twistMsg.angular.z = 0.0;
 			}
 			            
             ROS_INFO_STREAM("Robot<->Player angle mismatch: " << angle_diff << " rad");
@@ -99,6 +104,22 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
             twistMsg.angular.z = angularScale*msg->axes[angularAxis];
         }
 
+		if (linearScale >= maxLinearScale){
+			linearScale = maxLinearScale;
+		}
+		
+		if (linearScale <= 0){
+			linearScale = 0;
+		}
+		
+		if (angularScale >= maxAngularScale){
+			angularScale = maxAngularScale;
+		}
+		
+		if (angularScale <= 0){
+			angularScale = 0;
+		}
+		
         twistMsg.linear.x = linearScale*msg->axes[linearXAxis];
         twistMsg.linear.y = linearScale*msg->axes[linearYAxis];
 		twistPub.publish(twistMsg);
@@ -118,6 +139,10 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 
 void JoyTeleop::updateParameters() {
 	// update the parameters for processing the joystick messages
+	nh.getParam("max_linear_scale", maxLinearScale);
+
+	nh.getParam("max_angular_scale", maxAngularScale);
+
 	if (!nh.getParam("linear_scale", linearScale))
 		linearScale = 1;
 
@@ -127,10 +152,10 @@ void JoyTeleop::updateParameters() {
 	if (!nh.getParam("deadman_button", deadmanButton))
 		deadmanButton = 5;
 
-	if (!nh.getParam("linear_axis", linearXAxis))
+	if (!nh.getParam("linear_x_axis", linearXAxis))
 		linearXAxis = 1;
 
-	if (!nh.getParam("linear_axis", linearYAxis))
+	if (!nh.getParam("linear_y_axis", linearYAxis))
 		linearYAxis = 0;
 
 	if (!nh.getParam("angular_axis", angularAxis))
@@ -159,6 +184,14 @@ int main(int argc, char** argv) {
 	hb.start();
 	heartbeat::State::_value_type state = heartbeat::State::INIT;
 	hb.setState(state);
+	
+	double maxLinearScale, maxAngularScale;
+	
+	if (!teleop.nh.getParam("/max_linear_scale",maxLinearScale) || !teleop.nh.getParam("/max_angular_scale", maxAngularScale)){
+	 	ROS_FATAL("max_linear_scale and max_angular_scale are required!");
+	 	ros::shutdown();
+	 	return -1;
+	 }
 
 	tfListener = new tf::TransformListener();
   	// Loop at 100Hz until the node is shutdown.

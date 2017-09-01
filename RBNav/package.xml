@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<package>
+  <name>joystick</name>
+  <version>0.0.1</version>
+  <description>The triskar_joystick package. It is supposed to listen to a PS3 like joystick and 
+  publish twist messages for controlling the triskar robot base. Those messages have linear and 
+  angular velocities informations.
+  
+  The analog axis:
+  	LEFT: Linear velocity (x-y plane)
+  	RIGTH: Rotation:
+  	
+  Buttons:
+  	6:	allows commands to be transmited. If not pressed, no commands are going to be published by the
+  		subscriber ros node (robogame_joystick).
+  	8:  allows automatic rotation (player following on the z-axis).
+  	4:	increases current linear velocity by 5%. (Change happens on the proportional linear gain)
+  	3:	decreases current linear velocity by 5%. (Change happens on the proportional linear gain)
+  	1:	increases current angular velocity by 5%. (Change happens on the proportional angular gain)
+  	2:	decreases current angular velocity by 5%. (Change happens on the proportional angular gain)
+  	mode:	allows linear comand on the cross axis instead of analog LEFT.
+  
+  </description>
+
+  <maintainer email="ewerton.lopes@polimi.it">ewerlopes</maintainer>
+
+
+  <license>MIT</license>
+
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>heartbeat</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>heartbeat</run_depend>
+  
+
+
+</package>
