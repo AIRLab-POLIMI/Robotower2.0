@@ -10,7 +10,7 @@ from PyQt5.QtMultimedia import *
 import heartbeat
 from heartbeat.msg import State
 import std_msgs.msg
-from arduino_publisher.msg import imu_state
+from arduino_publisher.msg import ImuState
 from rosgraph_msgs.msg import TopicStatistics
 
 Node_state = {0:"stopped", 1:"starting", 2:"started"}

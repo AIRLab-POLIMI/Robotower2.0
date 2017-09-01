@@ -10,7 +10,7 @@ from PyQt5.QtMultimedia import *
 import heartbeat
 from heartbeat.msg import State
 import std_msgs.msg
-from arduino_publisher.msg import tower_state
+from arduino_publisher.msg import TowerState
 from rosgraph_msgs.msg import TopicStatistics
 
 Node_state = {0:"FALSE", 1:"TRUE"}
@@ -234,7 +234,7 @@ def Draw_GUI():
 	main = MainWindow()
 	main.show()
 	rospy.init_node('GUI', anonymous=True)
- 	rospy.Subscriber("/arduino/tower_state", tower_state, state_update)
+ 	rospy.Subscriber("/arduino/tower_state", TowerState, state_update)
 	sys.exit(app.exec_())
 	rospy.spin()
     

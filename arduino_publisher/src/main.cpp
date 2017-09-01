@@ -7,8 +7,19 @@
 #include <signal.h>
 #include <heartbeat/HeartbeatClient.h>
 #include "SerialPort.h"
-#define ACC_PIPE 5
+
+/* Pipe indexes*/
+#define TOWER1_INDEX 1
+#define TOWER2_INDEX 2
+#define TOWER3_INDEX 3
+#define TOWER4_INDEX 4
+#define ACC_INDEX 5
 #define BAT_INDEX 6
+/* **** */
+
+/* Data sizes */
+#define TOWER_ARRAY_SIZE 14
+#define ACC_ARRAY_SIZE 12
 
 bool isExit = false;
 
@@ -88,57 +99,74 @@ int main (int argc, char** argv){
         if (bytes > 0){
             /* Look at the first string value received and 
             choose the appropriate data type for publish */
-            if ((atof(data[0].c_str()) != ACC_PIPE) && (atof(data[0].c_str()) != BAT_INDEX)){           /* towers */
-                // Create and fill in the message.
-                arduino_publisher::TowerState msg;
+            if ((atof(data[0].c_str()) == TOWER1_INDEX) || (atof(data[0].c_str()) == TOWER2_INDEX) ||
+                (atof(data[0].c_str()) == TOWER3_INDEX) || (atof(data[0].c_str()) == TOWER4_INDEX) ){           /* towers */
                 
-                // Fill up msg
-                msg.header.stamp        = ros::Time::now(); 
-                msg.pipe_id             = atof(data[0].c_str());
-                msg.is_tower_enable     = atof(data[1].c_str());
-                msg.is_button_pressed   = atof(data[2].c_str());
-                msg.is_captured         = atof(data[3].c_str());
-                msg.is_tower_down       = atof(data[4].c_str());
-                msg.ultrasounds[0]      = atof(data[5].c_str());
-                msg.ultrasounds[1]      = atof(data[6].c_str());
-                msg.ultrasounds[2]      = atof(data[7].c_str());
-                msg.leds[0]             = atof(data[8].c_str());
-                msg.leds[1]             = atof(data[9].c_str());
-                msg.leds[2]             = atof(data[10].c_str());
-                msg.leds[3]             = atof(data[11].c_str());
-                msg.press_counter       = atof(data[12].c_str());
-                
-                // Publish the message.
-                tower_pub.publish(msg);
+                if (data.size() == TOWER_ARRAY_SIZE){
+                    try{ 
+                        // Create and fill in the message.
+                        arduino_publisher::TowerState msg;
+                   
+                        // Fill up msg
+                        msg.header.stamp        = ros::Time::now(); 
+                        msg.pipe_id             = atof(data[0].c_str());
+                        msg.is_tower_enable     = atof(data[1].c_str());
+                        msg.is_button_pressed   = atof(data[2].c_str());
+                        msg.is_captured         = atof(data[3].c_str());
+                        msg.is_tower_down       = atof(data[4].c_str());
+                        msg.ultrasounds[0]      = atof(data[5].c_str());
+                        msg.ultrasounds[1]      = atof(data[6].c_str());
+                        msg.ultrasounds[2]      = atof(data[7].c_str());
+                        msg.leds[0]             = atof(data[8].c_str());
+                        msg.leds[1]             = atof(data[9].c_str());
+                        msg.leds[2]             = atof(data[10].c_str());
+                        msg.leds[3]             = atof(data[11].c_str());
+                        msg.press_counter       = atof(data[12].c_str());
+                    
+                        // Publish the message.
+                        tower_pub.publish(msg);
+                    } catch (...){
+                        ROS_ERROR("An error has occurred when reading accelerometer data!");
+                    }
+                }else{
+                    ROS_WARN("TOWER data doesn't have the required size! Received: %s", buffer.str().c_str());
+                }
 
             } else if ((atof(data[0].c_str()) == BAT_INDEX)){
                 // Create and fill in the message.
-                std_msgs::Float64 bat_msg;
-                bat_msg.data            = atof(data[1].c_str());
-                // Publish the message.
-                bat_pub.publish(bat_msg);
+                try{
+                    std_msgs::Float64 bat_msg;
+                    bat_msg.data            = atof(data[1].c_str());
+                    // Publish the message.
+                    bat_pub.publish(bat_msg);
+                } catch (...){
+                    ROS_ERROR("An error has occurred when reading accelerometer data!");
+                }
 
-            }else{ /*accelerometer*/
+            } else if ((atof(data[0].c_str()) == ACC_INDEX)){ /*accelerometer*/
                 // Create and fill in the message.
                 arduino_publisher::ImuState msg;
-                   
-                try{
-                    // Fill up msg
-                    msg.header.stamp = ros::Time::now();
-                    msg.linear_acc.x = atof(data[1].c_str());
-                    msg.linear_acc.y = atof(data[2].c_str());
-                    msg.linear_acc.z = atof(data[3].c_str());
-                    msg.gyro.x = atof(data[4].c_str());
-                    msg.gyro.y = atof(data[5].c_str());
-                    msg.gyro.z = atof(data[6].c_str());
-                    msg.q[0]   = atof(data[7].c_str());
-                    msg.q[1]   = atof(data[8].c_str());
-                    msg.q[2]   = atof(data[9].c_str());
-                    msg.q[3]   = atof(data[10].c_str());
-                    // Publish the message.
-                    imu_pub.publish(msg);
-                }catch (...){
-                    ROS_ERROR("An error has occurred!");
+                if (data.size() == ACC_ARRAY_SIZE){   
+                    try{  
+                            // Fill up msg
+                            msg.header.stamp = ros::Time::now();
+                            msg.linear_acc.x = atof(data[1].c_str());
+                            msg.linear_acc.y = atof(data[2].c_str());
+                            msg.linear_acc.z = atof(data[3].c_str());
+                            msg.gyro.x = atof(data[4].c_str());
+                            msg.gyro.y = atof(data[5].c_str());
+                            msg.gyro.z = atof(data[6].c_str());
+                            msg.q[0]   = atof(data[7].c_str());
+                            msg.q[1]   = atof(data[8].c_str());
+                            msg.q[2]   = atof(data[9].c_str());
+                            msg.q[3]   = atof(data[10].c_str());
+                            // Publish the message.
+                            imu_pub.publish(msg);
+                    } catch (...){
+                        ROS_ERROR("An error has occurred when reading accelerometer data!");
+                    }
+                }else{
+                    ROS_WARN("ACCELEROMETER data doesn't have the required size! Received: %s", buffer.str().c_str());
                 }
             }
 
