@@ -1,0 +1,2 @@
+actions: ["gTower1", "gTower2", "gTower3", "gTower4"]
+goals: ["capture_tower"]

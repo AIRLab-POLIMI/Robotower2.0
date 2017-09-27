@@ -25,7 +25,7 @@ void HeartbeatServer::heartbeat_callback(
 void HeartbeatServer::heartbeat_timeout(const ros::TimerEvent&) {
 	_state = heartbeat::State::STOPPED;
 	spin();
-	ROS_ERROR("Heartbeat timeout!");
+	ROS_WARN("Heartbeat server node timeout! This means a tracked node is not responding...");
 }
 
 bool HeartbeatServer::set_state(heartbeat::SetState::Request &req,
@@ -94,6 +94,8 @@ bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
 		heartbeat::RegisterNode::Response &res) {
 	ros::TimerOptions timer_ops;
 
+	ROS_INFO("Attempt to register node..");
+
 	/* No mutex here, server requests are serialized - to be checked. */
 	if (_registered_nodes.find(req.node_name) != _registered_nodes.end()) {
 		if (_registered_nodes.erase(req.node_name)) {
@@ -103,6 +105,8 @@ bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
 			res.success = false;
 		}
 	}
+
+	ROS_INFO("Attempt to register node states..");
 	
 	if (_registered_node_states.find(req.node_name) != _registered_node_states.end()) {
 		if (_registered_node_states.erase(req.node_name)) {
@@ -114,8 +118,7 @@ bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
 	}
 
 	timer_ops.autostart = false;
-	timer_ops.callback = boost::bind(&HeartbeatServer::heartbeat_timeout, this,
-			_1);
+	timer_ops.callback = boost::bind(&HeartbeatServer::heartbeat_timeout, this, _1);
 	timer_ops.callback_queue = &_callback_queue;
 	timer_ops.oneshot = false;
 	timer_ops.period = ros::Duration(req.timeout);
@@ -127,12 +130,14 @@ bool HeartbeatServer::register_node(heartbeat::RegisterNode::Request &req,
 	_registered_node_states.insert(
 			std::pair<std::string, heartbeat::State::_value_type>(req.node_name, heartbeat::State::STOPPED));
 	res.success = true;
-	ROS_INFO("Node registered: %s", req.node_name.c_str());
+	ROS_INFO("%s node registered!", req.node_name.c_str());
 	return true;
 }
 
 bool HeartbeatServer::unregister_node(heartbeat::UnregisterNode::Request &req,
 		heartbeat::UnregisterNode::Response &res) {
+
+	ROS_INFO("Attempt to unregister node..");
 
 	if (_registered_nodes.erase(req.node_name)) {
 		ROS_INFO("Node unregistered: %s", req.node_name.c_str());
@@ -141,6 +146,9 @@ bool HeartbeatServer::unregister_node(heartbeat::UnregisterNode::Request &req,
 		ROS_INFO("Node unregister failed: %s", req.node_name.c_str());
 		res.success = false;
 	}
+
+	ROS_INFO("Attempt to unregister node states..");
+
 	if (_registered_node_states.erase(req.node_name)) {
 		ROS_INFO("Node state unregistered: %s", req.node_name.c_str());
 		heartbeat::State msg;

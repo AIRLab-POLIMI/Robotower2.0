@@ -157,23 +157,30 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
 
         //get the Rect containing the circle:
         cv::Rect r(blobCenter.x-radius, blobCenter.y-radius, radius*2,radius*2);
-        
-        // obtain the image ROI:
-        depmat.convertTo(depmat,CV_32F,  1.0);
-        cv::Mat roi(depmat, r);
+        cv::Mat roi, roiArea;
+        try{
+            // obtain the image ROI:
+            depmat.convertTo(depmat,CV_32F,  1.0);
+            roi = cv::Mat(depmat, r);
 
-        // make a black mask, same size:
-        cv::Mat maskROI(roi.size(), roi.type(), cv::Scalar::all(0));
+            // make a black mask, same size:
+            cv::Mat maskROI(roi.size(), roi.type(), cv::Scalar::all(0));
 
-        // with a white, filled circle in it:
-        cv::circle(maskROI, cv::Point(radius,radius), radius, cv::Scalar::all(255), -1);
+            // with a white, filled circle in it:
+            cv::circle(maskROI, cv::Point(radius,radius), radius, cv::Scalar::all(255), -1);
 
-        // combine roi & mask:
-        cv::Mat roiArea = roi & maskROI;
-        // -------
+            // combine roi & mask:
+            // roiArea = roi & maskROI;
+            // -------
+        } catch (cv::Exception ex) {
+			ROS_ERROR("%s",ex.what());
+            return;
+		}
+
 
         cv:Scalar distance = cv::mean(roi);        // compute mean value of the region of interest.
-                                        //    RECALL: the pixels correspond to distance in mm.
+                                                    //    RECALL: the pixels correspond to distance in mm.
+       
         meanDistance = distance[0] / 1000.0f;  // compute distance (in meters)
 
         // perform segmentation in order to get the contraction index featue.
@@ -210,26 +217,26 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
 		try{
 			tfListener->waitForTransform("/kinect2_link", ros::Time(0), "/player_link", now, "/map", ros::Duration(1.0));
 			tfListener->lookupTransform("/map", "/player_link", now, playerTransform);
+
+            geometry_msgs::PoseStamped globalPlayerPoseMsg;
+            globalPlayerPoseMsg.header.stamp = now;
+            globalPlayerPoseMsg.header.frame_id = "/map";
+            globalPlayerPoseMsg.pose.position.x = playerTransform.getOrigin().x();
+            globalPlayerPoseMsg.pose.position.y = playerTransform.getOrigin().y();
+            globalPlayerPoseMsg.pose.position.z = playerTransform.getOrigin().z();
+            player_global_pose_pub.publish(globalPlayerPoseMsg);
+            
 		} catch (tf::TransformException ex) {
 			ROS_ERROR("%s",ex.what());
 		}
-		
-		
-		geometry_msgs::PoseStamped playerPoseMsg;
-		playerPoseMsg.header.stamp = now;
-		playerPoseMsg.header.frame_id = "/map";
-		playerPoseMsg.pose.position.x = playerTransform.getOrigin().x();
-		playerPoseMsg.pose.position.y = playerTransform.getOrigin().y();
-		playerPoseMsg.pose.position.z = playerTransform.getOrigin().z();
-		
-		player_global_pose_pub.publish(playerPoseMsg);
-		
-		playerPoseMsg.header.stamp = now;
-		playerPoseMsg.header.frame_id = "/kinect2_link";
-		playerPoseMsg.pose.position.x = framePlayerTransform.getOrigin().x();
-		playerPoseMsg.pose.position.y = framePlayerTransform.getOrigin().y();
-		playerPoseMsg.pose.position.z = framePlayerTransform.getOrigin().z();
-		player_local_pose_pub.publish(playerPoseMsg);
+			
+		geometry_msgs::PoseStamped localPlayerPoseMsg;
+		localPlayerPoseMsg.header.stamp = now;
+		localPlayerPoseMsg.header.frame_id = "/kinect2_link";
+		localPlayerPoseMsg.pose.position.x = framePlayerTransform.getOrigin().x();
+		localPlayerPoseMsg.pose.position.y = framePlayerTransform.getOrigin().y();
+		localPlayerPoseMsg.pose.position.z = framePlayerTransform.getOrigin().z();
+		player_local_pose_pub.publish(localPlayerPoseMsg);
 		
     }
    
@@ -297,7 +304,7 @@ int main(int argc, char** argv)
     signal(SIGINT, onShutdown);
     
     // HeartbeatClient Initialize.
-    HeartbeatClient hb(nh, 0.2);
+    HeartbeatClient hb(nh, 0.5);
 	hb.start();
 
     heartbeat::State::_value_type state = heartbeat::State::INIT;

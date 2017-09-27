@@ -17,7 +17,7 @@
         <param name="autorepeat_rate" value="60" />
 	</node>
 
-	<node pkg="joystick" type="joystick_node" name="joystick_node" output="screen">
+	<node pkg="joystick" type="joystick_node" name="joystick_node" output="screen" respawn="false">
 	</node>
 
 </launch>

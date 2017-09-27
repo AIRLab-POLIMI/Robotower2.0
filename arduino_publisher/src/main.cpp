@@ -55,7 +55,7 @@ int main (int argc, char** argv){
     signal(SIGINT, onShutdown);
 
     // HeartbeatClient Initialize.
-    HeartbeatClient hb(nh, 0.2);
+    HeartbeatClient hb(nh, 0.5);
 	hb.start();
 
     heartbeat::State::_value_type state = heartbeat::State::INIT;

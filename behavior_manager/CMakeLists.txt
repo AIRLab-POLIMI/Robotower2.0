@@ -1,16 +1,26 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(joystick_RNAV)
+project(behavior_manager)
 
-set(CMAKE_CXX_FLAGS "-std=c++11")
+## Compile as C++11, supported in ROS Kinetic and newer
+add_compile_options(-std=c++11)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp std_msgs tf geometry_msgs)
-find_package(heartbeat REQUIRED)
+find_package(catkin REQUIRED COMPONENTS
+  actionlib
+  actionlib_msgs
+  move_base_msgs
+  roscpp
+  nav_msgs
+  tf
+)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
+#find_package(behavior_tree_core REQUIRED)
 
+message("behavior_tree_core_LIBRARIES: "${behavior_tree_core_LIBRARIES})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -65,7 +75,7 @@ find_package(heartbeat REQUIRED)
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
+#   move_base_msgs
 # )
 
 ################################################
@@ -98,10 +108,10 @@ find_package(heartbeat REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-# LIBRARIES joystick
-#  CATKIN_DEPENDS other_catkin_pkg
-  DEPENDS geometry_msgs heartbeat
+  INCLUDE_DIRS include
+  #LIBRARIES robogame_behavior_tree
+  CATKIN_DEPENDS actionlib move_base_msgs roscpp
+  DEPENDS system_lib
 )
 
 ###########
@@ -110,31 +120,41 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(${catkin_INCLUDE_DIRS} ${heartbeat_INCLUDE_DIRS})
+include_directories(
+  include
+  ${catkin_INCLUDE_DIRS}
+)
 
 ## Declare a C++ library
-# add_library(joystick
-#  src/${PROJECT_NAME}/src/joystick.cpp
-# )
+add_library(${PROJECT_NAME}_LIB
+  src/behavior_manager.cpp
+  src/gob/gob.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(joystick ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(joystick_node src/joystick_node.cpp)
+## With catkin_make all packages are built within a single CMake context
+## The recommended prefix ensures that target names across packages don't collide
+
+# behavior_manager is a pure ros node. No behavior tree involved
+add_executable(behavior_manager src/main.cpp )
+add_dependencies(behavior_manager ${PROJECT_NAME}_EXPORTED_TARGETS ${catkin_EXPORTED_TARGETS})
+target_link_libraries(behavior_manager ${PROJECT_NAME}_LIB ${catkin_LIBRARIES})
+
+## Rename C++ executable without prefix
+## The above recommended prefix causes long target names, the following renames the
+## target back to the shorter version for ease of user use
+## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
+# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(joystick_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(joystick_node
-  ${catkin_LIBRARIES}
-  ${heartbeat_LIBRARIES}
-)
-
 
 #############
 ## Install ##
@@ -151,30 +171,32 @@ target_link_libraries(joystick_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS joystick joystick_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_LIB
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
-
-install(DIRECTORY launch/
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
   PATTERN ".svn" EXCLUDE
 )
+
+## Mark other files for installation (e.g. launch and bag files, etc.)
+# install(FILES
+#   # myfile1
+#   # myfile2
+#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+# )
 
 #############
 ## Testing ##
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_joystick.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_robogame_behavior_tree.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

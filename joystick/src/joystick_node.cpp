@@ -24,9 +24,12 @@ tf::TransformListener* tfListener;
 
 	private:
 		void joyCallback(const sensor_msgs::Joy::ConstPtr &msg);
+		void unsafeCmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg);
 		void updateParameters();
 		void timerCallback(const ros::TimerEvent& e);
 		void publishZeroMessage();
+
+		geometry_msgs::Twist lastUnsafeTwistMsg_;
 
 		double linearScale, angularScale;
 		double maxLinearScale = 0, maxAngularScale = 0;
@@ -34,6 +37,7 @@ tf::TransformListener* tfListener;
 		bool canMove;
 		bool isExit = false;
 		ros::Subscriber joySub;
+		ros::Subscriber unsafeCmdVelSub;
         ros::Subscriber pixelPosSub;
 		ros::Publisher twistPub;
 		ros::Timer timeout;
@@ -41,17 +45,22 @@ tf::TransformListener* tfListener;
 
 JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
+	unsafeCmdVelSub = nh.subscribe("/unsafe/cmd_vel", 10, &JoyTeleop::unsafeCmdVelCallback, this);
 	twistPub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 	updateParameters();
+}
+
+void JoyTeleop::unsafeCmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg) {
+	lastUnsafeTwistMsg_ = *msg;
 }
 
 void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 
 	// Send a message to rosout with the details.
-	ROS_INFO_STREAM("Receiving joystick input..."  <<
-			"\nCurrent LinearScale(x-axis):"       <<
-			 linearScale			               <<
-			"\nCurrent AngularScale(y-axis):"<< angularScale);
+	// ROS_INFO_STREAM("Receiving joystick input..."  <<
+	// 		"\nCurrent LinearScale(x-axis):"       <<
+	// 		 linearScale			               <<
+	// 		"\nCurrent AngularScale(y-axis):"<< angularScale);
 
 	// process and publish
 	geometry_msgs::Twist twistMsg;
@@ -59,21 +68,24 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 	// check deadman switch
 	bool switchActive = (msg->buttons[deadmanButton] == 1);
 
-  		
-	if (switchActive) {
+	if (msg->buttons[4]==1){
+		// let /unsafe/cmd_vel be published on /cmd_vel
+		twistMsg = lastUnsafeTwistMsg_;
+		twistPub.publish(twistMsg);
+	}else if (switchActive) {
 		if (msg->buttons[3]==1){
 			ROS_INFO_STREAM("Increasing linearScale by 0.5\%...");
 			linearScale += 0.01;//linearScale * 0.05;
-		}else if (msg->buttons[2]==1){
+		}else if (msg->buttons[2]){
 			ROS_INFO_STREAM("Decreasing linearScale by 0.5\%...");
 			linearScale -= 0.01;// linearScale * 0.05;
-		}else if (msg->buttons[0]==1){
+		}else if (msg->buttons[0]){
 			ROS_INFO_STREAM("Increasing angularScale by 0.5\%...");
 			angularScale += 0.01;// angularScale * 0.05;
-		}else if (msg->buttons[1]==1){
+		}else if (msg->buttons[1]){
 			ROS_INFO_STREAM("Decreasing linearScale by 0.5\%...");
 			angularScale -= 0.01;// angularScale * 0.05;
-		}else if (msg->buttons[7]==1){
+		}else if (msg->buttons[7]){
             ROS_INFO_STREAM("Automatic rotation ON.");
             
 	  		tf::StampedTransform playerTransform;
@@ -124,9 +136,10 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
         twistMsg.linear.y = linearScale*msg->axes[linearYAxis];
 		twistPub.publish(twistMsg);
 
-	} else if (canMove) {
+	}else{
 		publishZeroMessage();
 	}
+
 	canMove = switchActive;
 
 	// reset the timeout timer

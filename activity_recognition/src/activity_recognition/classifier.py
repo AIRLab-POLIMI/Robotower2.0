@@ -48,9 +48,11 @@ def callback(data):
 
 
 def onExit():
-	print "shutdown time!"
-	hb.set_node_state(State.STOPPED)
-	hb.stop('activity_classifier')
+    rospy.loginfo("shutdown time!")
+    hb.set_node_state(State.STOPPED)
+    # issue heartbeat
+    hb.alive('activity_classifier')
+    hb.stop('activity_classifier')
 
 def main():
 
@@ -59,6 +61,7 @@ def main():
 
     # setting signal_shutdown callback
     rospy.on_shutdown(onExit)
+
     # init ros
     rospy.init_node('activity_classifier', anonymous=False)
     # Subscribe to imu_state
@@ -153,7 +156,7 @@ def main():
             acc_x_buffer.clear()
             acc_y_buffer.clear()
             acc_z_buffer.clear()
-        
+
         # adjust rate and loop
         rate.sleep()
 

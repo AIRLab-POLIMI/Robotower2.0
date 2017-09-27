@@ -1,5 +1,5 @@
 numberOfTower: 4
-tower_1: [3,8]
-tower_2: [7,8]
-tower_3: [3,4]
-tower_4: [7,4]
+tower_1: [2.10, 0.97] 
+tower_2: [-1.68, 1.08]
+tower_3: [-1.71, -2.88]
+tower_4: [1.89, -2.95]

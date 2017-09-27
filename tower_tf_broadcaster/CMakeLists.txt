@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   tf
+  visualization_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -204,5 +205,13 @@ add_executable(tower_tf_broadcaster_node
 )
 add_dependencies(tower_tf_broadcaster_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(tower_tf_broadcaster_node
+  ${catkin_LIBRARIES}
+)
+
+add_executable(markers_broadcaster_node
+  src/markers_broadcaster.cpp
+)
+add_dependencies(markers_broadcaster_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(markers_broadcaster_node
   ${catkin_LIBRARIES}
 )

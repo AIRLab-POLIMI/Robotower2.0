@@ -1,0 +1,11 @@
+<launch>
+
+  <node name="behavior_manager" pkg="behavior_manager" type="behavior_manager" output="screen" respawn="true">
+	<rosparam 
+		command="load"
+		file="$(find behavior_manager)/config/config.yaml"
+	/>
+  </node>
+  <!--<node name="condition" pkg="robogame_behavior_tree" type="condition" />
+  <node name="bt" pkg="robogame_behavior_tree" type="bt"/> -->
+</launch>

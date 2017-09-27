@@ -96,7 +96,7 @@ void HeartbeatClient::stop(void) {
 		}
 
 		if (unregister_node.response.success) {
-			ROS_INFO("Node unregistered from Heartbeat!");
+			ROS_INFO_STREAM(ros::this_node::getName() << "node unregistered from Heartbeat!");
 		}
 	}
 	_state_timer.stop();
