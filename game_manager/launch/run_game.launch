@@ -7,6 +7,7 @@
 
     <param name="enable_statistics" value="true" />
 
+	<include file="$(find bayes_people_tracker)/launch/people_tracker.launch"/>
     <include file="$(find kinect_tracker)/launch/run.launch"/>
     <include file="$(find record_ros)/launch/record_ros.launch"/>
     <include file="$(find behavior_manager)/launch/run.launch" />

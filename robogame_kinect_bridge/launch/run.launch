@@ -1,0 +1,5 @@
+<launch>
+
+  <node name="robogame_kinect_bridge" pkg="robogame_kinect_bridge" type="robogame_kinect_bridge_node" respawn="true" output="screen"/>
+	
+</launch>
