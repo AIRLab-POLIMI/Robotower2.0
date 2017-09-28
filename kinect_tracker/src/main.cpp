@@ -130,6 +130,60 @@ void sigint_handler(int s){
     is_shutdown = true;
 }
 
+int asd_counter = 0;
+
+string asdasd(float f){
+    stringstream s;
+    int N = 5;
+    int n = (int)(f);
+
+    if(n>=N) n = N;
+
+    for(int i = 0; i <= N; i++) if (i<=n) s << "#" ; else s << " ";
+
+    return s.str();
+
+}
+
+// cv::Scalar median (cv::Mat image)
+// {
+//     double m=(image.rows*image.cols)/2;
+//     int bin0=0, bin1=0, bin2=0;
+//     cv::Scalar med;
+//     med.val[0]=-1;
+//     med.val[1]=-1;
+//     med.val[2]=-1;
+//     int histSize = 256;
+//   float range[] = { 0, 256 } ;
+//   const float* histRange = { range };
+//   bool uniform = true;
+//   bool accumulate = false;
+//   cv::Mat hist0, hist1, hist2;
+//     std::vector<cv::Mat> channels;
+//   cv::split( image, channels );
+//   cv::calcHist( &channels[0], 1, 0, cv::Mat(), hist0, 1, &histSize, &histRange, uniform, accumulate );
+//     // cv::calcHist( &channels[1], 1, 0, cv::Mat(), hist1, 1, &histSize, &histRange, uniform, accumulate );
+//     // cv::calcHist( &channels[2], 1, 0, cv::Mat(), hist2, 1, &histSize, &histRange, uniform, accumulate );
+
+//     for (int i=0; i<256 && ( med.val[0]<0 || med.val[1]<0 || med.val[2]<0);i++)
+//     {
+//         bin0=bin0+cvRound(hist0.at<float>(i));
+//         // bin1=bin1+cvRound(hist1.at<float>(i));
+//         // bin2=bin2+cvRound(hist2.at<float>(i));
+//         if (bin0>m && med.val[0]<0)
+//             med.val[0]=i;
+//         // if (bin1>m && med.val[1]<0)
+//         //     med.val[1]=i;
+//         // if (bin2>m && med.val[2]<0)
+//         //     med.val[2]=i;
+//     }
+
+//     return med;
+// }
+
+
+
+
 void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageConstPtr &image, const ground_plane_estimation::GroundPlane::ConstPtr &gp, const sensor_msgs::CameraInfoConstPtr &info)
 {
   try
@@ -151,12 +205,14 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
 	   THE trackUser METHOD. THE IDEA IS THEN TO ASSESS THE MEAN DISTANCE (PIXEL VALUES)
 	   DEFINED IN THIS AREA AND THUS OBTAIN THE DISTANCE FEATURE. THE SAME LOOP ALSO CALL THE
 	   segmentDepth METHOD IN ORDER TO OBTAIN THE CONTRACTION INDEX FEATURE.*/
+    
+    int radius = 5;
    
-    if ((blobCenter.x != -1000) && (blobCenter.x != 0)){
-        int radius = 5;
+    if ((blobCenter.x != -1000) && (blobCenter.x != 0) && blobCenter.x >= 5*radius && blobCenter.y >= 5*radius && blobCenter.x < depmat.size().width - 5*radius && blobCenter.y < depmat.size().height - 5*radius ){
+    // if ((blobCenter.x != -1000) && (blobCenter.x != 0)){
 
         //get the Rect containing the circle:
-        cv::Rect r(blobCenter.x-radius, blobCenter.y-radius, radius*2,radius*2);
+        cv::Rect r(blobCenter.x-radius, blobCenter.y-radius, radius*2, radius*2);
         cv::Mat roi, roiArea;
         try{
             // obtain the image ROI:
@@ -170,77 +226,120 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
             cv::circle(maskROI, cv::Point(radius,radius), radius, cv::Scalar::all(255), -1);
 
             // combine roi & mask:
-            // roiArea = roi & maskROI;
+            roiArea = roi & maskROI;
             // -------
         } catch (cv::Exception ex) {
 			ROS_ERROR("%s",ex.what());
             return;
 		}
 
+       ROS_INFO("blobCenter.x: %f \t\t blobCenter.y: %f", blobCenter.x, blobCenter.y);
+        // ROS_INFO("###################### roi.cols: %i \t\t roi.rows: %i", roi.cols, roi.rows);
+        // if(roi.cols < 10 || roi.rows < 10) ROS_INFO("###################### roi.cols < 10 || roi.rows < 10");
 
         cv:Scalar distance = cv::mean(roi);        // compute mean value of the region of interest.
                                                     //    RECALL: the pixels correspond to distance in mm.
-       
+
+
+        cout << std::fixed << std::setprecision( 3 );
+        cout << endl;
+        for (int i = 0; i < roi.cols; i++){
+            for(int j = 0; j < roi.rows; j++){
+                cout << roi.at<float>(i, j)/1000.0 << " ";
+            }
+            cout << endl;
+        }
+
+        cout << endl;
+        for (int i = 0; i < roi.cols; i++){
+            for(int j = 0; j < roi.rows; j++){
+                cout << asdasd(roi.at<float>(i, j)/1000.0);
+            }
+            cout << endl;
+        }
+
+        cout << asd_counter++ << endl;
+
+
+        // cv::Scalar med; //0:1st channel, 1:2nd channel and 2:3rd channel
+        // med = median(roi);
+        // std::cout<<"Median: "<<med.val[0]<<std::endl;
         meanDistance = distance[0] / 1000.0f;  // compute distance (in meters)
+        // float medianDistance = cv::median(roi) / 1000.0f;
+        cv::Scalar meanDistance_scalar;
+        cv::Scalar stdDevDistance_scalar;
+        cv::meanStdDev(roi, meanDistance_scalar, stdDevDistance_scalar);
+       
+        float stdDevDistance = stdDevDistance_scalar[0];
 
-        // perform segmentation in order to get the contraction index featue.
-        // The result will be saved in ci variable//
-        //test_other();
-        segmentDepth(depmat, segmat, blobCenter.x, blobCenter.y, ci, 300);
-        
-		
-		// phi is the angular coordinate for the width
-		float rho = meanDistance;
-		float phi = (0.5 - blobCenter.x / info->width) * WIDTH_FOV;
-		float theta = M_PI / 2 - (0.5 - blobCenter.y / info->height) * HEIGHT_FOV;
-		
-		float x = rho * sin(theta) * cos(phi);
-		float y = rho * sin(theta) * sin(phi);
-		float z = rho * cos(theta);
-		
-		ROS_DEBUG("rho:\t%.2f\tphi:\t%.2f°\ttheta:\t%.2f°", rho, phi*180/M_PI, theta*180/M_PI);
-		ROS_DEBUG("x:\t%.2f\ty:\t%.2f\tz:\t%.2f", x, y, z);
-		
-		// TF-Broadcaster
-		static tf::TransformBroadcaster br;
-  		tf::StampedTransform playerTransform;
+        cout << "mean: " << meanDistance
+            // << "\tmedian: " << med.val[0]
+            << "\tstdDev: " << stdDevDistance << endl;
 
-		
-  		tf::Transform framePlayerTransform;
-  		framePlayerTransform.setOrigin( tf::Vector3(x, y, z) );
-		tf::Quaternion q;
-  		q.setRPY(0, 0, 0);
-  		framePlayerTransform.setRotation(q);
-  		ros::Time now = ros::Time::now();
-  		br.sendTransform(tf::StampedTransform(framePlayerTransform, now, "/kinect2_link", "/player_link"));
-  		
-		try{
-			tfListener->waitForTransform("/kinect2_link", ros::Time(0), "/player_link", now, "/map", ros::Duration(1.0));
-			tfListener->lookupTransform("/map", "/player_link", now, playerTransform);
+        if(stdDevDistance < 200){
+                
 
-            geometry_msgs::PoseStamped globalPlayerPoseMsg;
-            globalPlayerPoseMsg.header.stamp = now;
-            globalPlayerPoseMsg.header.frame_id = "/map";
-            globalPlayerPoseMsg.pose.position.x = playerTransform.getOrigin().x();
-            globalPlayerPoseMsg.pose.position.y = playerTransform.getOrigin().y();
-            globalPlayerPoseMsg.pose.position.z = playerTransform.getOrigin().z();
-            player_global_pose_pub.publish(globalPlayerPoseMsg);
+            // perform segmentation in order to get the contraction index featue.
+            // The result will be saved in ci variable//
+            //test_other();
+            segmentDepth(depmat, segmat, blobCenter.x, blobCenter.y, ci, 300);
             
-		} catch (tf::TransformException ex) {
-			ROS_ERROR("%s",ex.what());
-		}
-			
-		geometry_msgs::PoseStamped localPlayerPoseMsg;
-		localPlayerPoseMsg.header.stamp = now;
-		localPlayerPoseMsg.header.frame_id = "/kinect2_link";
-		localPlayerPoseMsg.pose.position.x = framePlayerTransform.getOrigin().x();
-		localPlayerPoseMsg.pose.position.y = framePlayerTransform.getOrigin().y();
-		localPlayerPoseMsg.pose.position.z = framePlayerTransform.getOrigin().z();
-		player_local_pose_pub.publish(localPlayerPoseMsg);
-		
+            
+            // phi is the angular coordinate for the width
+            float rho = meanDistance;
+            float phi = (0.5 - blobCenter.x / info->width) * WIDTH_FOV;
+            float theta = M_PI / 2 - (0.5 - blobCenter.y / info->height) * HEIGHT_FOV;
+            
+            float x = rho * sin(theta) * cos(phi);
+            float y = rho * sin(theta) * sin(phi);
+            float z = rho * cos(theta);
+            
+            ROS_DEBUG("rho:\t%.2f\tphi:\t%.2f°\ttheta:\t%.2f°", rho, phi*180/M_PI, theta*180/M_PI);
+            ROS_DEBUG("x:\t%.2f\ty:\t%.2f\tz:\t%.2f", x, y, z);
+            
+            // TF-Broadcaster
+            static tf::TransformBroadcaster br;
+            tf::StampedTransform playerTransform;
+
+            
+            tf::Transform framePlayerTransform;
+            framePlayerTransform.setOrigin( tf::Vector3(x, y, z) );
+            tf::Quaternion q;
+            q.setRPY(0, 0, 0);
+            framePlayerTransform.setRotation(q);
+            ros::Time now = ros::Time::now();
+            br.sendTransform(tf::StampedTransform(framePlayerTransform, now, "/kinect2_link", "/player_link"));
+            
+            try{
+                tfListener->waitForTransform("/kinect2_link", ros::Time(0), "/player_link", now, "/map", ros::Duration(1.0));
+                tfListener->lookupTransform("/map", "/player_link", now, playerTransform);
+
+                geometry_msgs::PoseStamped globalPlayerPoseMsg;
+                globalPlayerPoseMsg.header.stamp = now;
+                globalPlayerPoseMsg.header.frame_id = "/map";
+                globalPlayerPoseMsg.pose.position.x = playerTransform.getOrigin().x();
+                globalPlayerPoseMsg.pose.position.y = playerTransform.getOrigin().y();
+                globalPlayerPoseMsg.pose.position.z = playerTransform.getOrigin().z();
+                player_global_pose_pub.publish(globalPlayerPoseMsg);
+                
+            } catch (tf::TransformException ex) {
+                ROS_ERROR("%s",ex.what());
+            }
+                
+            geometry_msgs::PoseStamped localPlayerPoseMsg;
+            localPlayerPoseMsg.header.stamp = now;
+            localPlayerPoseMsg.header.frame_id = "/kinect2_link";
+            localPlayerPoseMsg.pose.position.x = framePlayerTransform.getOrigin().x();
+            localPlayerPoseMsg.pose.position.y = framePlayerTransform.getOrigin().y();
+            localPlayerPoseMsg.pose.position.z = framePlayerTransform.getOrigin().z();
+            player_local_pose_pub.publish(localPlayerPoseMsg);
+        } else {
+            cout << "##### high std dev !!! " << endl;
+        }
     }
    
-   	if (show_frame){
+   
+	if (show_frame){
 		cv::imshow("view", rgbmat);
 		cv::imshow("seg", segmat);
 		int key = cv::waitKey(30);

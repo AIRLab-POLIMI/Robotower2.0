@@ -1,6 +1,6 @@
 <launch>
 
-  <node name="behavior_manager" pkg="behavior_manager" type="behavior_manager" output="screen" respawn="true">
+  <node name="behavior_manager" pkg="behavior_manager" type="behavior_manager"  respawn="true">
 	<rosparam 
 		command="load"
 		file="$(find behavior_manager)/config/config.yaml"
