@@ -1,142 +1,42 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(robogame_kinect_bridge)
 
-set(CMAKE_CXX_FLAGS "-std=c++11")
-# Set cmake prefix path to enable cmake to find freenect2
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} $ENV{HOME}/freenect2/lib/cmake/freenect2)
-# set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} $ENV{HOME}/libraries/opencv-2.4.13/cmake)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBT_USE_DOUBLE_PRECISION -Wall")
+# Unused warnings
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wuninitialized -Winit-self -Wunused-function -Wunused-label -Wunused-variable -Wunused-but-set-variable -Wunused-but-set-parameter")
+# Additional warnings
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Warray-bounds -Wtype-limits -Wreturn-type -Wsequence-point -Wparentheses -Wmissing-braces -Wchar-subscripts -Wswitch -Wwrite-strings -Wenum-compare -Wempty-body -Wlogical-op")
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-    roscpp
-    rospy
-    std_msgs
-    message_generation
-    sensor_msgs
-    cv_bridge
-    image_transport
-    opencv2_catkin
-)
+# Check for c++11 support
+INCLUDE(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+IF(COMPILER_SUPPORTS_CXX11)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+ELSEIF(COMPILER_SUPPORTS_CXX0X)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+ELSE()
+  MESSAGE(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+ENDIF()
 
-## System dependencies are found with CMake's conventions
-
-#########################################################
-# FIND BOOST
-#########################################################
-find_package(Boost REQUIRED system thread)
-include_directories(${Boost_INCLUDE_DIRS})
-link_directories(${Boost_LIBRARY_DIRS})
-add_definitions(${Boost_DEFINITIONS})
-if(NOT Boost_FOUND)
-    message(ERROR " Boost not found!")
-endif(NOT Boost_FOUND)
-
-# Explicitly link to OpenCL (in case of CUDA installed)
-FIND_PACKAGE(OpenCL REQUIRED)
-IF(OpenCL_FOUND)
-	SET(LIBRARIES
-		${OpenCL_LIBRARIES}
-		${LIBRARIES}
-	)
-ENDIF(OpenCL_FOUND)
-
-if(NOT OpenCL_FOUND)
-    message(ERROR "OpenCL not found!")
-endif(NOT OpenCL_FOUND)
-
-#set(OpenCV_DIR "/home/airlab/libraries/opencv-2.4.13/cmake")
-
-find_package(OpenCV 3.2 REQUIRED)
-include_directories(${OpenCV_INCLUDE_DIRS})
+message("\n\n\n\n\n\n RECOMPILED \n\n\n\n\n\n")
 
 message("\n\n\n\n\n\nCMAKE_PREFIX_PATH: " ${CMAKE_PREFIX_PATH})
 message("\n\n\n\n\n\nOpenCV_DIR:        " ${OpenCV_DIR})
 message("\n\n\n\n\n\nOpenCV_LIBRARIES:  " ${OpenCV_LIBRARIES})
 message("\n\n\n\n\n\nOpenCV_LIBS:       " ${OpenCV_LIBS})
 
-find_package(freenect2 REQUIRED)
-include_directories("/usr/include/libusb-1.0/")
 
-INCLUDE_DIRECTORIES(
-  ${freenect2_INCLUDE_DIR}
-)
+find_package(freenect2 REQUIRED HINTS "$ENV{HOME}/freenect2")
 
-## Uncomment this if the package has a setup.py. This macro ensures
-## modules and global scripts declared therein get installed
-## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-# catkin_python_setup()
+find_package(catkin REQUIRED COMPONENTS roscpp rostime tf std_msgs sensor_msgs nodelet cv_bridge compressed_depth_image_transport kinect2_registration)
+
+## System dependencies are found with CMake's conventions
+find_package(OpenCV REQUIRED)
 
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
-
-## To declare and build messages, services or actions from within this
-## package, follow these steps:
-## * Let MSG_DEP_SET be the set of packages whose message types you use in
-##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
-## * In the file package.xml:
-##   * add a build_depend tag for "message_generation"
-##   * add a build_depend and a run_depend tag for each package in MSG_DEP_SET
-##   * If MSG_DEP_SET isn't empty the following dependency has been pulled in
-##     but can be declared for certainty nonetheless:
-##     * add a run_depend tag for "message_runtime"
-## * In this file (CMakeLists.txt):
-##   * add "message_generation" and every package in MSG_DEP_SET to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * add "message_runtime" and every package in MSG_DEP_SET to
-##     catkin_package(CATKIN_DEPENDS ...)
-##   * uncomment the add_*_files sections below as needed
-##     and list every .msg/.srv/.action file to be processed
-##   * uncomment the generate_messages entry below
-##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
-
-## Generate messages in the 'msg' folder
-add_message_files(
-   FILES
-   kinect_feat.msg
-)
-
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
-
-## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
-
-## Generate added messages and services with any dependencies listed here
-generate_messages(
-   DEPENDENCIES
-   std_msgs  # Or other packages containing msgs
-)
-
-################################################
-## Declare ROS dynamic reconfigure parameters ##
-################################################
-
-## To declare and build dynamic reconfigure parameters within this
-## package, follow these steps:
-## * In the file package.xml:
-##   * add a build_depend and a run_depend tag for "dynamic_reconfigure"
-## * In this file (CMakeLists.txt):
-##   * add "dynamic_reconfigure" to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * uncomment the "generate_dynamic_reconfigure_options" section below
-##     and list every .cfg file to be processed
-
-## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
 
 ###################################
 ## catkin specific configuration ##
@@ -148,9 +48,9 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES ${PROJECT_NAME}
-   CATKIN_DEPENDS message_runtime
+  INCLUDE_DIRS include
+#  LIBRARIES kinect2_bridge
+#  CATKIN_DEPENDS kinect2_registration
 #  DEPENDS system_lib
 )
 
@@ -158,36 +58,35 @@ catkin_package(
 ## Build ##
 ###########
 
-## Specify additional locations of header files
-## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS})
+# Display additional files in qtcreator
+#execute_process(COMMAND find ${PROJECT_SOURCE_DIR} -type f OUTPUT_VARIABLE FILES_STRING)
+#string(REPLACE "\n" ";" FILES_LIST ${FILES_STRING})
+#add_custom_target(additional_files_${PROJECT_NAME}
+#  SOURCES
+#  ${FILES_LIST}
+#  ${PROJECT_SOURCE_DIR}/../README.md
+#)
 
-## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/${PROJECT_NAME}.cpp
-# )
+include_directories(include
+  ${catkin_INCLUDE_DIRS}
+  ${OpenCV_INCLUDE_DIRS}
+  ${freenect2_INCLUDE_DIRS}
+)
 
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+if(DEPTH_REG_OPENCL)
+  add_definitions(-DDEPTH_REG_OPENCL)
+endif()
+if(DEPTH_REG_CPU)
+  add_definitions(-DDEPTH_REG_CPU)
+endif()
+add_definitions(-DK2_CALIB_PATH="${PROJECT_SOURCE_DIR}/data/")
 
-## Declare a C++ executable
-add_executable(${PROJECT_NAME}_node
-                    src/newMain.cpp
-                    #src/utils.cpp
-                    )
 
-## Add cmake target dependencies of the executable
-## same as for the library above
-add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
+add_executable(${PROJECT_NAME}_node src/newMain.cpp)
 target_link_libraries(${PROJECT_NAME}_node
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   ${OpenCL_LIBRARIES}
-   ${freenect2_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${freenect2_LIBRARY}
 )
 
 #############
@@ -205,32 +104,27 @@ target_link_libraries(${PROJECT_NAME}_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
+#install(TARGETS kinect2_bridge kinect2_bridge_nodelet
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+#  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#)
 
-## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(DIRECTORY
+  launch
+  # myfile2
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
 
 #############
 ## Testing ##
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_${PROJECT_NAME}.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_kinect2_bridge.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
