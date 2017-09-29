@@ -68,6 +68,19 @@ void sigint_handler(int s){
     protonect_shutdown = true;
 }
 
+/* printMatImage -- a function to print a cv::Mat to console. Used
+mostly for debugging purposes*/
+void printMatImage(cv::Mat frame){
+    printf("\n --> Matrix type is CV_32F \n");
+
+    for( size_t i = 0; i < frame.rows; i++ ) {
+        for( size_t j = 0; j < frame.cols; j++ ) {
+   	    printf( " %.3f  ", frame.at<float>(i,j) );
+ 	}
+	printf("\n");
+    }
+}
+
 int main(int argc, char** argv)
 {
     // Initialize the ROS system and become a node.
@@ -180,19 +193,39 @@ int main(int argc, char** argv)
     {
         /* Kinect data aquisition */
         listener.waitForNewFrame(frames);
-        libfreenect2::Frame *rgb = frames[libfreenect2::Frame::Color];
-        libfreenect2::Frame *depth = frames[libfreenect2::Frame::Depth];
+        libfreenect2::Frame *colorFrame = frames[libfreenect2::Frame::Color];
+        // libfreenect2::Frame *depth = frames[libfreenect2::Frame::Depth];
 
-        cout << "1: rgb->width: " << rgb->width << endl;
+        // cout << "1: rgb->width: " << rgb->width << endl;
         //Apply and read the registration video stream
-        registration->apply(rgb,depth,&undistorted,&registered);
+        // registration->apply(rgb,depth,&undistorted,&registered);
         /* ---- */
 
-        cout << "2: rgb: " << rgb << "\t depth: " << depth << endl;
+        cout << "2: colorFrame: " << colorFrame << endl;
         /* Save the aquired data to the cv::mat containers. */
-        cv::Mat(rgb->height, rgb->width, CV_8UC4, rgb->data).copyTo(rgbmat);
-        cv::Mat(depth->height, depth->width, CV_32FC1, depth->data).copyTo(depthmat);
-        cv::Mat(registered.height, registered.width, CV_8UC4, registered.data).copyTo(regframe);
+        // cv::Mat(rgb->height, rgb->width, CV_8UC4, rgb->data).copyTo(rgbmat);
+        // cv::Mat(depth->height, depth->width, CV_32FC1, depth->data).copyTo(depthmat);
+        // cv::Mat(registered.height, registered.width, CV_8UC4, registered.data).copyTo(regframe);
+
+
+        cv::Mat color = cv::Mat(colorFrame->height, colorFrame->width, CV_8UC4, colorFrame->data);
+   
+        cout << "colorFrame->format" << colorFrame->format << endl;
+
+        cv::Mat image;
+        cv::Mat tmp;
+        cv::flip(color, tmp, 1);
+
+        if(colorFrame->format == libfreenect2::Frame::BGRX) {
+            cv::cvtColor(tmp, image, CV_BGRA2BGR);
+        } else {
+            cv::cvtColor(tmp, image, CV_RGBA2BGR);
+        }
+
+        cout << image << endl;
+
+        // printMatImage(rgbmat);
+
 
         cout << "2.5: " << endl;
 		/*converting the rgb into grayscale.. Why? compression purposes*/
@@ -219,6 +252,9 @@ int main(int argc, char** argv)
 
 
         /* Update/show images */
+
+        // cv::imshow("rgb", rgbmat);
+        // cv::imshow("depthmat", depthmat);
         // cv::imshow("undistorted", undistortedFrame);
         // cv::imshow("registered", regframe);
 

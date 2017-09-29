@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     cv_bridge
     image_transport
-    # opencv2_catkin
+    opencv2_catkin
 )
 
 ## System dependencies are found with CMake's conventions
@@ -174,7 +174,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ executable
 add_executable(${PROJECT_NAME}_node
-                    src/main.cpp
+                    src/newMain.cpp
                     #src/utils.cpp
                     )
 

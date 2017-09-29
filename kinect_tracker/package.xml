@@ -29,7 +29,9 @@
   <build_depend>roscpp</build_depend>
   <build_depend>libfreenect2</build_depend>
   <build_depend>ground_plane_estimation</build_depend>
+  <build_depend>opencv2_catkin</build_depend>
 
+  <run_depend>opencv2_catkin</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>libfreenect2</run_depend>
   <run_depend>kinect2_bridge</run_depend>

@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
     message_filters 
     ground_plane_estimation
     tf
+    opencv2_catkin
 )
 
 find_package(heartbeat REQUIRED)
