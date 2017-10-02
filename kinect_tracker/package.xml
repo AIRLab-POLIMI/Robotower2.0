@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>robogame_kinectfeatures_extractor</name>
+  <name>kinect_tracker</name>
   <version>0.0.1</version>
   <description>A package for getting player features using microsoft kinect 2. Using freenect2
   library the code searches for a pre-set color blog on the RGB frame and using the aligned depth
@@ -24,8 +24,8 @@
   <license>MIT</license>
 
 
-  <build_depend>robogame_kinectfeatures_extractor/msg</build_depend>
-  <run_depend>robogame_kinectfeatures_extractor/msg</run_depend>
+  <build_depend>kinect_tracker/msg</build_depend>
+  <run_depend>kinect_tracker/msg</run_depend>
   <build_depend>message_generation</build_depend>
   <run_depend>message_runtime</run_depend>
   <build_depend>roscpp</build_depend>

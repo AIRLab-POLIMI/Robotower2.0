@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(robogame_kinectfeatures_extractor)
+project(kinect_tracker)
 
 set(CMAKE_CXX_FLAGS "-std=c++11")
 # Set cmake prefix path to enable cmake to find freenect2
@@ -141,7 +141,7 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES robogame_kinectfeatures_extractor
+#  LIBRARIES ${PROJECT_NAME}
    CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
@@ -155,27 +155,27 @@ catkin_package(
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ library
-# add_library(robogame_kinectfeatures_extractor
-#   src/${PROJECT_NAME}/robogame_kinectfeatures_extractor.cpp
+# add_library(${PROJECT_NAME}
+#   src/${PROJECT_NAME}/${PROJECT_NAME}.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(robogame_kinectfeatures_extractor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(robogame_kinectfeatures_extractor_node
+add_executable(${PROJECT_NAME}_node
                     src/main.cpp
                     src/utils.cpp
                     )
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(robogame_kinectfeatures_extractor_node robogame_kinectfeatures_extractor_gencpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(robogame_kinectfeatures_extractor_node
+target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${OpenCV_LIBS}
    ${OpenCL_LIBRARIES}
@@ -197,7 +197,7 @@ target_link_libraries(robogame_kinectfeatures_extractor_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS robogame_kinectfeatures_extractor robogame_kinectfeatures_extractor_node
+# install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -221,7 +221,7 @@ install(DIRECTORY launch/
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_robogame_kinectfeatures_extractor.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_${PROJECT_NAME}.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

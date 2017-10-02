@@ -1,5 +1,5 @@
-/*kinect_feat_extractor
- * utils.h -- This file is part of the kinect_feat_extractor ROS node created for
+/*kinect_tracker
+ * utils.h -- This file is part of the kinect_tracker ROS node created for
  * the purpose of extracting relevant motion features from humans present on images.
  * It defines a blob detection algorithm used for performing segmentation in the image
  * and extract the contraction index (CI) feature. CI is a measure defined in the domain

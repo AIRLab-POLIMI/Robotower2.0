@@ -7,5 +7,5 @@
 	args="0 0 1.14 0 0 0 base_link kinect2_link 100"
   />
 	
-  <node name="kinect_feat_extractor" pkg="robogame_kinectfeatures_extractor" type="robogame_kinectfeatures_extractor_node" respawn="true" output="screen"/> 
+  <node name="kinect_tracker" pkg="kinect_tracker" type="kinect_tracker_node" respawn="true" output="screen"/> 
 </launch>

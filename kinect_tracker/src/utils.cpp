@@ -1,5 +1,5 @@
-/* robogame_kinectfeatures_extractor
- * utils.cpp -- This file is part of the robogame_kinectfeatures_extractor ROS node created for
+/* kinect_tracker
+ * utils.cpp -- This file is part of the kinect_tracker ROS node created for
  * the purpose of extracting relevant motion features from images.
  *
  * Copyright (C) 2016 Ewerton Lopes

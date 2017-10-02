@@ -13,7 +13,7 @@
 	<!-- Load dynamic reconfigure parameters for acml
 	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/dynamic_reconfigure.yaml" />-->
 	
-	<!-- D. Orru's map_odom_listener node -->
-	<node pkg="map_odom_listener" type="map_odom_listener_node" name="map_odom_listener" />
+	<!-- D. Orru's map_odom_listener node 
+	<node pkg="map_odom_listener" type="map_odom_listener_node" name="map_odom_listener" />-->
 	
 </launch> 

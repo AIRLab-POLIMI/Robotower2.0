@@ -1,4 +1,4 @@
-/* main.cpp -- This file is part of the robogame_kinectfeatures_extractor ROS node created for
+/* main.cpp -- This file is part of the kinect_tracker ROS node created for
  * the purpose of extracting relevant motion features from images.
  *
  * Copyright (C) 2016 Ewerton Lopes
@@ -30,7 +30,7 @@
 #include <ros/console.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
-#include <robogame_kinectfeatures_extractor/kinect_feat.h>
+#include <kinect_tracker/kinect_feat.h>
 #include<std_msgs/Int32.h>
 /* ... */
 
@@ -118,7 +118,7 @@ int main(int argc, char** argv)
 	//image_transport::Publisher imgPub = it.advertise("camera/image/depth", 1);
 
 	//Create a publisher object.
-    ros::Publisher pub = nh.advertise<robogame_kinectfeatures_extractor::kinect_feat>("kinect_features",1000);
+    ros::Publisher pub = nh.advertise<kinect_tracker::kinect_feat>("kinect_features",1000);
     ros::Publisher position_pub = nh.advertise<std_msgs::Int32>("robogame/player_x_position",1000);
 
     player_global_pose_pub = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_global_position",1000);
@@ -212,7 +212,7 @@ int main(int argc, char** argv)
     int count = 0;
 
 	// Define object to save frame to video. (used for data tagging purposes)
-	//cv::VideoWriter videoWriter("/home/airlab/catkin_ws/src/robogame_kinectfeatures_extractor/videos/out.avi",CV_FOURCC('M', 'J', 'P', 'G'),30.0,cv::Size(undistorted.height,undistorted.width),true);
+	//cv::VideoWriter videoWriter("/home/airlab/catkin_ws/src/kinect_tracker/videos/out.avi",CV_FOURCC('M', 'J', 'P', 'G'),30.0,cv::Size(undistorted.height,undistorted.width),true);
 
     /* Create the blob detection image panel together with the
         sliders for run time adjustments. */
@@ -487,7 +487,7 @@ int main(int argc, char** argv)
 
 
         /* CREATE ROS MESSAGE*/
-        robogame_kinectfeatures_extractor::kinect_feat msg;
+        kinect_tracker::kinect_feat msg;
         msg.header.stamp = ros::Time::now();
         std_msgs::Int32 xposition;
 
