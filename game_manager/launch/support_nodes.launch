@@ -7,6 +7,9 @@
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
 	<node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" respawn="false"/>
 	
+	<!-- Data logger -->
+	<include file="$(find data_collection)/launch/log.launch"/>
+	
 	<!-- Load dynamic reconfigure parameters for acml
 	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/dynamic_reconfigure.yaml" />-->
 	

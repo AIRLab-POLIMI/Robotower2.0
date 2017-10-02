@@ -168,10 +168,8 @@ void trackUser(cv::Mat& srcFrame){
             blobCenter = center;            // save the center of the detected circle.
             isPlayerMissing = false;           // update the flag for the player presence.
 		}
-	}else{
-		blobCenter = center;
 	}
-	
+
 	// update the points queue
 	pts.push_front(center);
 
@@ -209,17 +207,12 @@ bool distanceFunction(float a, float b, int threshold){
 	threshold --> the value to be used in the call to "distanceFunction" method. If distance
     is less than threshold then recursion proceeds, else stops.
 */
+void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& ci, int threshold)
+{
 
-void test_other(){
-	ROS_INFO_STREAM("FUNCTION");
-}
-
-void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& ci, int threshold){
-	
-	long int nPixels = 0;                           			// segmented pixels counter variable.
-	std::vector< std::vector<int> > reached;	       			// This is the binary mask for the segmentation.
-
-	for (int i = 0; i < inputFrame.rows; i++){					//They are set to 0 at first. Since no pixel is assigned to the segmentation yet.
+	long int nPixels = 0;                           // segmented pixels counter variable.
+	std::vector< std::vector<int> > reached;	       // This is the binary mask for the segmentation.
+	for (int i = 0; i < inputFrame.rows; i++){	//They are set to 0 at first. Since no pixel is assigned to the segmentation yet.
 		reached.push_back(std::vector<int>(inputFrame.cols));
 	}
 
@@ -231,8 +224,10 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
 
     if(in_pxl_pos == 0){
         ROS_WARN_STREAM("THE SEED DEPTH VALUE IS ZERO!!!!!");
+    }else if (isPlayerMissing){
+        ROS_INFO_STREAM("PLAYER IS MISSING!");          //Send a message to rosout
+        ci = -1 ;                                       //Set the value indicating player missing.
     }else{
-    	//ROS_INFO_STREAM("THE SEED DEPTH VALUE NOT ZERO!!!!!");
         resultingFrame.at<float>(sY,sX) = 255;                     // add seed to output image.
 
         // Mark the seed as 1, for the segmentation mask.
@@ -264,7 +259,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
                 seg_queue.push(std::make_pair(y, x+1));
     			float &pixel = resultingFrame.at<float>(y,x+1);
                 pixel = 255;
-    			nPixels++;
+    			nPixels++;;
 
     		}
 
@@ -275,7 +270,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
     			reached[y + 1][x] = true;
     			seg_queue.push(std::make_pair(y+1,x));
     			resultingFrame.at<float>(y+1,x) = 255;
-    			nPixels++;
+    			nPixels++;;
     		}
 
     		//Left Pixel
@@ -285,7 +280,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
     			reached[y][x-1] = true;
     			seg_queue.push(std::make_pair(y,x-1));
     			resultingFrame.at<float>(y,x-1) = 255;
-    			nPixels++;
+    			nPixels++;;
     		}
 
     		//Above Pixel
@@ -295,7 +290,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
     			reached[y-1][x] = true;
     			seg_queue.push(std::make_pair(y-1,x));
     			resultingFrame.at<float>(y-1,x) = 255;
-    			nPixels++;
+    			nPixels++;;
     		}
 
     		//Bottom Right Pixel
@@ -339,19 +334,17 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
     		}
     	}
 
-
         /* FROM THIS POINT ON: Initialization of supporting code for detecting the blob in the
             segmented frame. This is needed for drawing the minimum bounding rectangle
             for the detected blob, thus, enabling the "contraction index" feature
             calculation.*/
         std::vector<std::vector<cv::Point> > contours;
     	std::vector<cv::Vec4i> hierarchy;
-        cv::Mat bwImage(inputFrame.size(),inputFrame.type());
+        cv::Mat bwImage(inputFrame.size(),CV_8UC1);
         resultingFrame.convertTo(bwImage,CV_8U,255.0/(255-0));
     	cv::findContours(bwImage, contours, hierarchy,
                      CV_RETR_EXTERNAL,
                      CV_CHAIN_APPROX_SIMPLE);
-
 
         /* Only proceed if at least one contour was found. NOTE: This is need for avoiding
             "seg fault". */
@@ -364,7 +357,6 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
 
             int largest_area=0;
     		int largest_contour_index=0;
-    		
 
     		// find the largest contour in the mask, then use
     		// it to compute the minimum enclosing circle and
@@ -378,7 +370,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
     			}
     		}
 
-            //Calculate the minimum bounding box for the detected blob.
+            /*Calculate the minimum bounding box for the detected blob.*/
             cv::Rect rect = cv::boundingRect(contours[largest_contour_index]);
             cv::Point pt1, pt2;
             pt1.x = rect.x;
@@ -420,46 +412,46 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
             *************************************************************/
 
             /* APPLY COLOR TO THE FRAME*/
-            std::vector<cv::Mat> tSegmentedInColor(3);                   // Used to print a colored
-             														  	 //  segmented frame.
-            cv::Mat black = cv::Mat::zeros(resultingFrame.rows,
-             								resultingFrame.cols,
-			 								resultingFrame.type());
-            tSegmentedInColor.at(0) = black; 							 //for blue channel
-            tSegmentedInColor.at(1) = resultingFrame;   				 //for green channel
-            tSegmentedInColor.at(2) = black;  							 //for red channel
-            
-            cv::merge(tSegmentedInColor, segmentedColorFrame);
-            
-            //PRINTS THE MARKERS CALCULATED ABOVE.
-            cv::circle(segmentedColorFrame, cv::Point(sX,sY),5,
-             			cv::Scalar(0,0,255),CV_FILLED, 8,0);
-            segmentedTarget = cv::Mat(segmentedColorFrame,rect);
-            //cv::circle(segmentedTarget, cv::Point(topPoint,10),5,
-            //			cv::Scalar(0,0,255),CV_FILLED, 8,0); // TAGGING THE POINT */
-            
-            // Draws the rect in the segmentedColorFrame image
-            cv::rectangle(segmentedColorFrame, pt1, pt2, cv::Scalar(255,255,255), 2,8,0);// the selection white rectangle
-            
-
-			cv::putText(segmentedColorFrame,
-					std::to_string((int)blobCenter.x),			// The text to be printed, in this case, CI.
-					cv::Point(blobCenter.x,blobCenter.y), 		// Coordinates
-					cv::FONT_HERSHEY_COMPLEX_SMALL, 			// Font
-						0.5, 									// Scale. 2.0 = 2x bigger
-						cv::Scalar(255,255,255),				// Color
-						1 										// Thickness
-						); 										// Anti-alias
-            
-            /* put the CI value to frame */
-            cv::putText(segmentedColorFrame,
-            			std::to_string(ci),				// The text to be printed, in this case, CI.
-						cv::Point(rect.x,rect.y-5), 	// Coordinates
-						cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
-						0.9, 							// Scale. 2.0 = 2x bigger
-			 			cv::Scalar(255,255,255),		// Color
-						1 								// Thickness
-            			); 								// Anti-alias
+            // std::vector<cv::Mat> tSegmentedInColor(3);                   // Used to print a colored
+            // 														  	 //  segmented frame.
+            // cv::Mat black = cv::Mat::zeros(resultingFrame.rows,
+            // 								resultingFrame.cols,
+			// 								resultingFrame.type());
+            // tSegmentedInColor.at(0) = black; 							 //for blue channel
+            // tSegmentedInColor.at(1) = resultingFrame;   				 //for green channel
+            // tSegmentedInColor.at(2) = black;  							 //for red channel
+            //
+            // cv::merge(tSegmentedInColor, segmentedColorFrame);
+            //
+            // /* PRINTS THE MARKERS CALCULATED ABOVE.
+            // cv::circle(segmentedColorFrame, cv::Point(sX,sY),5,
+            // 			cv::Scalar(0,0,255),CV_FILLED, 8,0);
+            // segmentedTarget = cv::Mat(segmentedColorFrame,rect);
+            // cv::circle(segmentedTarget, cv::Point(topPoint,10),5,
+            // 			cv::Scalar(0,0,255),CV_FILLED, 8,0); // TAGGING THE POINT */
+            //
+            // // Draws the rect in the segmentedColorFrame image
+            // cv::rectangle(segmentedColorFrame, pt1, pt2, cv::Scalar(255,255,255), 2,8,0);// the selection white rectangle
+            //
+            // //
+			// cv::putText(segmentedColorFrame,
+			// 			std::to_string((int)blobCenter.x),			// The text to be printed, in this case, CI.
+			// 			cv::Point(blobCenter.x,blobCenter.y), 	// Coordinates
+			// 			cv::FONT_HERSHEY_COMPLEX_SMALL, 		// Font
+			// 			0.5, 									// Scale. 2.0 = 2x bigger
+			// 			cv::Scalar(255,255,255),				// Color
+			// 			1 										// Thickness
+			// 			); 										// Anti-alias
+            //
+            // /* put the CI value to frame */
+            // cv::putText(segmentedColorFrame,
+            // 			std::to_string(ci),				// The text to be printed, in this case, CI.
+			// 			cv::Point(rect.x,rect.y-5), 	// Coordinates
+			// 			cv::FONT_HERSHEY_COMPLEX_SMALL, // Font
+			// 			0.9, 							// Scale. 2.0 = 2x bigger
+			// 			cv::Scalar(255,255,255),		// Color
+			// 			1 								// Thickness
+            // 			); 								// Anti-alias
         }
     }
 }

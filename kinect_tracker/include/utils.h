@@ -55,6 +55,4 @@ bool distanceFunction(float a, float b, int threshold);
 */
 void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int threshold);
 
-
-void test_other();
 #endif

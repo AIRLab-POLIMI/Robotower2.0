@@ -9,7 +9,6 @@
 
 	<include file="$(find bayes_people_tracker)/launch/people_tracker.launch"/>
     <include file="$(find kinect_tracker)/launch/run.launch"/>
-    <include file="$(find record_ros)/launch/record_ros.launch"/>
     <include file="$(find behavior_manager)/launch/run.launch" />
 
     <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="false" />
@@ -18,16 +17,13 @@
     
     <node pkg="activity_recognition" type="classifier.py" name="activity_classifier" output="screen" respawn="false" />
     
-    <node pkg="record_bag" type="record.py" name="record_bag" output="screen" respawn="false" />
-    
     <node pkg="tower_tf_broadcaster" type="tower_tf_broadcaster_node" name="tower_tf_broadcaster_node" output="screen" respawn="false" />
     
 	<node pkg="tower_tf_broadcaster" type="markers_broadcaster_node" name="markers_broadcaster_node" output="screen" respawn="false" />
 	
 	<!-- kinect_nodes --> 
-	<include file="$(find triskar)/launch/kinect_nodes.launch"/>
-
-    <!--
-    <node pkg="logger" type="GUI2.py" name="logger_GUI" respawn="false" /> -->
+	<include file="$(find robogame_kinectfeatures_extractor)/launch/run.launch"/>
+	<!--<include file="$(find triskar)/launch/kinect2_bridge_nodes.launch"/> -->
+    <!--<node pkg="logger" type="GUI2.py" name="logger_GUI" respawn="false" /> -->
 
 </launch>

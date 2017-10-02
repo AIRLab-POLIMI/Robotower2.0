@@ -1,30 +1,11 @@
 <launch>
-  
-	<!--
-  <node name="record_bags" pkg="record_bag" type="record.py" respawn="true"/>
-	-->
 
-    <arg name="camera_namespace" default="/kinect2" />
-    <arg name="ground_plane" default="/ground_plane" />
-    <arg name="show_frame" default="false"/>
-
-  <include file="$(find ground_plane_estimation)/launch/ground_plane_fixed.launch"/>
-
-  <node name="kinect_tracker" pkg="kinect_tracker" type="kinect_tracker_node" respawn="true" output="screen">
-	<param name="show_frame"        type="bool"   value="$(arg show_frame)"/>
-	<param name="ground_plane"       type="str"    value="$(arg ground_plane)"/>
-	<param name="camera_namespace"   type="str"    value="$(arg camera_namespace)"/>
-  </node>
+  <!-- kinect2 static transform -->
+  <node pkg="tf"
+	type="static_transform_publisher"
+	name="kinect_link_st"
+	args="0 0 1.14 0 0 0 base_link kinect2_link 100"
+  />
 	
-  <!-- /robot/pose_gt /player/pose_gt /tf " /> -->
-
-    <!--
-	<node name="mocap_node"
-		type="mocap_node"
-		pkg="mocap_optitrack"
-		respawn="false"
-		launch-prefix=""
-		required="true">
-		<rosparam file="$(find robogame_kinectfeatures_extractor)/config/mocap_robogame.yaml" command="load" />
-	</node> -->
+  <node name="kinect_feat_extractor" pkg="robogame_kinectfeatures_extractor" type="robogame_kinectfeatures_extractor_node" respawn="true" output="screen"/> 
 </launch>
