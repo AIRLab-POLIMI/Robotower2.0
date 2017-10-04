@@ -31,7 +31,7 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <kinect_tracker/kinect_feat.h>
-#include<std_msgs/Int32.h>
+#include<std_msgs/Float64.h>
 /* ... */
 
 /* OpenCV related includes */
@@ -119,7 +119,7 @@ int main(int argc, char** argv)
 
 	//Create a publisher object.
     ros::Publisher pub = nh.advertise<kinect_tracker::kinect_feat>("kinect_features",1000);
-    ros::Publisher position_pub = nh.advertise<std_msgs::Int32>("robogame/player_x_position",1000);
+    ros::Publisher position_pub = nh.advertise<std_msgs::Float64>("robogame/player_relative_angle",1000);
 
     player_global_pose_pub = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_global_position",1000);
 	player_local_pose_pub  = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_local_position",1000);
@@ -216,14 +216,14 @@ int main(int argc, char** argv)
 
     /* Create the blob detection image panel together with the
         sliders for run time adjustments. */
-    cv::namedWindow("mask", 1);
+    //cv::namedWindow("mask", 1);
 
-    cv::createTrackbar("hMin", "mask", &hMin, 256);
-    cv::createTrackbar("sMin", "mask", &sMin, 256);
-    cv::createTrackbar("vMin", "mask", &vMin, 256);
-    cv::createTrackbar("hMax", "mask", &hMax, 256);
-    cv::createTrackbar("sMax", "mask", &sMax, 256);
-    cv::createTrackbar("vMax", "mask", &vMax, 256);
+    //cv::createTrackbar("hMin", "mask", &hMin, 256);
+    //cv::createTrackbar("sMin", "mask", &sMin, 256);
+    //cv::createTrackbar("vMin", "mask", &vMin, 256);
+    //cv::createTrackbar("hMax", "mask", &hMax, 256);
+    //cv::createTrackbar("sMax", "mask", &sMax, 256);
+    //cv::createTrackbar("vMax", "mask", &vMax, 256);
     /* ---- */
 
     /* FEATURE VARIABLES */
@@ -421,19 +421,24 @@ int main(int argc, char** argv)
 				// << "\tmedian: " << med.val[0]
 				<< "\tstdDev: " << stdDevDistance << endl;
 
+			// perform segmentation in order to get the contraction index featue.
+			// The result will be saved in ci variable//
+			//test_other();
+			segmentDepth(depthmat, segmat, blobCenter.x, blobCenter.y, ci, 300);
+
+
+			// phi is the angular coordinate for the width
+			float rho = meanDistance;
+			float phi = (0.5 - blobCenter.x / KIN_WIDTH) * WIDTH_FOV;
+			float theta = M_PI / 2 - (0.5 - blobCenter.y / KIN_HEIGHT) * HEIGHT_FOV;
+			
+			std_msgs::Float64 angle_error;
+			angle_error.data = phi;
+
+			position_pub.publish(angle_error); // publishes angle
+
+
 			if(stdDevDistance < 200){
-
-
-				// perform segmentation in order to get the contraction index featue.
-				// The result will be saved in ci variable//
-				//test_other();
-				segmentDepth(depthmat, segmat, blobCenter.x, blobCenter.y, ci, 300);
-
-
-				// phi is the angular coordinate for the width
-				float rho = meanDistance;
-				float phi = (0.5 - blobCenter.x / KIN_WIDTH) * WIDTH_FOV;
-				float theta = M_PI / 2 - (0.5 - blobCenter.y / KIN_HEIGHT) * HEIGHT_FOV;
 
 				float x = rho * sin(theta) * cos(phi);
 				float y = rho * sin(theta) * sin(phi);
@@ -489,7 +494,7 @@ int main(int argc, char** argv)
         /* CREATE ROS MESSAGE*/
         kinect_tracker::kinect_feat msg;
         msg.header.stamp = ros::Time::now();
-        std_msgs::Int32 xposition;
+        std_msgs::Float64 xposition;
 
         ROS_INFO_STREAM(isPlayerMissing << "--" << previousDistance << "--" << meanDistance);
         if (isPlayerMissing){
@@ -526,7 +531,7 @@ int main(int argc, char** argv)
 
         //Publish the message
         pub.publish(msg);
-        position_pub.publish(xposition);        // publishes blob x coordinate.
+        //position_pub.publish(xposition);        // publishes blob x coordinate.
         previousBlobCenter = blobCenter;
 
         segmentedColorFrame.convertTo(segmentedColorFrame, CV_8UC4);
@@ -542,9 +547,9 @@ int main(int argc, char** argv)
 		}
 
         /* Update/show images */
-        cv::imshow("undistorted", undistortedFrame);
-        cv::imshow("registered", regframe);;
-        cv::imshow("segmentation", segmentedColorFrame);
+        //cv::imshow("undistorted", undistortedFrame);
+        //cv::imshow("registered", regframe);;
+        //cv::imshow("segmentation", segmentedColorFrame);
 
         int key = cv::waitKey(1);
 

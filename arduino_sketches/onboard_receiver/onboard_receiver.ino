@@ -1,7 +1,7 @@
 //This sketch is from a tutorial video for networking more than two nRF24L01 tranciever modules on the ForceTronics YouTube Channel
 //the code was leverage from the following code http://maniacbug.github.io/RF24/starping_8pde-example.html
 //This sketch is free to the public to use and modify at your own risk
-#define WARNING_LED 8
+#define ACC_WARNING_LED 8
 #define BUZZER_PIN  6
 #define OFF 0
 #define ON 1
@@ -42,6 +42,7 @@ int timeout_limit = 250; // in millis
 int nTransmitters = 5; // the number of transmitters
 unsigned long started_waiting_at;
 unsigned long previousTimeForBatBeeping;
+unsigned long previousACCtime;     // last acc sample time that we saw. 
 int battery_buzzer_state;
 bool timeout;
 float voltage;
@@ -70,7 +71,7 @@ void setup()
   }
   
   RFtransmitter.startListening();                 // Start listening for messages
-  pinMode(WARNING_LED, OUTPUT); 
+  pinMode(ACC_WARNING_LED, OUTPUT); 
   pinMode(BUZZER_PIN, OUTPUT);  
 }
 
@@ -107,17 +108,16 @@ void loop()
     Serial.print(F("\n"));
 
     while (!RFtransmitter.available() && !timeout){
-      if (millis() - started_waiting_at > 250)
+      if (previousACCtime - started_waiting_at > 250)
         timeout = true;
     }
   
     if (timeout) {
-      digitalWrite(WARNING_LED, LOW);
+      digitalWrite(ACC_WARNING_LED, LOW);
     }else{
     
       //Check if received data from transmitters.
       while(RFtransmitter.available(&pipeNum)){
-            digitalWrite(WARNING_LED, HIGH);
   
           /* 0-3 represent the towers.*/
           if (pipeNum != ACC_PIPE_INDEX){ 
@@ -152,6 +152,8 @@ void loop()
             Serial.print(F("\n"));
           }else{
             RFtransmitter.read(&acc_data, sizeof(acc_data));
+            previousACCtime = millis();
+            digitalWrite(ACC_WARNING_LED, HIGH);
             Serial.print(pipeNum);
             Serial.print(F(","));
             Serial.print(acc_data.aaWorld.x);
