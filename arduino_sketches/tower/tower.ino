@@ -78,7 +78,7 @@ enum timerOrientation{
 };
 
 // Data to be sent by the RF module.
-struct package{
+struct Package{
   boolean isTowerDown;
   boolean isCaptured;
   boolean isTowerEnable;
@@ -86,35 +86,36 @@ struct package{
   float distances[3]; // 0 - left sensor, 1- center sensor, 2- right sensor
   int ledMask[4];   // which LEDs are on.
   int pressCounter;
-}data;
+};
 
-//// LEDs VARIABLES ///////
-int led_array[] = {GREEN_LED, RED_LED, CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, CHARGE_LED4 };       // All LEDs
-int charge_LEDs[] = {CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, CHARGE_LED4};                         // All charge LEDs.
-int ledMask[N_CHARGE_LEDS];                 // which charge LEDs are on.
-int blink_state   = LOW;                    // keeps the RED/GREEN LED blink state.
-int charge_blink_state   = LOW;             // keeps the charging LED blink state.
-///////////////////////////
+//// CONFIG VARIABLES ///////
+int led_array[] = {GREEN_LED, RED_LED, CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, CHARGE_LED4 }; // All LEDs
+int charge_LEDs[] = {CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, CHARGE_LED4};                    // All charge LEDs.
+int ledMask[N_CHARGE_LEDS];                                                                  // which charge LEDs are on.
 
-///// BUTTON CONTROL //////
-volatile int button_state = LOW;            // Keeps the current button state (LOW/HIGH)
-int previous_button_state = LOW;            // Controls the previous state of the button (LOW/HIGH)
-int press_counter = 0;                      // Counts the ammount of button presses;
-///////////////////////////    
+/* GAME CONTROL VARIABLES */
+int blink_state;                        // keeps the RED/GREEN LED blink state.
+int charge_blink_state;                 // keeps the charging LED blink state.
 
-///// TIMER ///////////////
-static unsigned long press_timer = 0;       // Controls "turn on" time between LEDs.
-static unsigned long blink_timer = 0;       // Control the blink time of the tower RED/GREEN LED.
-static unsigned long charge_blink_timer = 0;// Control the blink time of the tower charging LED.
-int n_leds_ON = 0;                          // keeps how many charging LEDs are on.
-///////////////////////////
+volatile int button_state;              // Keeps the current button state (LOW/HIGH)
+int previous_button_state;              // Controls the previous state of the button (LOW/HIGH)
+int press_counter;                      // Counts the ammount of button presses;
 
-///// GAME VARIABLES //////
-bool isTowerEnable = true;                   // Keeps the state of the game: True (Game is ON).
-bool isTowerDown = false;                   // True if the tower has fallen.
-bool isCaptured = false;                        // True if player has charged the LEDs and the tower did not fall.
-///////////////////////////
+static unsigned long press_timer;       // Controls "turn on" time between LEDs.
+static unsigned long blink_timer;       // Control the blink time of the tower RED/GREEN LED.
+static unsigned long charge_blink_timer;// Control the blink time of the tower charging LED.
+int n_leds_ON;                          // keeps how many charging LEDs are on.
 
+bool isTowerEnable;                     // Keeps the state of the game: True (Game is ON).
+bool isTowerDown;                       // True if the tower has fallen.
+bool isCaptured;                        // True if player has charged the LEDs and the tower did not fall.
+
+// FUNCTION PROTOTYPE
+void setOFFAllChargeLEDs();
+void setONAllChargeLEDs(); 
+void resetTower();
+void updateChargeLEDs();
+void handleButton();
 
 void setup() {
 
@@ -132,6 +133,9 @@ void setup() {
   // set the RED_LED ON, at the beginning.
   digitalWrite(RED_LED,HIGH);
   digitalWrite(SCHMITT_TRIGGER_PIN,LOW);
+
+  // Reset Variable.
+  resetTower();
   
   // Set the transceiver properties.
   delay(1000);
@@ -144,6 +148,8 @@ void setup() {
 }
 
 void loop() {
+
+    Package data;       // RF package
 
     // Calls a function for calculating the distance measured by each Ultrasonic sensor
     delay(TRIGGER_DELAY);
@@ -223,7 +229,6 @@ void loop() {
     RFtransmitter.write(&data, sizeof(data));
 }
 
-
 /*
  * Turns OFF ALL the charge LEDs by setting them to LOW.
  */
@@ -231,6 +236,30 @@ void setOFFAllChargeLEDs(){
   for(int i=0; i < N_CHARGE_LEDS; i++){
     ledMask[i] = 0;
   }
+}
+
+/*
+ * Reset tower
+ */
+void resetTower(){
+	
+  int blink_state   = LOW;                      // keeps the RED/GREEN LED blink state.
+  int charge_blink_state   = LOW;               // keeps the charging LED blink state.
+  
+  volatile int button_state = LOW;              // Keeps the current button state (LOW/HIGH)
+  int previous_button_state = LOW;              // Controls the previous state of the button (LOW/HIGH)
+  int press_counter = 0;                        // Counts the ammount of button presses;
+  
+  static unsigned long press_timer = 0;         // Controls "turn on" time between LEDs.
+  static unsigned long blink_timer = 0;         // Control the blink time of the tower RED/GREEN LED.
+  static unsigned long charge_blink_timer = 0;  // Control the blink time of the tower charging LED.
+  int n_leds_ON = 0;                            // keeps how many charging LEDs are on.
+  
+  bool isTowerEnable = true;                    // Keeps the state of the game: True (Game is ON).
+  bool isTowerDown   = false;                   // True if the tower has fallen.
+  bool isCaptured    = false;                   // True if player has charged the LEDs and the tower did not fall.
+	
+	setOFFAllChargeLEDs();                       // Set all LEDs OFF.
 }
 
 /*
@@ -242,7 +271,9 @@ void setONAllChargeLEDs(){
   }
 }
 
-// Updates Charge LEDs based on the current settings. 
+/* 
+ * Updates Charge LEDs based on the current settings. 
+ */ 
 void updateChargeLEDs(){
   for(int i=0; i < N_CHARGE_LEDS; i++){
     if (i < n_leds_ON){
@@ -259,6 +290,6 @@ void updateChargeLEDs(){
  * Tower button callback.
  * Updates the state of the button. LOW (Not pressed), HIGH (Pressed).
  */
-void handleButton() {
+void handleButton(){
     button_state = digitalRead(SCHMITT_TRIGGER_PIN);
 }

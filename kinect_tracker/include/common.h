@@ -1,4 +1,4 @@
-/* commons.h -- This file is part of the kinect_tracker ROS node created for
+/* commons.h -- This file is part of the kinect_feat_extractor ROS node created for
  * the purpose of extracting relevant motion features from images.
  *
  * Copyright (C) 2016 Ewerton Lopes

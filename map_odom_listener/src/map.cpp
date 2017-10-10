@@ -16,7 +16,6 @@
      ros::Rate rate(100);
      
      while (node.ok()){
-//		ros::spinOnce();
 
 		tf::StampedTransform transform;
 		 	
@@ -24,11 +23,9 @@
 		     listener.lookupTransform( "/map","/base_link", ros::Time(0), transform);
 		}
 		catch (tf::TransformException ex){
-//		 	ROS_INFO("HELLOOOOO");
-		    ROS_ERROR("%s",ex.what());
+		    ROS_ERROR("From /map_odom_listener: %s",ex.what());
 		  	ros::Duration(0.01).sleep();
 		}
-//		ROS_INFO("HELLOOOOO POST");
 
 		geometry_msgs::PoseStamped pose;       
 		

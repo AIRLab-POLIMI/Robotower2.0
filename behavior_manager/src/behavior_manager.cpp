@@ -11,9 +11,12 @@ previous_decision(0), robot_speed(0), max_vel(0), min_vel(0){
     tower_robot_distances.resize(NUM_TOWERS);
 
     //wait for the action server to come up
-    while(!mb_action_client.waitForServer(ros::Duration(5.0))){
-        ROS_WARN("Waiting for the move_base action server to come up...");
-    }
+    // while(!mb_action_client.waitForServer(ros::Duration(5.0))){
+    //     ROS_WARN("Waiting for the move_base action server to come up...");
+    // }
+
+   goal_pub = nh_.advertise<behavior_manager::Goal>("robogame/goal", 1000);
+
 
     // get action list
     std::vector<std::string> action_list;
@@ -60,8 +63,8 @@ float euclidean_distance(tf::StampedTransform t){
 
 void BehaviorManager::update_decision_variables(){
 
-    nh_.getParam("/move_base/TrajectoryPlannerROS/max_vel_x",max_vel);
-    nh_.getParam("/move_base/TrajectoryPlannerROS/min_vel_x",min_vel);
+    nh_.getParam("/max_vel_x",max_vel);
+    nh_.getParam("/min_vel_x",min_vel);
     ROS_INFO("Max vel: [%f]", max_vel);
     ROS_INFO("Min vel: [%f]", min_vel);
 
@@ -154,12 +157,19 @@ void BehaviorManager::actuate_decision(){
     navigation parameters (velocity)*/
 
     // send new move base goal
-    current_mb_goal.target_pose.header.frame_id = "tower_" + std::to_string(target_tower_ID);
-    current_mb_goal.target_pose.header.stamp = ros::Time::now();
-    current_mb_goal.target_pose.pose.orientation.w = 1;
-
+    // ACTION LIB
+    //current_mb_goal.target_pose.header.frame_id = "tower_" + std::to_string(target_tower_ID);
+    //current_mb_goal.target_pose.header.stamp = ros::Time::now();
+    //current_mb_goal.target_pose.pose.orientation.w = 1;
+    // mb_action_client.sendGoal(current_mb_goal);
+    
+    
+    behavior_manager::Goal goal;
+    goal.header.frame_id = "tower_" + std::to_string(target_tower_ID);
+    goal.header.stamp = ros::Time::now();
+    goal.tower_number = target_tower_ID;
     ROS_INFO("Sending goal");
-    mb_action_client.sendGoal(current_mb_goal);
+    goal_pub.publish(goal);
 
 }
 
@@ -175,7 +185,7 @@ void BehaviorManager::update_loop(){
 
     if (hasWon){
         ROS_INFO("Has won!");
-        mb_action_client.cancelGoal();
+        //mb_action_client.cancelGoal();
     }else{
         make_decision();
         actuate_decision();
@@ -187,7 +197,7 @@ void BehaviorManager:: evaluate_cancel_goal(int newID){
     if (previous_decision != newID){
         ROS_INFO("Goal changed!");
         previous_decision = newID;
-        mb_action_client.cancelGoal();
+        //mb_action_client.cancelGoal();
     }
 }
 

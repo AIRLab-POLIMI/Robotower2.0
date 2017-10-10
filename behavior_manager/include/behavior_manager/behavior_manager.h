@@ -26,6 +26,7 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/server/simple_action_server.h>
 #include <nav_msgs/Odometry.h>
+#include <behavior_manager/Goal.h>
 
 #include "gob/gob.h"
 
@@ -42,6 +43,8 @@ public:
 
     ros::NodeHandle nh_;
     ros::Subscriber sub;
+    ros::Publisher goal_pub;
+
 
     // tell the (MoveBase) action client that we want to spin a thread by default
     MoveBaseClient mb_action_client;

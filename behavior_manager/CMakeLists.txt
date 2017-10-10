@@ -14,6 +14,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   nav_msgs
   tf
+  std_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -52,11 +54,10 @@ message("behavior_tree_core_LIBRARIES: "${behavior_tree_core_LIBRARIES})
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  Goal.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -73,10 +74,10 @@ message("behavior_tree_core_LIBRARIES: "${behavior_tree_core_LIBRARIES})
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   move_base_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -110,7 +111,7 @@ message("behavior_tree_core_LIBRARIES: "${behavior_tree_core_LIBRARIES})
 catkin_package(
   INCLUDE_DIRS include
   #LIBRARIES robogame_behavior_tree
-  CATKIN_DEPENDS actionlib move_base_msgs roscpp
+  CATKIN_DEPENDS actionlib move_base_msgs roscpp message_runtime
   DEPENDS system_lib
 )
 

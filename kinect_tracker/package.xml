@@ -23,17 +23,16 @@
 
   <license>MIT</license>
 
-
-  <build_depend>kinect_tracker/msg</build_depend>
-  <run_depend>kinect_tracker/msg</run_depend>
-  <build_depend>message_generation</build_depend>
-  <run_depend>message_runtime</run_depend>
-  <build_depend>roscpp</build_depend>
-  <run_depend>roscpp</run_depend>
-  <build_depend>libfreenect2</build_depend>
-  <build_depend>tf</build_depend>
-  <run_depend>tf</run_depend>
-  <run_depend>libfreenect2</run_depend>
   <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>kinect2_bridge</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>libfreenect2</build_depend>
+  <build_depend>ground_plane_estimation</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>libfreenect2</run_depend>
+  <run_depend>kinect2_bridge</run_depend>
+  <run_depend>ground_plane_estimation</run_depend>
 
 </package>

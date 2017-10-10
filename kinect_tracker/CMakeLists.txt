@@ -12,12 +12,15 @@ find_package(catkin REQUIRED COMPONENTS
     roscpp
     rospy
     std_msgs
-    message_generation
     sensor_msgs
     cv_bridge
     image_transport
+    message_filters 
+    ground_plane_estimation
     tf
 )
+
+find_package(heartbeat REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 
@@ -46,8 +49,7 @@ if(NOT OpenCL_FOUND)
 endif(NOT OpenCL_FOUND)
 
 find_package(OpenCV REQUIRED)
-#find_package(freenect2 REQUIRED)
-find_package(freenect2 REQUIRED HINTS "$ENV{HOME}/freenect2")
+find_package(freenect2 REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories("/usr/include/libusb-1.0/")
 
@@ -85,10 +87,10 @@ INCLUDE_DIRECTORIES(
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-   FILES
-   kinect_feat.msg
-)
+# add_message_files(
+#   FILES
+#   kinect_feat.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -141,9 +143,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES ${PROJECT_NAME}
-   CATKIN_DEPENDS message_runtime
-#  DEPENDS system_lib
+#  LIBRARIES ${PROJECT_NAME}_node
+   CATKIN_DEPENDS ground_plane_estimation
 )
 
 ###########
@@ -152,35 +153,46 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${heartbeat_INCLUDE_DIRS})
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/${PROJECT_NAME}.cpp
+# add_library(${PROJECT_NAME}_node
+#   src/${PROJECT_NAME}/${PROJECT_NAME}_node.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+#add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 add_executable(${PROJECT_NAME}_node
-                    src/main.cpp
-                    src/utils.cpp
-                    )
+				src/main.cpp
+                src/utils.cpp)
+          
+add_executable(${PROJECT_NAME}_setBlob_node
+				src/setBlob.cpp)
+				
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_node 
+				 ${${PROJECT_NAME}_EXPORTED_TARGETS}
+				 ${heartbeat_EXPORTED_TARGETS}
+                 ${ground_plane_estimation_EXPORTED_TARGETS}
+				 ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBS}
-   ${OpenCL_LIBRARIES}
-   ${freenect2_LIBRARIES}
-)
+					  ${catkin_LIBRARIES}
+					  ${OpenCV_LIBS}
+					  ${OpenCL_LIBRARIES}
+					  ${freenect2_LIBRARIES}
+                      ${heartbeat_LIBRARIES})
+
+target_link_libraries(${PROJECT_NAME}_setBlob_node
+					  ${catkin_LIBRARIES}
+					  ${OpenCV_LIBS})
 
 #############
 ## Install ##
@@ -197,7 +209,7 @@ target_link_libraries(${PROJECT_NAME}_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
+# install(TARGETS ${PROJECT_NAME}_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -221,7 +233,7 @@ install(DIRECTORY launch/
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_${PROJECT_NAME}.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_${PROJECT_NAME}_node.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

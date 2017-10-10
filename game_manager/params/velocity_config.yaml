@@ -1,0 +1,7 @@
+
+# Velocity params for the game
+max_vel_x: 0.5
+max_vel_y: 0.5
+min_vel_x: 0.1
+min_vel_y: 0.1
+

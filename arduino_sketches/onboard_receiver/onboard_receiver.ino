@@ -188,14 +188,14 @@ void loop()
 //successful
 /*
 bool sendCorrectNumber(byte xMitter) {
-    bool worked; //variable to track if write was successful
-    RFtransmitter.stopListening(); //Stop listening, stop recieving data.
-    RFtransmitter.openWritingPipe(wAddress[xMitter-1]); //Open writing pipe to the nRF24 that guessed the right number
-    if(!RFtransmitter.write(&daNumber, 1))  worked = false; //write the correct number to the nRF24 module, and check that it was recieved
-    else worked = true; //it was recieved
-    RFtransmitter.startListening(); //Switch back to a reciever
-    return worked;  //return whether write was successful
-}*/
+    bool success; 												//variable to track if write was successful
+    RFtransmitter.stopListening();								//Stop listening, stop recieving data.
+    RFtransmitter.openWritingPipe(wAddress[xMitter-1]);			//Open writing pipe to the nRF24 that guessed the right number
+    if(!RFtransmitter.write(&daNumber, 1))  worked = false;		//write the correct number to the nRF24 module, and check that it was recieved
+    else success = true; 										//it was recieved
+    RFtransmitter.startListening(); 							//Switch back to a reciever
+    return success;  											//return whether write was successful
+}/*
 
 void beep(unsigned char delayms){
   analogWrite(BUZZER_PIN, delayms);      // Almost any value can be used except 0 and 255

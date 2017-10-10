@@ -5,8 +5,6 @@
         file="$(find arduino_publisher)/config/arduino.yaml"
     />
 
-    <param name="enable_statistics" value="true" />
-
     <node 
         pkg="arduino_publisher" 
         type="arduino_publisher_node" 
