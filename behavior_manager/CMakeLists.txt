@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   std_msgs
   message_generation
+  arduino_publisher
 )
 
 ## System dependencies are found with CMake's conventions

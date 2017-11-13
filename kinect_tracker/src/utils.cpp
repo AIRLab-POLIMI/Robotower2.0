@@ -19,6 +19,8 @@
 #include "utils.h"
 #include "common.h"
 
+#define MIN_BLOB_RADIUS 15
+
 /* printMatImage -- a function to print a cv::Mat to console. Used
 mostly for debugging purposes*/
 void printMatImage(cv::Mat frame){
@@ -90,34 +92,30 @@ void resize(cv::Mat& sourceFrame, cv::Mat& resultingFrame, int width=512, int he
 	}
 }
 
-/* trackUser -- Function used to track color blobs on a RGB image. */
-void trackUser(cv::Mat& srcFrame){
-	/* resize the frame and convert it to the HSV
-	color space... */
+/* Locate largest color blob on a RGB image. */
+int findColorBlob(cv::Mat& srcFrame,  cv::Point2f &blob_center){
+	/* resize the frame and convert it to the HSV color space... */
 	cv::Mat frame(srcFrame.size(), srcFrame.type());               // make copy
 	resize(srcFrame,frame);                                        // resize
     cv::Mat hsv = cv::Mat::zeros(frame.size(), frame.type());      // define container for the converted Mat.
 	cv::cvtColor(frame, hsv, cv::COLOR_BGR2HSV);                   // convert
-    /* ... */
 
-    /* construct a mask for the color (default to "green"), then perform
-	   a series of dilations and erosions to remove any small
-       blobs left in the mask... */
+    /* construct a mask for the color, then perform a series of dilations and erosions
+	to remove any small blobs left in the mask... */
 	cv::Mat mask;
 	cv::inRange(hsv,cv::Scalar(hMin,sMin,vMin), cv::Scalar(hMax,sMax,vMax), mask);
 	cv::Mat erodeElement = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(3,3));
 	cv::Mat dilateElement = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(8,8));
-    // perform erode and dilate operations.
+    
+	// perform erode and dilate operations.
     cv::erode(mask, mask, erodeElement);
 	cv::erode(mask, mask, erodeElement);
 	cv::dilate(mask, mask, dilateElement);
 	cv::dilate(mask, mask, dilateElement);
-    /* ... */
-	cv::imshow("mask",mask);           // exihbit mask.
 
+	//cv::imshow("mask",mask);           // exihbit mask.
 
-	// find contours in the mask and initialize the current
-	// (x, y) center of the ball
+	// find contours in the mask and initialize the current blob center
 	std::vector<std::vector<cv::Point> > contours;  // container for the contours
 	std::vector<cv::Vec4i> hierarchy;
     cv::findContours(mask.clone(), contours,
@@ -125,10 +123,8 @@ void trackUser(cv::Mat& srcFrame){
                      CV_RETR_EXTERNAL,
                      CV_CHAIN_APPROX_SIMPLE);
 
-    cv::Point2f center(-1000,-1000);                /* define center. Set to
-                                                        arbitrary init value */
-    isPlayerMissing = true;                            /* flag to track the Player
-                                                        presence.*/
+    cv::Point2f center;                /* container var for the new center. 
+													 Set to arbitrary init value*/
 
 	/* Only proceed if at least one contour was found, i.e., if at least one
         object has been tagged as a target (NOTE: that the contour correspond
@@ -136,8 +132,7 @@ void trackUser(cv::Mat& srcFrame){
 	if (contours.size() > 0){
 
 		int largest_area=0;               // container for the max area
-		int largest_contour_index=0;      /* container for the index of the
-                                              max area found in countours */
+		int largest_contour_index=0;      // container for the index of the max area found in countours
 
 		/* find the largest contour in the mask, then use
     	   it to compute the minimum enclosing circle and
@@ -152,48 +147,28 @@ void trackUser(cv::Mat& srcFrame){
 			}
 		}
 
-		cv::Point2f tempcenter;
-  		float radius;
-		cv::minEnclosingCircle((cv::Mat)contours[largest_contour_index], tempcenter, radius);
+		cv::Point2f temp_center;
+  		float blob_radius;
+		cv::minEnclosingCircle((cv::Mat)contours[largest_contour_index], temp_center, blob_radius);
 		cv::Moments M = cv::moments((cv::Mat)contours[largest_contour_index]);
 		center = cv::Point2f(int(M.m10 / M.m00), int(M.m01 / M.m00));
 
-		/* Only proceed if the radius meets a minimum size. This is used to restrict
-            the size of the object detected.*/
-		if (radius > 15){
+		// Only proceed if the blob_radius is larger them a minimum size.
+		if (blob_radius > MIN_BLOB_RADIUS){
 			// draw the circle and centroid on the frame,
 			// then update the list of tracked points
-			cv::circle(frame, cv::Point(int(tempcenter.x), int(tempcenter.y)), int(radius), cv::Scalar(0, 255, 255), 2);
+			cv::circle(frame, cv::Point(int(temp_center.x), int(temp_center.y)), int(blob_radius), cv::Scalar(0, 255, 255), 2);
 			cv::circle(frame, center, 5, cv::Scalar(0, 0, 255), -1);
-            blobCenter = center;            // save the center of the detected circle.
-            isPlayerMissing = false;           // update the flag for the player presence.
+            blob_center = center;            // save the center of the detected circle.
 		}
-	}else{
-		blobCenter = center;
+
+		pts.push_front(center);		// update the points queue
+		blob_center = center;       // update blob center.
+		srcFrame = frame.clone();   // update the input frame.
+		return 1;
 	}
 	
-	// update the points queue
-	pts.push_front(center);
-
-	/* Loop over the set of tracked points (i.e, the history of points)
-        in order to print a line in the frame representing the history of
-        tracked points. This line color is set to RED*/
-	// for (int i=1; i < (pts.size()-1); i++){
-	// 	/* if either of the tracked points are NONE, ignore them.
-    //         NOTE: here at this code, a point set to NONE is the one
-    //               set to -1000; */
-	// 	cv::Point2f ptback = pts[i - 1];
-	// 	cv::Point2f pt = pts[i];
-	// 	if ((ptback.x == -1000) or (pt.x == -1000)){
-	// 		continue;
-	// 	}
-    //
-	// 	/* otherwise, compute the thickness of the line and
-	// 	    draw the connecting lines */
-	// 	int thickness = int(sqrt(TRAIL_BUFFER_SIZE / float(i + 1)) * 2.5);
-	// 	line(frame, pts[i - 1], pts[i], cv::Scalar(0, 0, 255), thickness);
-	// }
-	srcFrame = frame.clone();   // update the input frame.
+	return 0; // Blob not detected
 }
 
 /* distanceFunction -- used to compute the similarity betweent the pixels.*/
@@ -202,19 +177,12 @@ bool distanceFunction(float a, float b, int threshold){
 	else return false;
 }
 
-/* segmentDepth -- a function that implements a "Region Growing algorithm", which
- is defined here in a "Breadth-first search" manner.
+/* Implements a "Region Growing algorithm", which is defined here in a "Breadth-first search" manner.
 	sX --> Seed Pixel x value (columns == width)
 	sY --> Seed Pixel y value (rows == height)
 	threshold --> the value to be used in the call to "distanceFunction" method. If distance
-    is less than threshold then recursion proceeds, else stops.
-*/
-
-void test_other(){
-	ROS_INFO_STREAM("FUNCTION");
-}
-
-void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& ci, int threshold){
+    is less than threshold then recursion proceeds, else stops.*/
+int segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& threshold){
 	
 	long int nPixels = 0;                           			// segmented pixels counter variable.
 	std::vector< std::vector<int> > reached;	       			// This is the binary mask for the segmentation.
@@ -339,11 +307,10 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
     		}
     	}
 
-
         /* FROM THIS POINT ON: Initialization of supporting code for detecting the blob in the
-            segmented frame. This is needed for drawing the minimum bounding rectangle
-            for the detected blob, thus, enabling the "contraction index" feature
-            calculation.*/
+		segmented frame. This is needed for drawing the minimum bounding rectangle
+		for the detected blob, thus, enabling the "contraction index" feature
+		calculation.*/
         std::vector<std::vector<cv::Point> > contours;
     	std::vector<cv::Vec4i> hierarchy;
         cv::Mat bwImage(inputFrame.size(),inputFrame.type());
@@ -353,8 +320,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
                      CV_CHAIN_APPROX_SIMPLE);
 
 
-        /* Only proceed if at least one contour was found. NOTE: This is need for avoiding
-            "seg fault". */
+        // Only proceed if at least one contour was found.
     	if (contours.size() > 0){
 
             cv::Mat erodeElement = cv::getStructuringElement(cv::MORPH_RECT,cv::Size(3,3));
@@ -392,34 +358,15 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
             the area of the rectangle. */
             cv::Mat roiSeg = cv::Mat(resultingFrame,rect);
             int roiSegarea = roiSeg.total();
-            ci = float(roiSegarea-nPixels)/float(roiSegarea);
+            float ci = float(roiSegarea-nPixels)/float(roiSegarea);
+			return ci;
             /* ... */
 
-            /* THIS COMMENTED PIECE OF CODE HAS BEEN DEVELOPED FOR THE PURPOSE
-             * OF PUTTING A MARKER ON THE PLAYER HEAD. HOWEVER, IT WAS DEPRECATED
-             *
-            cv::Mat test = cv::Mat(resultingFrame,rect);
-            int begin = 0;
-            int loop_counter = 0;
-            bool sign = false;
-            int row = 10;
-            for (int j=0;j < test.cols;j++){                 //Basically cost O(n)
-                if (test.at<float>(row,j) == 255){
-                    if(!sign){
-                        begin = j;
-                        sign = !sign;
-                    }
-                    loop_counter++;
-                }else if (sign && test.at<float>(row,j) == 0){
-                    break;
-                }
-            }
-            int mid = std::ceil(loop_counter/2);
-            int topPoint = begin + (mid-1);
+			////////////////
+			// DEPRECATED //
+			////////////////
 
-            *************************************************************/
-
-            /* APPLY COLOR TO THE FRAME*/
+            /*// APPLY COLOR TO THE FRAME
             std::vector<cv::Mat> tSegmentedInColor(3);                   // Used to print a colored
              														  	 //  segmented frame.
             cv::Mat black = cv::Mat::zeros(resultingFrame.rows,
@@ -436,7 +383,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
              			cv::Scalar(0,0,255),CV_FILLED, 8,0);
             segmentedTarget = cv::Mat(segmentedColorFrame,rect);
             //cv::circle(segmentedTarget, cv::Point(topPoint,10),5,
-            //			cv::Scalar(0,0,255),CV_FILLED, 8,0); // TAGGING THE POINT */
+            //			cv::Scalar(0,0,255),CV_FILLED, 8,0); // TAGGING THE POINT
             
             // Draws the rect in the segmentedColorFrame image
             cv::rectangle(segmentedColorFrame, pt1, pt2, cv::Scalar(255,255,255), 2,8,0);// the selection white rectangle
@@ -451,7 +398,7 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
 						1 										// Thickness
 						); 										// Anti-alias
             
-            /* put the CI value to frame */
+            // put the CI value to frame
             cv::putText(segmentedColorFrame,
             			std::to_string(ci),				// The text to be printed, in this case, CI.
 						cv::Point(rect.x,rect.y-5), 	// Coordinates
@@ -459,7 +406,8 @@ void segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, 
 						0.9, 							// Scale. 2.0 = 2x bigger
 			 			cv::Scalar(255,255,255),		// Color
 						1 								// Thickness
-            			); 								// Anti-alias
-        }
+            			); 								// Anti-alias*/
+		/////////////////////////////////////////////////////////////////////////////////
+		}
     }
 }

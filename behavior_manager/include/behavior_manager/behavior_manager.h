@@ -27,6 +27,7 @@
 #include <actionlib/server/simple_action_server.h>
 #include <nav_msgs/Odometry.h>
 #include <behavior_manager/Goal.h>
+#include <arduino_publisher/TowerState.h>
 
 #include "gob/gob.h"
 
@@ -43,6 +44,7 @@ public:
 
     ros::NodeHandle nh_;
     ros::Subscriber sub;
+    ros::Subscriber tower_state_sub;
     ros::Publisher goal_pub;
 
 
@@ -53,6 +55,7 @@ public:
     std::vector<float> blocking_factor;
     std::vector<float> tower_robot_distances;
     std::vector<float> tower_player_distances;
+    std::vector<bool> allowed_towers;
 
     std::vector<tf::StampedTransform> towers_robot_transforms, towers_player_transforms;    // position with respect to robot.
     tf::StampedTransform player_transform;
@@ -72,6 +75,8 @@ public:
     BehaviorManager();
 
     ~BehaviorManager(void);
+    
+    void towerStateCallback(const arduino_publisher::TowerState::ConstPtr& msg);
 
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
 

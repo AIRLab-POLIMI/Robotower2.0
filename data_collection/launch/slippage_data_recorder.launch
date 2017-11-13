@@ -1,0 +1,20 @@
+<launch>
+
+    <rosparam command="load" file="$(find arduino_publisher)/config/arduino.yaml" />
+    <rosparam command="load" file="$(find tower_manager)/config/tower_config.yaml" />
+    
+    <arg name="path_save"   default="/home/airlab/Documents/bags/slippage"/>
+	<arg name="topic"  	default="/enc /ground_truth/markerset_ground_pose /tf /ground_truth/markerset_pose /vel /arduino/imu_state /ext_usb_camera/image /amcl_pose /map_odom_amcl"/>
+	<arg name="file_name"  	default=""/>
+
+	<group ns="record">
+		<param name="path_save" type="str" value="$(arg path_save)"	/>
+		<param name="topic" 	type="str" value="$(arg topic)"		/>
+		<param name="file_name" type="str" value="$(arg file_name)"	/>
+		<node name="record_ros" pkg="record_ros" type="record_ros" output="screen" respawn="true"/>
+	</group>
+    
+    <node pkg="record_bag" type="record.py" name="record_bag" output="screen" respawn="true" />
+
+</launch>
+

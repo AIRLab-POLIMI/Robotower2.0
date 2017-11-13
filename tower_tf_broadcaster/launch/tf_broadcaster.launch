@@ -2,7 +2,7 @@
 
     <rosparam 
         command="load"
-        file="$(find tower_tf_broadcaster)/config/tower_tf.yaml"
+        file="$(find tower_tf_broadcaster)/config/tower_tf_stanzone.yaml"
     />
 
     <node 

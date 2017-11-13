@@ -28,7 +28,7 @@
 #include "opencv2/highgui/highgui.hpp"
 
 /* trackUser -- Function used to track color blobs on a RGB image. */
-void trackUser(cv::Mat& src);
+int findColorBlob(cv::Mat& srcFrame,  cv::Point2f &blob_center);
 
 /* resize -- A helper function to resize image. Here, the width is
 default to 512 as it is the width of a kinect frame. That is the only
@@ -53,8 +53,7 @@ bool distanceFunction(float a, float b, int threshold);
 	threshold --> the value to be used in the call to "distanceFunction" method. If distance
     is less than threshold then recursion proceeds, else stops.
 */
-void segmentDepth(cv::Mat& input, cv::Mat& dst, int sX, int sY, float& ci, int threshold);
-
+int segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& threshold);
 
 void test_other();
 #endif

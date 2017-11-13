@@ -24,6 +24,6 @@
 
     <!-- kinect_nodes --> 
     <include file="$(find kinect_tracker)/launch/run.launch"/>
-    <!--<include file="$(find triskar)/kinect2_bridge_nodes.launch"/> -->
+    <include file="$(find triskar)/launch/kinect2_bridge_nodes.launch"/>
 
 </launch>

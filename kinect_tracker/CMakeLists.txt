@@ -167,7 +167,7 @@ include_directories(include ${catkin_INCLUDE_DIRS} ${heartbeat_INCLUDE_DIRS})
 
 ## Declare a C++ executable
 add_executable(${PROJECT_NAME}_node
-				src/main.cpp
+				src/tracker.cpp
                 src/utils.cpp)
           
 add_executable(${PROJECT_NAME}_setBlob_node
