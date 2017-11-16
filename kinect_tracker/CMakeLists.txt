@@ -17,6 +17,8 @@ find_package(catkin REQUIRED COMPONENTS
     image_transport
     message_filters 
     ground_plane_estimation
+    message_generation 
+    geometry_msgs
     tf
 )
 
@@ -87,10 +89,13 @@ INCLUDE_DIRECTORIES(
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   kinect_feat.msg
-# )
+add_message_files(
+   FILES
+   ContractionIndex.msg
+   PlayerDistance.msg
+   PlayerScreenAngle.msg
+   PlayerPixelPosition.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -109,7 +114,8 @@ INCLUDE_DIRECTORIES(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
    DEPENDENCIES
-   std_msgs  # Or other packages containing msgs
+   std_msgs
+   geometry_msgs
 )
 
 ################################################
@@ -142,9 +148,10 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
+    CATKIN_DEPENDS message_runtime
 #  INCLUDE_DIRS include
 #  LIBRARIES ${PROJECT_NAME}_node
-   CATKIN_DEPENDS ground_plane_estimation
+#  CATKIN_DEPENDS ground_plane_estimation
 )
 
 ###########

@@ -67,13 +67,22 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
+#include <kinect_tracker/ContractionIndex.h>
+#include <kinect_tracker/PlayerDistance.h>
+#include <kinect_tracker/PlayerScreenAngle.h>
+#include <kinect_tracker/PlayerPixelPosition.h>
+
 //Create a publisher object.
 ros::Publisher pub;
-ros::Publisher position_pub;
+ros::Publisher pub_angle_wrt_screen_center;
 ros::Publisher pub_message;
 ros::Publisher pub_centres;
-ros::Publisher player_global_pose_pub;
-ros::Publisher player_local_pose_pub;
+ros::Publisher pub_player_pos_wrt_map;
+ros::Publisher pub_player_pos_wrt_robot;
+ros::Publisher pub_ci;
+ros::Publisher pub_player_distance;
+ros::Publisher pub_pixel_position;
+
 image_transport::Publisher pub_result_image;
 
 int cam_width;
@@ -185,6 +194,10 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
 
         // perform segmentation in order to get the contraction index featue.
         ci = segmentDepth(depmat, segmat, blob_center.x, blob_center.y, seg_threshold);
+        kinect_tracker::ContractionIndex new_ci;
+        new_ci.header.stamp = ros::Time::now();
+        new_ci.ci = ci;
+        pub_ci.publish(new_ci); // publishes the new ci.
         
         
         // phi is the angular coordinate for the width
@@ -195,11 +208,23 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
         float x = rho * sin(theta) * cos(phi);
         float y = rho * sin(theta) * sin(phi);
         float z = rho * cos(theta);
-        
-        std_msgs::Float64 angle_error;
-        angle_error.data = phi;
 
-        position_pub.publish(angle_error); // publishes angle
+        kinect_tracker::PlayerPixelPosition pixel_position;
+        pixel_position.header.stamp = ros::Time::now();
+        pixel_position.x = blob_center.x;
+        pixel_position.y = blob_center.y;
+        pub_pixel_position.publish(pixel_position); // publishes the blob_center position.
+        
+        
+        kinect_tracker::PlayerScreenAngle angle_error;
+        angle_error.header.stamp = ros::Time::now(); 
+        angle_error.angle = phi;
+        pub_angle_wrt_screen_center.publish(angle_error); // publishes angle
+
+        kinect_tracker::PlayerDistance player_distance;
+        player_distance.header.stamp = ros::Time::now();
+        player_distance.distance = mean_distance;
+        pub_player_distance.publish(player_distance); // publishes distance to player
         
         ROS_DEBUG("rho:\t%.2f\tphi:\t%.2f°\ttheta:\t%.2f°", rho, phi*180/M_PI, theta*180/M_PI);
         ROS_DEBUG("x:\t%.2f\ty:\t%.2f\tz:\t%.2f", x, y, z);
@@ -207,7 +232,6 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
         // TF-Broadcaster
         static tf::TransformBroadcaster br;
         tf::StampedTransform playerTransform;
-
         
         tf::Transform framePlayerTransform;
         framePlayerTransform.setOrigin( tf::Vector3(x, y, z) );
@@ -227,7 +251,7 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
             globalPlayerPoseMsg.pose.position.x = playerTransform.getOrigin().x();
             globalPlayerPoseMsg.pose.position.y = playerTransform.getOrigin().y();
             globalPlayerPoseMsg.pose.position.z = playerTransform.getOrigin().z();
-            player_global_pose_pub.publish(globalPlayerPoseMsg);
+            pub_player_pos_wrt_map.publish(globalPlayerPoseMsg);
             
         } catch (tf::TransformException ex) {
             ROS_ERROR("%s",ex.what());
@@ -239,7 +263,7 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
         localPlayerPoseMsg.pose.position.x = framePlayerTransform.getOrigin().x();
         localPlayerPoseMsg.pose.position.y = framePlayerTransform.getOrigin().y();
         localPlayerPoseMsg.pose.position.z = framePlayerTransform.getOrigin().z();
-        player_local_pose_pub.publish(localPlayerPoseMsg);
+        pub_player_pos_wrt_robot.publish(localPlayerPoseMsg);
     }
 
 	if (show_frame){
@@ -272,9 +296,12 @@ int main(int argc, char** argv){
     ros::NodeHandle nh;
     ros::Rate rate(100);
     
-	player_global_pose_pub = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_global_position",1000);
-  	player_local_pose_pub  = nh.advertise<geometry_msgs::PoseStamped> ("robogame/player_local_position",1000);
-    position_pub = nh.advertise<std_msgs::Float64>("robogame/player_relative_angle",1000);
+	pub_player_pos_wrt_map = nh.advertise<geometry_msgs::PoseStamped> ("kinect2/player_global_position",1000);
+  	pub_player_pos_wrt_robot  = nh.advertise<geometry_msgs::PoseStamped> ("kinect2/player_local_position",1000);
+    pub_angle_wrt_screen_center = nh.advertise<kinect_tracker::PlayerScreenAngle>("kinect2/player_relative_angle",1000);
+    pub_ci = nh.advertise<kinect_tracker::ContractionIndex>("kinect2/player_contraction_index",1000);
+    pub_player_distance = nh.advertise<kinect_tracker::PlayerDistance>("kinect2/player_distance",1000);
+    pub_pixel_position = nh.advertise<kinect_tracker::PlayerPixelPosition>("kinect2/player_pixel_position",1000);
   	 
   	tfListener = new tf::TransformListener();
     

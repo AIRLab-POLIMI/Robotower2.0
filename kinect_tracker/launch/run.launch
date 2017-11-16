@@ -1,5 +1,7 @@
 <launch>
 
+	<rosparam command="load" file="$(find kinect_tracker)/config/tracker.yaml"/>
+
   <arg name="camera_namespace"    default="/kinect2" />
   <arg name="show_frame"          default="false"/>
   <arg name="color_frame"         default="/sd/image_color_rect"/>

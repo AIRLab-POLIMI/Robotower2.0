@@ -15,7 +15,7 @@ previous_decision(0), robot_speed(0), max_vel(0), min_vel(0){
     //     ROS_WARN("Waiting for the move_base action server to come up...");
     // }
 
-   goal_pub = nh_.advertise<behavior_manager::Goal>("robogame/goal", 1000);
+   goal_pub = nh_.advertise<behavior_manager::Goal>("game/goal", 1000);
    tower_state_sub = nh_.subscribe("/arduino/tower_state", 10, &BehaviorManager::towerStateCallback, this);
 
 
@@ -40,7 +40,7 @@ previous_decision(0), robot_speed(0), max_vel(0), min_vel(0){
     
     // set init state for towers.
     for (int i=0; i < NUM_TOWERS; i++){
-    	allowed_towers.push_back(false);
+    	leds_on_per_tower.push_back(0);
 	}
 
 }
@@ -56,7 +56,9 @@ BehaviorManager::~BehaviorManager(void){
 }
 
 void BehaviorManager::towerStateCallback(const arduino_publisher::TowerState::ConstPtr& msg){
-	allowed_towers[msg->pipe_id] = !msg->	is_captured;
+    for (int i; i < NUM_LEDS_PER_TOWER; i ++){
+        leds_on_per_tower[msg->pipe_id] += (msg->leds[i] ? 1 : 0);
+    }
 }
 
 void BehaviorManager::odomCallback(const nav_msgs::Odometry::ConstPtr& msg){
@@ -142,22 +144,13 @@ void BehaviorManager::update_decision_variables(){
     // if (!all_transforms_available) return;
 
     for(int i=0; i < NUM_TOWERS; i++ ){
-    	// IF TOWER HAS NOT BEEN CAPTURED.
-    	//if (allowed_towers[i]){
-		    /* update goal change for the corresponding action*/
-		    for (int j=0; j < goals.size(); j++){
-		        float utility = -tower_player_distances[i] * pow(blocking_factor[i], BLOCKING_EXPONENT);
-		        float bad_value = -utility;
-		        actions[i]->updateGoalChange(goals[j]->getName(), bad_value); // algorithm minimizes Goal Value, 
-		        ROS_INFO_STREAM("Action: " << actions[i]->getName() << "\tGoal: " << goals[j]->getName()<< "\tUtility: " << utility);
-		    }
-	    /*}else{  
-	    	for (int j=0; j < goals.size(); j++){
-		        actions[i]->updateGoalChange(goals[j]->getName(), 100000000); // penalise the not allowed action. Making it virtually impossivle to choose.
-		        ROS_INFO_STREAM("Action: " << actions[i]->getName() << "\tGoal: " << goals[j]->getName()<< "\tUtility: " << 100000000);
-		    }
-	    }*/
-
+        /* update goal change for the corresponding action*/
+        for (int j=0; j < goals.size(); j++){
+            float utility = -tower_player_distances[i] * pow(blocking_factor[i], BLOCKING_EXPONENT) - (leds_on_per_tower[i]*1000); //1000 is a larger weight associated with the number of leds.
+            float bad_value = -utility;
+            actions[i]->updateGoalChange(goals[j]->getName(), bad_value); // algorithm minimizes Goal Value, 
+            ROS_INFO_STREAM("Action: " << actions[i]->getName() << "\tGoal: " << goals[j]->getName()<< "\tUtility: " << utility);
+        }
     }
 
 

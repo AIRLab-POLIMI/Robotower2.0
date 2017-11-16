@@ -53,7 +53,7 @@ bool distanceFunction(float a, float b, int threshold);
 	threshold --> the value to be used in the call to "distanceFunction" method. If distance
     is less than threshold then recursion proceeds, else stops.
 */
-int segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& threshold);
+float segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& threshold);
 
 void test_other();
 #endif

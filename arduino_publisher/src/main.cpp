@@ -139,11 +139,11 @@ int main (int argc, char** argv){
                     // TODO: the line 140 causes a program crash in case no battery is attached to the robot.
                     // This is mostly because in that case, the arduino receiver code sends rubish in the voltage
                     // variable, since the associated analog pin may contain rubish.
-                    bat_msg.data            = atof(data[1].c_str());
+                    bat_msg.data  = atof(data[1].c_str());
                     // Publish the message.
                     bat_pub.publish(bat_msg);
                 } catch (...){
-                    ROS_ERROR("An error has occurred when reading accelerometer data!");
+                    ROS_ERROR("An error has occurred when reading battery status!");
                 }
 
             } else if ((atof(data[0].c_str()) == ACC_INDEX)){ /*accelerometer*/

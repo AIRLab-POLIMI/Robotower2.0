@@ -182,7 +182,7 @@ bool distanceFunction(float a, float b, int threshold){
 	sY --> Seed Pixel y value (rows == height)
 	threshold --> the value to be used in the call to "distanceFunction" method. If distance
     is less than threshold then recursion proceeds, else stops.*/
-int segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& threshold){
+float segmentDepth(cv::Mat& inputFrame, cv::Mat& resultingFrame, int sX, int sY, float& threshold){
 	
 	long int nPixels = 0;                           			// segmented pixels counter variable.
 	std::vector< std::vector<int> > reached;	       			// This is the binary mask for the segmentation.

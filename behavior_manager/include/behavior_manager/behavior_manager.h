@@ -32,6 +32,7 @@
 #include "gob/gob.h"
 
 #define NUM_TOWERS 4
+#define NUM_LEDS_PER_TOWER 4
 #define MIN_DIST_TO_TOWER 0.5
 #define BLOCKING_EXPONENT 5
 
@@ -55,7 +56,7 @@ public:
     std::vector<float> blocking_factor;
     std::vector<float> tower_robot_distances;
     std::vector<float> tower_player_distances;
-    std::vector<bool> allowed_towers;
+    std::vector<int> leds_on_per_tower;    // number of leds on per tower.
 
     std::vector<tf::StampedTransform> towers_robot_transforms, towers_player_transforms;    // position with respect to robot.
     tf::StampedTransform player_transform;
