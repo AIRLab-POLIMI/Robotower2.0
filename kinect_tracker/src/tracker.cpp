@@ -185,7 +185,7 @@ void callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageC
             return;
         }
 
-        ROS_INFO("blob_center.x: %f \t\t blob_center.y: %f", blob_center.x, blob_center.y);
+        ROS_DEBUG("blob_center.x: %f \t\t blob_center.y: %f", blob_center.x, blob_center.y);
     
         cv:Scalar distance = cv::mean(roi);        // compute mean value of the region of interest.
                                                    // RECALL: the pixels correspond to distance in mm.
@@ -388,6 +388,8 @@ int main(int argc, char** argv){
     state = heartbeat::State::STARTED;
     bool success = hb.setState(state);
 
+    ROS_INFO("Tracking player...");
+    
     while(ros::ok() && !is_exit){
         // Issue heartbeat.
         hb.alive();

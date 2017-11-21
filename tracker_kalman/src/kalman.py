@@ -6,7 +6,7 @@ import math
 import tf
 import os.path
 import message_filters
-from std_msgs.msg import String
+from std_msgs.msg import String, Float64
 from tracker_kalman.msg import PlayerPosition 
 from kinect_tracker.msg import PlayerDistance, PlayerScreenAngle, PlayerPixelPosition
 import collections
@@ -115,7 +115,7 @@ def kalman_filter(angle, distance):
     update(angle, distance)
     predict()
 
-def publishFiltered(new_angle, distance):
+def publishNewTF(new_angle, distance):
     # phi is the angular coordinate for the width
     global pixel_position
 
@@ -132,12 +132,7 @@ def publishFiltered(new_angle, distance):
 
 def callback(PlayerScreenAngle, PlayerDistance, PlayerPixelPosition):
     global pixel_position
-    rospy.loginfo('A new Kalman predict-update iteration...')
-    rospy.loginfo("Angles: {}".format(PlayerScreenAngle.angle))
-    rospy.loginfo("Position: {}".format(PlayerDistance.distance))
-
     pixel_position = PlayerPixelPosition
-
     buffer.append(PlayerDistance.distance)
     update(PlayerScreenAngle.angle, np.mean(buffer))
 
@@ -148,6 +143,8 @@ def statusNode():
     #Init node
     rospy.init_node('player_kalman_filter')
     rospy.loginfo('Starting Kalman filter...')
+
+    pub_angle = rospy.Publisher('kalman/player_relative_angle', Float64, queue_size=10)
 
     CAM_WIDTH = rospy.get_param('/tracker_cam_width')
     CAM_HEIGHT= rospy.get_param('/tracker_cam_height')
@@ -172,11 +169,16 @@ def statusNode():
         predict()
 
         ####### PUBLISH PREDICT() RESULT ##########
-        rospy.loginfo("State: ")
-        print x
-        rospy.loginfo("Uncertainty:")
-        print P
-        publishFiltered(x[0],x[1])
+        #rospy.loginfo("State: ")
+        #print x
+        #rospy.loginfo("Uncertainty:")
+        #print P
+        publishNewTF(x[0],x[1])
+        new_angle = Float64()
+        new_angle.data = x[0]
+        pub_angle.publish(new_angle)
+
+
 
         # adjust rate and loo
         rate.sleep()

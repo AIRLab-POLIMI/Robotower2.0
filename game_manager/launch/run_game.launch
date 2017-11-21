@@ -9,21 +9,32 @@
     <!--<param name="enable_statistics" value="true" /> -->
 
     <!--<include file="$(find bayes_people_tracker)/launch/people_tracker.launch"/> -->
+    
+    <!-- behavior manager -->
     <include file="$(find behavior_manager)/launch/run.launch" />
 
-    <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
+    <!-- aruco module -->
+    <include file="$(find aruco_ros)/launch/marker_publisher.launch" />
 
+    <!-- aruco remapper -->
+    <node pkg="aruco_remapper" type="aruco_remapper_node" name="aruco_remapper" output="screen" respawn="true" />
+
+    <!-- player and tower game information -->
+    <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
     <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
     
+    <!-- player classification module -->
     <node pkg="activity_recognition" type="classifier.py" name="activity_classifier" output="screen" respawn="true" />
-    
+
+    <!-- markers tf position -->
     <node pkg="tower_tf_broadcaster" type="tower_tf_broadcaster_node" name="tower_tf_broadcaster_node" output="screen" respawn="true" />
-    
     <node pkg="tower_tf_broadcaster" type="markers_broadcaster_node" name="markers_broadcaster_node" output="screen" respawn="true" />
-    <!--node pkg="solid_state_drive_v1" type="solid_state_drive_v1_node" name="solid_state_drive_v1_node" output="screen" respawn="true" /-->
 
     <!-- kinect_nodes --> 
     <include file="$(find kinect_tracker)/launch/run.launch"/>
     <include file="$(find triskar)/launch/kinect2_bridge_nodes.launch"/>
+    
+    <!-- Kalman filter for player position filtering -->
+    <node pkg="tracker_kalman" type="kalman.py" name="player_kalman" output="screen" respawn="true" />
 
 </launch>
