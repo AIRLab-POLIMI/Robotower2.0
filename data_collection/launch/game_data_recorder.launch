@@ -6,7 +6,7 @@
     
     <arg name="path_save"   default="/home/airlab/Documents/bags/game"/>
 	<arg name="topic"  	default="/enc /tf /vel /arduino/imu_state /arduino/tower_info /arduino/tower_state /ext_usb_camera/image /amcl_pose /map_odom_amcl /map /unsafe/cmd_vel
- /cmd_vel /scan /player_global_position /tower_1 /tower_2 /tower_3 /tower_4 /tower_button_press_entropy /tower_button_press_mean /tower_button_press_var /robogame/goal /robogame/player_global_position /robogame/player_local_position /robogame/player_relative_angle /player/tower_button_info /player_act_prediction /proximity"/>
+ /cmd_vel /scan /player_global_position /tower_1 /tower_2 /tower_3 /tower_4 /tower_button_press_entropy /tower_button_press_mean /tower_button_press_var /robogame/goal /robogame/player_global_position /robogame/player_local_position /robogame/player_relative_angle /player/tower_button_info /player_act_prediction /proximity /joy"/>
 	<arg name="file_name"  	default=""/>
 
 	<group ns="record">

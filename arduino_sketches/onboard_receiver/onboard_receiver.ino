@@ -1,6 +1,8 @@
-//This sketch is from a tutorial video for networking more than two nRF24L01 tranciever modules on the ForceTronics YouTube Channel
-//the code was leverage from the following code http://maniacbug.github.io/RF24/starping_8pde-example.html
-//This sketch is free to the public to use and modify at your own risk
+#include <SPI.h> //Call SPI library so you can communicate with the nRF24L01+
+#include <nRF24L01.h> //nRF2401 libarary found at https://github.com/tmrh20/RF24/
+#include <RF24.h> //nRF2401 libarary found at https://github.com/tmrh20/RF24/
+#include "MPU6050_6Axis_MotionApps20.h" // for acc_package type definitions
+
 #define ACC_WARNING_LED 8
 #define BUZZER_PIN  6
 #define OFF 0
@@ -13,17 +15,11 @@
 #define MISO_PIN        12
 #define SCK_PIN         13
 
-#include <SPI.h> //Call SPI library so you can communicate with the nRF24L01+
-#include <nRF24L01.h> //nRF2401 libarary found at https://github.com/tmrh20/RF24/
-#include <RF24.h> //nRF2401 libarary found at https://github.com/tmrh20/RF24/
-#include "MPU6050_6Axis_MotionApps20.h" // for acc_package type definitions
-
 struct tower_package{
   boolean isTowerDown;
   boolean isCaptured;
   boolean isTowerEnable;
   boolean isButtonPressed;
-  float distances[3]; // 0 - left sensor, 1- center sensor, 2- right sensor
   int ledMask[4];   // which LEDs are on.
   int pressCounter;
 };
@@ -37,7 +33,6 @@ struct acc_package{
 struct tower_package tower_data;
 struct acc_package acc_data;
 
-RF24 RFtransmitter(CE_PIN, CSN_PIN);
 int timeout_limit = 250; // in millis
 int nTransmitters = 5; // the number of transmitters
 unsigned long started_waiting_at;
@@ -47,12 +42,13 @@ int battery_buzzer_state;
 bool timeout;
 float voltage;
 
+RF24 RFtransmitter(CE_PIN, CSN_PIN);
 
 /*rAddress and wAddress are com pipe addresses for the towers and accelerometer.
  * rAddress[] = {tower, tower, tower, tower, accelerometer};
  * wAddress[] = {tower, tower, tower, tower, accelerometer};
  */
-const uint64_t rAddress[] = {0xF0F0F0F0A1LL, 0xF0F0F0F0A2LL, 0xF0F0F0F0B4LL, 0xF0F0F0F0E9LL, 0xF0F0F0F0B9LL}; //Create pipe addresses for the 4 nodes to recieve data, the "LL" is for LongLong type
+const uint64_t rAddress[] = {0xF0F0F0F0A1LL, 0xF0F0F0F0A2LL, 0xF0F0F0F0B4LL, 0xF0F0F0F0E9LL, 0xF0F0F0F0B9LL};  //Create pipe addresses for the 4 nodes to recieve data, the "LL" is for LongLong type
 const uint64_t wAddress[] = {0xB00B1E50D2LL, 0xB00B1E50C3LL, 0xB00B1E50B1LL, 0xB00B1E50A4LL, 0xB00B1E50C4LL};
 
 const int ACC_PIPE_INDEX = 5;   // accelerometer communication pipe rAddress index.
@@ -132,12 +128,6 @@ void loop()
             Serial.print(F(","));
             Serial.print(tower_data.isTowerDown);
             Serial.print(F(","));
-            Serial.print(tower_data.distances[0]);
-            Serial.print(F(","));
-            Serial.print(tower_data.distances[1]);
-            Serial.print(F(","));
-            Serial.print(tower_data.distances[2]);
-            Serial.print(F(","));
             Serial.print(tower_data.ledMask[0]);
             Serial.print(F(","));
             Serial.print(tower_data.ledMask[1]);
@@ -147,8 +137,6 @@ void loop()
             Serial.print(tower_data.ledMask[3]);
             Serial.print(F(","));
             Serial.print(tower_data.pressCounter);
-            Serial.print(F(","));
-            Serial.print(voltage);
             Serial.print(F("\n"));
           }else{
             RFtransmitter.read(&acc_data, sizeof(acc_data));
@@ -175,8 +163,6 @@ void loop()
             Serial.print(acc_data.q.y);
             Serial.print(F(","));
             Serial.print(acc_data.q.z);
-            Serial.print(F(","));
-            Serial.print(voltage);
             Serial.print(F("\n"));
           }
       }
@@ -195,7 +181,7 @@ bool sendCorrectNumber(byte xMitter) {
     else success = true; 										//it was recieved
     RFtransmitter.startListening(); 							//Switch back to a reciever
     return success;  											//return whether write was successful
-}/*
+}*/
 
 void beep(unsigned char delayms){
   analogWrite(BUZZER_PIN, delayms);      // Almost any value can be used except 0 and 255

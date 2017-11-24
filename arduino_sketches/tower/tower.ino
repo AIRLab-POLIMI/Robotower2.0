@@ -5,8 +5,7 @@
  */
 
 #include <SPI.h>
-#include "RF24.h" 
-#include <NewPing.h>
+#include "RF24.h"
 
 /////// CONSTANTS /////////////
 #define TRIGGER_DELAY   20
@@ -32,15 +31,6 @@
 #define SCHMITT_TRIGGER_PIN 2  
 ///////////////////////////////
 
-///////// ULTRASOUND PINS /////
-#define TRIGGER_RIGHT   3
-#define ECHO_RIGHT      4
-#define TRIGGER_LEFT    5
-#define ECHO_LEFT       6
-#define TRIGGER_CENTER  7
-#define ECHO_CENTER     8
-///////////////////////////////
-
 ////// TRANSCEIVER PINS ///////
 #define CSN_PIN         9
 #define CE_PIN          10
@@ -64,12 +54,6 @@ RF24 RFtransmitter(CE_PIN, CSN_PIN);
 const uint64_t wAddress = 0xF0F0F0F0A1LL;              // Pipe to write or transmit on
 const uint64_t rAddress = 0xB00B1E50D2LL;
 
-
-// Ultrasound sensors.
-NewPing sonar_center(TRIGGER_CENTER, ECHO_CENTER, 200);
-NewPing sonar_right(TRIGGER_RIGHT , ECHO_RIGHT, 200);
-NewPing sonar_left(TRIGGER_LEFT  , ECHO_LEFT, 200);
-
 // Enum to control how the timer evolves. 
 enum timerOrientation{
   increase,         // Charger timer increase.
@@ -83,7 +67,6 @@ struct Package{
   boolean isCaptured;
   boolean isTowerEnable;
   boolean isButtonPressed;
-  float distances[3]; // 0 - left sensor, 1- center sensor, 2- right sensor
   int ledMask[4];   // which LEDs are on.
   int pressCounter;
 };
@@ -111,8 +94,8 @@ bool isTowerDown;                       // True if the tower has fallen.
 bool isCaptured;                        // True if player has charged the LEDs and the tower did not fall.
 
 // FUNCTION PROTOTYPE
-void setOFFAllChargeLEDs();
-void setONAllChargeLEDs(); 
+void turnOFFAllChargeLEDs();
+void turnONAllChargeLEDs(); 
 void resetTower();
 void updateChargeLEDs();
 void handleButton();
@@ -150,14 +133,6 @@ void setup() {
 void loop() {
 
     Package data;       // RF package
-
-    // Calls a function for calculating the distance measured by each Ultrasonic sensor
-    delay(TRIGGER_DELAY);
-    data.distances[0] = sonar_left.ping_cm();
-    delay(TRIGGER_DELAY);
-    data.distances[1] = sonar_center.ping_cm();
-    delay(TRIGGER_DELAY);
-    data.distances[2] = sonar_right.ping_cm();
     
     if(isTowerEnable) {
       // Check interval for RED LED blinking.
@@ -172,7 +147,7 @@ void loop() {
           digitalWrite(RED_LED,HIGH);
           isTowerEnable = false;
           isTowerDown   = true;
-          setOFFAllChargeLEDs();
+          turnOFFAllChargeLEDs();
       }else{
 
           // Count button presses by monitoring changes in the button
@@ -198,11 +173,11 @@ void loop() {
                 if (n_leds_ON == N_CHARGE_LEDS){
                   // Setting properties when LED_CHARGING_TIME is reached.
                   digitalWrite(RED_LED,LOW);
-                  setONAllChargeLEDs();
+                  turnONAllChargeLEDs();
                   digitalWrite(GREEN_LED,HIGH);
                   isTowerEnable = false;
                   isCaptured = true;
-                  setONAllChargeLEDs();
+                  turnONAllChargeLEDs();
                 }
               }
           }else{
@@ -221,7 +196,8 @@ void loop() {
     data.isButtonPressed = digitalRead(SCHMITT_TRIGGER_PIN);
     data.isTowerDown = isTowerDown;
     data.pressCounter = press_counter;
-    for(int i=0;i<N_CHARGE_LEDS; i++){
+    
+    for(int i=0;i < N_CHARGE_LEDS; i++){
       data.ledMask[i] = ledMask[i]; 
     }
 
@@ -230,42 +206,44 @@ void loop() {
 }
 
 /*
+ * Reset tower
+ */
+void resetTower(){
+	
+  blink_state          = LOW;   // keeps the RED/GREEN LED blink state.
+  charge_blink_state   = LOW;   // keeps the charging LED blink state.
+  
+  button_state         = LOW;   // Keeps the current button state (LOW/HIGH)
+  previous_button_state= LOW;   // Controls the previous state of the button (LOW/HIGH)
+  press_counter        = 0;     // Counts the ammount of button presses;
+  
+  press_timer          = 0;     // Controls "turn on" time between LEDs.
+  blink_timer          = 0;     // Control the blink time of the tower RED/GREEN LED.
+  charge_blink_timer   = 0;     // Control the blink time of the tower charging LED.
+  n_leds_ON            = 0;     // keeps how many charging LEDs are on.
+  
+  isTowerEnable        = true;  // Keeps the state of the game: True (Game is ON).
+  isTowerDown          = false; // True if the tower has fallen.
+  isCaptured           = false; // True if player has charged the LEDs and the tower did not fall.
+	
+	turnOFFAllChargeLEDs();        // turn all LEDs OFF.
+}
+
+
+/*
  * Turns OFF ALL the charge LEDs by setting them to LOW.
  */
-void setOFFAllChargeLEDs(){
+void turnOFFAllChargeLEDs(){
   for(int i=0; i < N_CHARGE_LEDS; i++){
     ledMask[i] = 0;
   }
 }
 
-/*
- * Reset tower
- */
-void resetTower(){
-	
-  int blink_state   = LOW;                      // keeps the RED/GREEN LED blink state.
-  int charge_blink_state   = LOW;               // keeps the charging LED blink state.
-  
-  volatile int button_state = LOW;              // Keeps the current button state (LOW/HIGH)
-  int previous_button_state = LOW;              // Controls the previous state of the button (LOW/HIGH)
-  int press_counter = 0;                        // Counts the ammount of button presses;
-  
-  static unsigned long press_timer = 0;         // Controls "turn on" time between LEDs.
-  static unsigned long blink_timer = 0;         // Control the blink time of the tower RED/GREEN LED.
-  static unsigned long charge_blink_timer = 0;  // Control the blink time of the tower charging LED.
-  int n_leds_ON = 0;                            // keeps how many charging LEDs are on.
-  
-  bool isTowerEnable = true;                    // Keeps the state of the game: True (Game is ON).
-  bool isTowerDown   = false;                   // True if the tower has fallen.
-  bool isCaptured    = false;                   // True if player has charged the LEDs and the tower did not fall.
-	
-	setOFFAllChargeLEDs();                       // Set all LEDs OFF.
-}
 
 /*
  * Turns ON ALL the charge LEDs by setting them to HIGH.
  */
-void setONAllChargeLEDs(){
+void turnONAllChargeLEDs(){
   for(int i=0; i < N_CHARGE_LEDS; i++){
     ledMask[i] = 1;
   }

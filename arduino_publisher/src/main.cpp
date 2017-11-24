@@ -18,8 +18,8 @@
 /* **** */
 
 /* Data sizes */
-#define TOWER_ARRAY_SIZE 14
-#define ACC_ARRAY_SIZE 12
+#define TOWER_ARRAY_SIZE 10
+#define ACC_ARRAY_SIZE 11
 
 bool isExit = false;
 
@@ -114,14 +114,11 @@ int main (int argc, char** argv){
                         msg.is_button_pressed   = atof(data[2].c_str());
                         msg.is_captured         = atof(data[3].c_str());
                         msg.is_tower_down       = atof(data[4].c_str());
-                        msg.ultrasounds[0]      = atof(data[5].c_str());
-                        msg.ultrasounds[1]      = atof(data[6].c_str());
-                        msg.ultrasounds[2]      = atof(data[7].c_str());
-                        msg.leds[0]             = atof(data[8].c_str());
-                        msg.leds[1]             = atof(data[9].c_str());
-                        msg.leds[2]             = atof(data[10].c_str());
-                        msg.leds[3]             = atof(data[11].c_str());
-                        msg.press_counter       = atof(data[12].c_str());
+                        msg.leds[0]             = atof(data[5].c_str());
+                        msg.leds[1]             = atof(data[6].c_str());
+                        msg.leds[2]             = atof(data[7].c_str());
+                        msg.leds[3]             = atof(data[8].c_str());
+                        msg.press_counter       = atof(data[9].c_str());
                     
                         // Publish the message.
                         tower_pub.publish(msg);

@@ -6,14 +6,11 @@
 	<!-- Launch heartbeat and arduino_publisher -->
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
 	
-	<!--<node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" respawn="true"/> -->
+	<node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" respawn="true"/>
 	
 	<!-- Data logger -->
 	<!--<include file="$(find data_collection)/launch/slippage_data_recorder.launch"/> -->
 	<include file="$(find data_collection)/launch/game_data_recorder.launch"/>
-	
-	<!-- Load dynamic reconfigure parameters for acml
-	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/dynamic_reconfigure.yaml" />-->
 	
 	<!-- D. Orru's map_odom_listener node -->
 	<node pkg="map_odom_listener" type="map_odom_listener_node" name="map_odom_listener" />

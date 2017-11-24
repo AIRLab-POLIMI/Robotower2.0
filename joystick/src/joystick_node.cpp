@@ -52,15 +52,12 @@ JoyTeleop::JoyTeleop() {
 
 void JoyTeleop::unsafeCmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg) {
 	lastUnsafeTwistMsg_ = *msg;
+	if (lastUnsafeTwistMsg_.linear.x != msg->linear.x){
+		ROS_FATAL ("Copy failed.");
+	}
 }
 
 void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
-
-	// Send a message to rosout with the details.
-	// ROS_INFO_STREAM("Receiving joystick input..."  <<
-	// 		"\nCurrent LinearScale(x-axis):"       <<
-	// 		 linearScale			               <<
-	// 		"\nCurrent AngularScale(y-axis):"<< angularScale);
 
 	// process and publish
 	geometry_msgs::Twist twistMsg;
@@ -74,19 +71,19 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 		twistPub.publish(twistMsg);
 	}else if (switchActive) {
 		if (msg->buttons[3]==1){
-			ROS_INFO_STREAM("Increasing linearScale by 0.5\%...");
+			ROS_DEBUG_STREAM("Increasing linearScale by 0.5\%...");
 			linearScale += 0.01;//linearScale * 0.05;
 		}else if (msg->buttons[2]){
-			ROS_INFO_STREAM("Decreasing linearScale by 0.5\%...");
+			ROS_DEBUG_STREAM("Decreasing linearScale by 0.5\%...");
 			linearScale -= 0.01;// linearScale * 0.05;
 		}else if (msg->buttons[0]){
-			ROS_INFO_STREAM("Increasing angularScale by 0.5\%...");
+			ROS_DEBUG_STREAM("Increasing angularScale by 0.5\%...");
 			angularScale += 0.01;// angularScale * 0.05;
 		}else if (msg->buttons[1]){
-			ROS_INFO_STREAM("Decreasing linearScale by 0.5\%...");
+			ROS_DEBUG_STREAM("Decreasing linearScale by 0.5\%...");
 			angularScale -= 0.01;// angularScale * 0.05;
 		}else if (msg->buttons[7]){
-            ROS_INFO_STREAM("Automatic rotation ON.");
+            ROS_DEBUG_STREAM("Automatic rotation ON.");
             
 	  		tf::StampedTransform playerTransform;
 	  		float angle_diff = 0;
@@ -103,14 +100,14 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 			
 			if (std::abs(angle_diff) > (5*M_PI/180)){
 				twistMsg.angular.z = 4.0 * angle_diff;
-				ROS_INFO_STREAM("Threshold activated!");
+				ROS_DEBUG_STREAM("Threshold activated!");
 			} else {
 				twistMsg.angular.z = 0.0;
 			}
 			            
-            ROS_INFO_STREAM("Robot<->Player angle mismatch: " << angle_diff << " rad");
-            ROS_INFO_STREAM("Angular action threshold: " << (5*M_PI/180) << " rad");
-            ROS_INFO_STREAM("Angular value: " << twistMsg.angular.z << " rad");
+            ROS_DEBUG_STREAM("Robot<->Player angle mismatch: " << angle_diff << " rad");
+            ROS_DEBUG_STREAM("Angular action threshold: " << (5*M_PI/180) << " rad");
+            ROS_DEBUG_STREAM("Angular value: " << twistMsg.angular.z << " rad");
             
         }else{
             twistMsg.angular.z = angularScale*msg->axes[angularAxis];

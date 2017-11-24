@@ -8,16 +8,19 @@
 
     <!--<param name="enable_statistics" value="true" /> -->
 
+    <!-- Load dynamic reconfigure parameters for acml -->
+	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_param_18_09_2017.yaml" />
+
     <!--<include file="$(find bayes_people_tracker)/launch/people_tracker.launch"/> -->
     
     <!-- behavior manager -->
     <include file="$(find behavior_manager)/launch/run.launch" />
 
-    <!-- aruco module -->
+    <!-- aruco module 
     <include file="$(find aruco_ros)/launch/marker_publisher.launch" />
 
-    <!-- aruco remapper -->
-    <node pkg="aruco_remapper" type="aruco_remapper_node" name="aruco_remapper" output="screen" respawn="true" />
+    aruco remapper
+    <node pkg="aruco_remapper" type="aruco_remapper_node" name="aruco_remapper" output="screen" respawn="true" /> -->
 
     <!-- player and tower game information -->
     <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
@@ -36,5 +39,7 @@
     
     <!-- Kalman filter for player position filtering -->
     <node pkg="tracker_kalman" type="kalman.py" name="player_kalman" output="screen" respawn="true" />
+    
+
 
 </launch>
