@@ -4,7 +4,7 @@
 #define ARDUINO_WAIT_TIME 1000*1000
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <termios.h>

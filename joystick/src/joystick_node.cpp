@@ -41,6 +41,7 @@ tf::TransformListener* tfListener;
         ros::Subscriber pixelPosSub;
 		ros::Publisher twistPub;
 		ros::Timer timeout;
+		ros::Time unsafe_cmd_vel_time;
 };
 
 JoyTeleop::JoyTeleop() {
@@ -51,10 +52,8 @@ JoyTeleop::JoyTeleop() {
 }
 
 void JoyTeleop::unsafeCmdVelCallback(const geometry_msgs::Twist::ConstPtr &msg) {
+	unsafe_cmd_vel_time = ros::Time::now();
 	lastUnsafeTwistMsg_ = *msg;
-	if (lastUnsafeTwistMsg_.linear.x != msg->linear.x){
-		ROS_FATAL ("Copy failed.");
-	}
 }
 
 void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
@@ -62,15 +61,19 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 	// process and publish
 	geometry_msgs::Twist twistMsg;
 
-	// check deadman switch
-	bool switchActive = (msg->buttons[deadmanButton] == 1);
-
-	if (msg->buttons[4]==1){
+	if (msg->buttons[4]){							// if autonomous
 		// let /unsafe/cmd_vel be published on /cmd_vel
-		twistMsg = lastUnsafeTwistMsg_;
-		twistPub.publish(twistMsg);
-	}else if (switchActive) {
-		if (msg->buttons[3]==1){
+
+		ros::Time now = ros::Time::now();
+		ros::Duration time_diff = unsafe_cmd_vel_time - now;
+		if (time_diff.toSec() < 0.5){
+			twistMsg = lastUnsafeTwistMsg_;
+			twistPub.publish(twistMsg);
+		}else{
+			ROS_WARN("unsafe/cmd_vel too old... skipping..");
+		}
+	}else if (msg->buttons[deadmanButton]) {		// if deadman switch is pressed
+		if (msg->buttons[3]){
 			ROS_DEBUG_STREAM("Increasing linearScale by 0.5\%...");
 			linearScale += 0.01;//linearScale * 0.05;
 		}else if (msg->buttons[2]){
@@ -137,8 +140,6 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 		publishZeroMessage();
 	}
 
-	canMove = switchActive;
-
 	// reset the timeout timer
 	/*if (timeout) {
 		timeout.stop();
@@ -180,7 +181,6 @@ void JoyTeleop::publishZeroMessage() {
 	geometry_msgs::Twist msg;
 	msg.linear.x = 0;
 	msg.angular.z = 0;
-
 	twistPub.publish(msg);
 }
 

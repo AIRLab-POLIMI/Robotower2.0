@@ -76,7 +76,7 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "aruco_camera_to_map");
     ros::NodeHandle node;
     ROS_INFO_STREAM("Starting node...");
-    pose_sup = node.advertise<geometry_msgs::PoseStamped>("game/marker", 100);
+    pose_sup = node.advertise<geometry_msgs::PoseStamped>("game/marker", 10);
     ros::Subscriber sub = node.subscribe("/aruco_marker_publisher/markers",10,&callback);
     ROS_INFO_STREAM("Listening to aruco marker node...");
     ROS_WARN("Markers orientations are not with respect to camera...");

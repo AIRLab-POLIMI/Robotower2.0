@@ -6,7 +6,7 @@
 	<!-- Launch heartbeat and arduino_publisher -->
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
 	
-	<node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" respawn="true"/>
+	<node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" respawn="true"/> <!--launch-prefix="xterm -e gdb"/> -->
 	
 	<!-- Data logger -->
 	<!--<include file="$(find data_collection)/launch/slippage_data_recorder.launch"/> -->

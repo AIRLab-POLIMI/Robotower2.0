@@ -2,7 +2,7 @@
 #include <arduino_publisher/TowerState.h>
 #include <arduino_publisher/ImuState.h>
 #include <std_msgs/Float64.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <time.h>
 #include <signal.h>
 #include <heartbeat/HeartbeatClient.h>
@@ -65,13 +65,9 @@ int main (int argc, char** argv){
     nh.getParam("/format", formatVector);
 
     // Create a publisher object.
-    ros::Publisher tower_pub = nh.advertise
-                              <arduino_publisher::TowerState>
-                              ("arduino/tower_state", 1000);
-    ros::Publisher imu_pub = nh.advertise
-                             <arduino_publisher::ImuState>
-                             ("arduino/imu_state", 1000);
-    ros::Publisher bat_pub = nh.advertise<std_msgs::Float64>("battery_state",1000);
+    ros::Publisher tower_pub = nh.advertise<arduino_publisher::TowerState>("arduino/tower_state", 10);
+    ros::Publisher imu_pub = nh.advertise<arduino_publisher::ImuState>("arduino/imu_state", 100);
+    ros::Publisher bat_pub = nh.advertise<std_msgs::Float64>("battery_state",10);
 
     // Loop at 100Hz until the node is shutdown.
     ros::Rate rate(100);
@@ -94,13 +90,23 @@ int main (int argc, char** argv){
 
         // read port
         int bytes = serialCom.read_port_until(buffer, SERIAL_COM_DELIMITER, 5000);
+        ROS_INFO_STREAM(buffer.str());
+        
         std::vector<std::string> data = split(buffer.str().c_str(),',');
+        int income_pipe;
 
-        if (bytes > 0){
+        if ((bytes > 0) && (data.size() > 0 )){
+
+            try{
+                income_pipe = atof(data[0].c_str());
+            }catch (...){
+                ROS_ERROR("ERROR when reading pipe num...");
+            }
+
             /* Look at the first string value received and 
             choose the appropriate data type for publish */
-            if ((atof(data[0].c_str()) == TOWER1_INDEX) || (atof(data[0].c_str()) == TOWER2_INDEX) ||
-                (atof(data[0].c_str()) == TOWER3_INDEX) || (atof(data[0].c_str()) == TOWER4_INDEX) ){           /* towers */
+            if ((income_pipe == TOWER1_INDEX) || (income_pipe == TOWER2_INDEX) ||
+                (income_pipe == TOWER3_INDEX) || (income_pipe == TOWER4_INDEX) ){           /* towers */
                 
                 if (data.size() == TOWER_ARRAY_SIZE){
                     try{ 
@@ -129,7 +135,7 @@ int main (int argc, char** argv){
                     ROS_WARN("TOWER data doesn't have the required size! Received: %s", buffer.str().c_str());
                 }
 
-            } else if ((atof(data[0].c_str()) == BAT_INDEX)){
+            } else if (income_pipe == BAT_INDEX){
                 // Create and fill in the message.
                 try{
                     std_msgs::Float64 bat_msg;
@@ -143,7 +149,7 @@ int main (int argc, char** argv){
                     ROS_ERROR("An error has occurred when reading battery status!");
                 }
 
-            } else if ((atof(data[0].c_str()) == ACC_INDEX)){ /*accelerometer*/
+            } else if (income_pipe == ACC_INDEX){ /*accelerometer*/
                 // Create and fill in the message.
                 arduino_publisher::ImuState msg;
                 if (data.size() == ACC_ARRAY_SIZE){   
@@ -174,9 +180,9 @@ int main (int argc, char** argv){
 			ROS_ERROR("ARDUINO_PUBLISHER: Could not read_port! Is it connected?");
 		}
 
-        ros::spinOnce();
         // Wait until it's time for another iteration.
         rate.sleep() ;
+        ros::spinOnce();
     }
     success = hb.setState(heartbeat::State::STOPPED);
     // Issue heartbeat.
