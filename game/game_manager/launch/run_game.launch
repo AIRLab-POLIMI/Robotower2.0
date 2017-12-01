@@ -1,0 +1,36 @@
+<launch>
+
+    <rosparam command="load" file="$(find arduino_publisher)/config/arduino.yaml" />
+    <rosparam command="load" file="$(find tower_manager)/config/tower_config.yaml" />
+    <rosparam command="load" file="$(find behavior_manager)/config/config.yaml" />
+    <rosparam command="load" file="$(find game_manager)/params/velocity_config.yaml" />
+
+    <!--<param name="enable_statistics" value="true" /> -->
+
+    <!-- Load dynamic reconfigure parameters for acml -->
+	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_param_18_09_2017.yaml" />
+
+    <!--<include file="$(find bayes_people_tracker)/launch/people_tracker.launch"/> -->
+    
+    <!-- behavior manager -->
+    <include file="$(find behavior_manager)/launch/run.launch" />
+
+    <!-- aruco module 
+    <include file="$(find aruco_ros)/launch/marker_publisher.launch" />
+
+    aruco remapper
+    <node pkg="aruco_remapper" type="aruco_remapper_node" name="aruco_remapper" output="screen" respawn="true" /> -->
+
+    <!-- player and tower game information -->
+    <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
+    <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
+    
+    <!-- player classification module -->
+    <node pkg="activity_recognition" type="classifier.py" name="activity_classifier" output="screen" respawn="true" />
+
+    <!-- kinect_nodes --> 
+    <include file="$(find kinect_tracker)/launch/run.launch"/>
+    <include file="$(find triskar)/launch/kinect2_bridge_nodes.launch"/>
+
+
+</launch>
