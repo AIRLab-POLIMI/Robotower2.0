@@ -1,0 +1,18 @@
+<launch>
+
+    <group ns="game_navigation">
+        <rosparam 
+            command="load"
+            file="$(find game_navigation)/config/navigation.yaml"
+        />
+
+        <node
+            pkg="game_navigation" 
+            type="navigation.py" 
+            name="game_navigation_node"
+            output="screen"
+            respawn="true"
+            >
+        </node>
+    </group>
+</launch>
