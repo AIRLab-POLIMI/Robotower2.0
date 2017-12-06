@@ -8,7 +8,7 @@
 
         <node
             pkg="game_navigation" 
-            type="navigation.py" 
+            type="main.py" 
             name="game_navigation_node"
             output="screen"
             respawn="true"
