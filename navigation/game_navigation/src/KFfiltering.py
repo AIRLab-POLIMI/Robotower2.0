@@ -16,15 +16,23 @@ class EKF:
         self.q = 0.6                                 # process std
         self.r1 = 0.5                                # position measurement std
         self.r2 = np.pi/36                           # orientation measurement std
+        self.r3 = 0.3                                # linear velocity std
+        self.r4 = 0.2                                # angular velocity std
         self.T = 0.02                                # sampling time
         self.Q = (self.q**2)*np.eye(self.n)                    # noise covariance matrix of the process (6x6 matrix)
-        self.R = np.array([[self.r1**2, 0, 0],            # covariance of measurements
-                           [0, self.r1**2, 0],
-                           [0, 0, self.r2**2]])
+        self.R = np.array([[self.r1**2, 0, 0, 0, 0, 0],            # covariance of measurements
+                           [0, self.r1**2, 0, 0, 0, 0],
+                           [0, 0, self.r2**2, 0, 0, 0],
+                           [0, 0, 0, self.r3**2, 0, 0],
+                           [0, 0, 0, 0, self.r3**2, 0],
+                           [0, 0, 0, 0, 0, self.r4**2]])
 
         self.H = np.array([[1., 0, 0, 0, 0, 0],      # Observation Matrix and measurements vector
                            [0, 1., 0, 0, 0, 0],
-                           [0, 0, 1., 0, 0, 0]])
+                           [0, 0, 1., 0, 0, 0],
+                           [0, 0, 0, 1., 0, 0],
+                           [0, 0, 0, 0, 1., 0],
+                           [0, 0, 0, 0, 0, 1.]])
 
         self.B = np.array([[0, 0, 0],                # Control Matrix and Control inputs
                            [0, 0, 0],
@@ -64,16 +72,16 @@ class EKF:
         
         return self.robot_estimated_pose
 
-    def update(self,robot_pose):
+    def update(self,robot_pose,robot_world_vel):
         """
         Kalman update algorithm
         """
         amcl_meas = np.array([[robot_pose[0]],
                             [robot_pose[1]],
                             [robot_pose[2]],
-                            [0],
-                            [0],
-                            [0]])
+                            [robot_world_vel[0]],
+                            [robot_world_vel[1]],
+                            [robot_world_vel[2]]])
     
         Z = np.dot(self.H, amcl_meas)            # measurements vector
         # compute Kalman's Gain
@@ -81,9 +89,7 @@ class EKF:
         K = np.dot(np.dot(self.P,self.H.transpose()),S)
         
         # compute measurements residuals
-        resid = np.array([[Z[0][0]-self.robot_estimated_pose[0][0]],
-                          [Z[1][0]-self.robot_estimated_pose[1][0]],
-                          [Z[2][0]-self.robot_estimated_pose[2][0]]])
+        resid = Z - self.robot_estimated_pose
 
         # update state and covariance estimates
         self.robot_estimated_pose += np.dot(K,resid)

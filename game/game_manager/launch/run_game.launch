@@ -8,7 +8,7 @@
     <!--<param name="enable_statistics" value="true" /> -->
 
     <!-- Load dynamic reconfigure parameters for acml -->
-	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_param_18_09_2017.yaml" />
+	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_params.yaml" />
 
     <!-- behavior manager -->
     <include file="$(find behavior_manager)/launch/run.launch" />

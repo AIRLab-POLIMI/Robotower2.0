@@ -339,7 +339,7 @@ class Navigation:
         # EKF
         self.robot_estimated_pose = self.ekf.predict(robot_pose,self.U_bar)
         self.pubRobotFilteredPose(self.robot_estimated_pose)
-        self.ekf.update(robot_pose)
+        self.ekf.update(robot_pose, robot_world_vel)
 
         # use the global planner (TOWER NAVIGATION)
         is_near_goal = self.towerNavigation()
