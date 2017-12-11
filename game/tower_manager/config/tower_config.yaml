@@ -1,7 +1,7 @@
 number_of_game_towers: 4
 LED_per_tower: 4
 # TOWER POSITIONS:
-tower_1: [0.42, 0.40] 
-tower_2: [1.94, -2.23]
-tower_3: [3.5, 2.39]
-tower_4: [5.06, -0.41]
+tower_1: [1.15, -0.87] 
+tower_2: [3.22, -2.10]
+tower_3: [1.14, -5.03]
+tower_4: [-0.81, -3.60]

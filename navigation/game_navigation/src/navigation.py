@@ -41,6 +41,7 @@ class Navigation:
         self.current_angle_diff = 0
         self.current_range = LaserScan()
         
+        self.br = tf.TransformBroadcaster()
         self.tf_listener = tf.TransformListener()
         
         robot_init_pose = self.getRobotPose()
@@ -49,7 +50,7 @@ class Navigation:
         self.fuzzy_avoider = FuzzyAvoider(self.RR_LOWER_BOUND,self.R_LOWER_BOUND,
                                           self.FR_LOWER_BOUND,self.FL_LOWER_BOUND,
                                           self.L_LOWER_BOUND,self.RL_LOWER_BOUND)
-        self.ekf = EKF()
+        self.ekf = EKF(self.robot_estimated_pose)
 
         self.U_bar = np.array([[0.],[0.],[0.]])
         self.is_safe = True
@@ -219,6 +220,14 @@ class Navigation:
             self.U_bar[1] = self.MAX_VEL*np.sin(alpha)
 
         return is_near_goal
+    
+    def pubRobotFilteredPose(self, pose):
+        """ Publishes its Kalman filtered position"""
+        self.br.sendTransform((pose[0][0], pose[1][0], 0),
+                        tf.transformations.quaternion_from_euler(0, 0, pose[2][0]),
+                        rospy.Time.now(),
+                        '/base_link_kalman_filtered',
+                        "/map")
 
     def getRobotPose(self):
         """
@@ -229,16 +238,14 @@ class Navigation:
         """
         try:
             self.tf_listener.waitForTransform('/map','/base_link', rospy.Time(0), rospy.Duration(1.0))
-            (trans, rot) = self.tf_listener.lookupTransform('/map','/base_link', rospy.Time(0))
+            trans, rot = self.tf_listener.lookupTransform('/map','/base_link', rospy.Time(0))
+            # transform from quaternion to euler angles
+            euler = tf.transformations.euler_from_quaternion(rot)
+ 
+            return np.array([trans[0], trans[1], euler[2]])   # [xR,yR,theta]
 
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             rospy.logerr("Navigation node: " + str(e))
-
-        # transform from quaternion to euler angles
-        euler = tf.transformations.euler_from_quaternion(rot)
-        
-        return np.array([trans[0], trans[1], euler[2]])   # [xR,yR,theta]
-
 
     def laserScanManager(self):
         """
@@ -331,6 +338,7 @@ class Navigation:
         
         # EKF
         self.robot_estimated_pose = self.ekf.predict(robot_pose,self.U_bar)
+        self.pubRobotFilteredPose(self.robot_estimated_pose)
         self.ekf.update(robot_pose)
 
         # use the global planner (TOWER NAVIGATION)

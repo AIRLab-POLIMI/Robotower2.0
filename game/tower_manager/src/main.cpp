@@ -22,7 +22,7 @@ public:
     int total_LED;
     int global_presses;
 
-    std::vector <float> towerPos;
+    std::vector < std::vector<float> > tower_positions;
     std::map <int, bool> button_state;
     std::map <int, int>  button_counter;
     
@@ -49,10 +49,14 @@ public:
 
         for (int i=0; i < num_tower; i++){
             std::string str = "/tower_" + std::to_string(i+1);
-            if (!nh.getParam(str, towerPos)){
+            
+            std::vector<float> tower_pos;
+            if (!nh.getParam(str, tower_pos)){
                 ROS_FATAL_STREAM("Missing parameter: " << "/tower_" << std::to_string(i+1));
                 exit(-1);
             }
+
+            tower_positions.push_back(tower_pos);
         }
 
         initButtonMap();
@@ -116,7 +120,8 @@ public:
             std::string str = "/tower_" + std::to_string(i+1);
             static tf::TransformBroadcaster br;
             tf::Transform transform;
-            transform.setOrigin( tf::Vector3(towerPos[0],towerPos[1], 0.0) );
+            auto t_pos = tower_positions[i];
+            transform.setOrigin( tf::Vector3(t_pos[0],t_pos[1], 0.0) );
             tf::Quaternion q;
             q.setRPY(0, 0, 0);
             transform.setRotation(q);

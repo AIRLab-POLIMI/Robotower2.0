@@ -12,7 +12,4 @@
 	<!--<include file="$(find data_collection)/launch/slippage_data_recorder.launch"/> -->
 	<include file="$(find data_collection)/launch/game_data_recorder.launch"/>
 	
-	<!-- D. Orru's map_odom_listener node -->
-	<node pkg="map_odom_listener" type="map_odom_listener_node" name="map_odom_listener" />
-	
 </launch> 
