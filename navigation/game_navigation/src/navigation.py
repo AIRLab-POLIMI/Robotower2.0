@@ -267,15 +267,13 @@ class Navigation:
                 proximity = True
                 break
 
-        rospy.logwarn("LaserScan stamp: {}".format(self.current_range.header.stamp))
-
         # perform a safety check
         dontcare_condition = np.array(self.current_range.ranges) < self.DONTCARE
         new_is_safe = True
         if proximity and (all(dontcare_condition) == False) and (len(dontcare_condition) != 0):
             new_is_safe = False
         self.is_safe = new_is_safe
-        rospy.logwarn("is safe?: {}".format(self.is_safe))
+        
         # Generate sensing areas: rear right, right, front right, front left, left, rear left
         rear_right_sec  = self.current_range.ranges[0:149]
         right_sec       = self.current_range.ranges[150:309]
@@ -337,8 +335,7 @@ class Navigation:
 
         # use the global planner (TOWER NAVIGATION)
         is_near_goal = self.towerNavigation()
-        rospy.logwarn("near_goal?: {}".format(is_near_goal))
-
+        
         # use kinematic compensator
         robot_unsmoothed_cmd_vel = self.kinematic_compensator()
         
@@ -349,7 +346,6 @@ class Navigation:
         rear_right, right, front_right, front_left, left, rear_left = (None,None,None,None,None,None)
         
         if len(self.current_range.ranges) != 0:
-            rospy.loginfo("Checking laser...")
             rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
 
         # Fuzzy

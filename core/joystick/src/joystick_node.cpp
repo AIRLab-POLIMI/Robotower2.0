@@ -46,7 +46,7 @@ tf::TransformListener* tfListener;
 
 JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
-	unsafeCmdVelSub = nh.subscribe("/unsafe/cmd_vel", 10, &JoyTeleop::unsafeCmdVelCallback, this);
+	unsafeCmdVelSub = nh.subscribe("/game_navigation/unsafe/cmd_vel", 10, &JoyTeleop::unsafeCmdVelCallback, this);
 	twistPub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
 	updateParameters();
 }

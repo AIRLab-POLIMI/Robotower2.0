@@ -10,8 +10,6 @@
     <!-- Load dynamic reconfigure parameters for acml -->
 	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_param_18_09_2017.yaml" />
 
-    <!--<include file="$(find bayes_people_tracker)/launch/people_tracker.launch"/> -->
-    
     <!-- behavior manager -->
     <include file="$(find behavior_manager)/launch/run.launch" />
 
@@ -31,6 +29,9 @@
     <!-- kinect_nodes --> 
     <include file="$(find kinect_tracker)/launch/run.launch"/>
     <include file="$(find triskar)/launch/kinect2_bridge_nodes.launch"/>
+
+    <!-- navigation -->
+    <include file="$(find game_navigation)/launch/navigation.launch"/>
 
 
 </launch>
