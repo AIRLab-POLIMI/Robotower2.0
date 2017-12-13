@@ -2,14 +2,16 @@
 
 import rospy
 import os.path
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from sensor_msgs.msg import Joy
 from record_ros.srv import String_cmd
 
 isRecording = False
 isPressed = False
+
 #Setup publisher
-#pub = rospy.Publisher('robogame/gameState', interState, queue_size=10)
+# This publisher is used to signal the external camera to start recording
+pub = rospy.Publisher('logging/record_ext_video', Bool, queue_size=1)
 	
 
 def joyCallback(data):
@@ -25,8 +27,6 @@ def joyCallback(data):
 				rospy.loginfo('Recording...')
 				service('record')
 				isRecording = True
-				## PUBLISH LED MESSAGE
-				#pub.publish(msg)
 			else:
 				rospy.loginfo('Stop recording');
 				service('stop')
@@ -37,6 +37,11 @@ def joyCallback(data):
 		isPressed = True
 	elif data.buttons[5] and data.buttons[8] == 0:
 		isPressed = False
+
+	## Notifies the external recorder to start.
+	msg = Bool()
+	msg.data = isRecording
+	pub.publish(msg)
 
 
 def statusNode():

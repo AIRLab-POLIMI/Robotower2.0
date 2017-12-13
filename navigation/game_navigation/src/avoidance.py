@@ -188,8 +188,8 @@ class FuzzyAvoider:
         
         # FUZZY RULES SECTION
         
-        self.rule1 = ctrl.Rule(self.min_front_left['fl_close'] | self.min_front_right['fr_close'], (self.Vx['vxstop'], self.Vy['-0.4']))
-        self.rule2 = ctrl.Rule(self.min_front_left['fl_far'] & self.min_front_right['fr_far'] & self.near_goal['false'], (self.Vx['vxstop'],self.Vy['-0.3']))
+        self.rule1 = ctrl.Rule(self.min_front_left['fl_close'] | self.min_front_right['fr_close'], (self.Vx['vxstop'], self.Vy['-0.5']))
+        self.rule2 = ctrl.Rule(self.min_front_left['fl_far'] & self.min_front_right['fr_far'] & self.near_goal['false'], (self.Vx['vxstop'],self.Vy['-0.4']))
         self.rule3 = ctrl.Rule(self.min_rear_left['rl_close'] & self.index_rear_left['rl_isrl'] & self.near_goal['false'], (self.Vx['0.4'],self.Vy['0.5']))
         self.rule4 = ctrl.Rule(self.min_rear_left['rl_close'] & self.index_rear_left['rl_isl'] & self.near_goal['false'], (self.Vx['0.5'],self.Vy['0.4']))
         self.rule5 = ctrl.Rule(self.min_front_left['fl_far'] & self.index_rear_left['rl_isrl'] & self.near_goal['false'], (self.Vx['0.3'],self.Vy['0.4']))
@@ -231,14 +231,14 @@ class FuzzyAvoider:
         self.rule40 = ctrl.Rule(~self.min_rear_left['rl_dontcare'] & self.min_front_left['fl_dontcare'] & self.min_front_right['fr_dontcare'] & (~self.min_rear_right['rr_dontcare']) & self.near_goal['true'], (self.Vx['vxstop'],self.Vy['-0.4'])) 
         self.rule41 = ctrl.Rule(self.min_rear_left['rl_dontcare'] & self.min_front_left['fl_dontcare'] & (~self.min_right['r_dontcare']) & (~self.min_rear_right['rr_dontcare']) & self.near_goal['true'], (self.Vx['0.4'],self.Vy['-0.3'])) 
         self.rule42 = ctrl.Rule(~self.min_rear_left['rl_dontcare'] & (~self.min_left['l_dontcare']) & self.min_front_left['fl_dontcare'] & self.min_right['r_dontcare'] & self.min_rear_right['rr_dontcare'] & self.near_goal['true'], (self.Vx['-0.4'],self.Vy['-0.3']))
-        # if everything is don't care ??
-        #self.rule43 = ctrl.Rule(self.min_rear_left['rl_dontcare'] & self.min_left['l_dontcare'] & self.min_front_left['fl_dontcare'] & self.min_front_right['fr_dontcare'] & self.min_right['r_dontcare'] & self.min_rear_right['rr_dontcare'] &  self.near_goal['false'], (self.Vx['vxstop'],self.Vy['vystop'])) 
+        # if player is in front of the robot in near target area ??
+        # self.rule43 = ctrl.Rule(self.min_rear_left['rl_dontcare'] & (~self.min_front_left['fl_dontcare']) | (~self.min_front_right['fr_dontcare']) & self.min_rear_right['rr_dontcare'] & self.near_goal['true'], (self.Vx['vxstop'],self.Vy['-0.5'])) 
         
 
 
         # Now that we have our rules defined, we can simply create a control system via:
         self.fuzzyavoider_ctrl = ctrl.ControlSystem([self.rule1,self.rule2,self.rule3,self.rule4,self.rule5,self.rule6,self.rule7,self.rule8,self.rule9,self.rule10,self.rule11,self.rule12,self.rule13,self.rule14,self.rule15,self.rule16,self.rule17,self.rule18,self.rule19,self.rule20,
-        self.rule21,self.rule22,self.rule23,self.rule24,self.rule25,self.rule26,self.rule27,self.rule28,self.rule29,self.rule30,self.rule31,self.rule32,self.rule33,self.rule34,self.rule35,self.rule36,self.rule37,self.rule38,self.rule39,self.rule40,self.rule41,self.rule42])#,self.rule43])
+        self.rule21,self.rule22,self.rule23,self.rule24,self.rule25,self.rule26,self.rule27,self.rule28,self.rule29,self.rule30,self.rule31,self.rule32,self.rule33,self.rule34,self.rule35,self.rule36,self.rule37,self.rule38,self.rule39,self.rule40,self.rule41,self.rule42])
         # In order to simulate this control system, we will create a ControlSystemSimulation
     
         self.fuzzyAvoider = ctrl.ControlSystemSimulation(self.fuzzyavoider_ctrl)

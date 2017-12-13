@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(video_recorder)
+project(camera_reader)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -130,14 +130,14 @@ catkin_package(
 # add_dependencies(video_recorder ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(video_recorder_node src/video_recorder_node.cpp)
+add_executable(${PROJECT_NAME}_node src/camera_reader.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(video_recorder_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(video_recorder_node
+target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
    ${OpenCV_LIBS}
 )

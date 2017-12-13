@@ -21,7 +21,7 @@ int main(int argc, char** argv)
 
 
   cv::VideoCapture cap(source_index);
-  ROS_INFO_STREAM("Device ready! Index value: " << source_index);
+  ROS_INFO_STREAM("Camera device ready! Index value: " << source_index);
   // Check if video device can be opened with the given index
   if(!cap.isOpened()) return 1;
   cv::Mat frame;

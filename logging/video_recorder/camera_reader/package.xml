@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>video_recorder</name>
+  <name>camera_reader</name>
   <version>0.0.0</version>
   <description>The video_recorder package. Get images frames from available camera 
   and publish frames using image_transport data type.</description>
@@ -13,5 +13,6 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
   <run_depend>roscpp</run_depend>
+  <run_depend>record_bag</run_depend>
 
 </package>

@@ -1,0 +1,18 @@
+<launch>
+    
+    <arg name="video_rec_path_save"   default="/home/airlab/catkin_ws/bags"/>
+	<arg name="video_rec_topic"  	default="/ext_usb_camera/image/compressed"/>
+	<arg name="video_rec_file_name"  	default=""/>
+
+	<group ns="video_record">
+		<param name="path_save" type="str" value="$(arg video_rec_path_save)"	/>
+		<param name="topic" 	type="str" value="$(arg video_rec_topic)"		/>
+		<param name="file_name" type="str" value="$(arg video_rec_file_name)"	/>
+		<node name="video_record_ros" pkg="video_record_ros" type="video_record_ros" output="screen" respawn="true"/>
+	</group>
+    
+    <node pkg="camera_reader" type="camera_reader_node" name="camera_reader" output="screen" respawn="true" />
+    <node pkg="video_record_bag" type="record.py" name="video_record_bag" output="screen" respawn="true" />
+    
+
+</launch>
