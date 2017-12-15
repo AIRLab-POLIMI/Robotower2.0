@@ -11,7 +11,7 @@
 #include <SPI.h>
 #include <RF24.h>
 
-#define TOWER_NUMBER 4                // <-- SET THIS PRIOR TO UPLOAD THE CODE. RANGE MUST BE [1-4] INT VALUES.
+#define TOWER_NUMBER 1                // <-- SET THIS PRIOR TO UPLOAD THE CODE. RANGE MUST BE [1-4] INT VALUES.
 
 /***** GENERAL PINS *****/
 #define TRIGGER_DELAY   20
@@ -207,7 +207,6 @@ void checkCapture(){
 void receiveCmd(){
   if (RFtransmitter.available()) {
     Package pkg = prepareData();
-    Package *pkg_address = &pkg;
     RFtransmitter.writeAckPayload(1, &pkg, sizeof(Package));
     RFtransmitter.read(&control_msg,sizeof(control_msg));
     Serial.print("integer got is : ");

@@ -9,17 +9,20 @@
 #include <RF24.h>
 #include "MPU6050_6Axis_MotionApps20.h" // for acc_package type definitions
 
+
+#define TOWER_SAMPLE_TIME 500
 #define ACC_WARNING_LED 8
 #define BUZZER_PIN  6
 #define BATTERY_PIN A2
+#define NUM_TOWERS 4
 #define OFF 0
 #define ON 1
 #define BAT_CHK_TIMEOUT_TRH 5000     // publishes battery data every 5 secs.
-#define NUM_TRANSMITTERS 5
-#define ACC_TIMEOUT_TRH 250
+#define NUM_TOWERS 5
+#define ACC_TIMEOUT_TRH 100
 #define BEEPING_INTERVAL 400
 #define LOW_BATTERY_VOLTAGE 22
-#define ACC_PIPE_INDEX 4    // accelerometer r_addresses index.
+#define ACC_PIPE_INDEX 5    // accelerometer r_addresses index.
 #define BAT_INDEX  6 
 #define VOLTAGE_TRH 1.947   // A voltage less then 1.77 correspond to battery 
                             // level at 20V, 1.947 correspond to battery level at 22V.
@@ -43,29 +46,32 @@ struct tower_package{
 };
 
 struct acc_package{
-  Quaternion q;
   VectorInt16 aaWorld;
   VectorInt16 gyro;
 };
 
 struct tower_package tower_data;
 struct acc_package acc_data;
+static unsigned long last_tw_sample_time;
 static unsigned long last_battery_check_time;
 static unsigned long last_battery_beep_time;
 static unsigned long last_acc_time;          // last acc sample time that we saw. 
 int should_beep;
 bool is_notify;
 
+
 RF24 RFtransmitter(CE_PIN, CSN_PIN);
 
 /*r_addresses and w_addresses are com pipe addresses for the towers and accelerometer.
- * r_addresses[] = {tower, tower, tower, tower, accelerometer};
+ * w_addresses[] = {tower, tower, tower, tower, accelerometer};
  */
-const uint64_t r_addresses[] = {0xF0F0F0F0A1LL, 0xF0F0F0F0A2LL, 0xF0F0F0F0B4LL, 0xF0F0F0F0E9LL, 0xF0F0F0F0B9LL};
-const uint64_t w_addresses[] = {0xB00B1E50D2LL};
+const uint64_t w_addresses[] = {0xF0F0F0F0A1LL, 0xF0F0F0F0A2LL, 0xF0F0F0F0B4LL, 0xF0F0F0F0E9LL, 0xF0F0F0F0B9LL};
+const uint64_t r_addresses[] = {0xB00B1E50D2LL};
 
 
-const int debug_leds[] = {2,3,4,5,7};
+int com_counter= 0;     // keeps track of which tower to sample next
+
+int msg[1] = {1};
 
 void setup(){
   Serial.begin(57600);
@@ -73,103 +79,108 @@ void setup(){
   RFtransmitter.setChannel(120);
   RFtransmitter.setPALevel(RF24_PA_MIN);
   RFtransmitter.setDataRate(RF24_250KBPS);
+
+  RFtransmitter.setAutoAck(true);
+  RFtransmitter.enableAckPayload();
+  RFtransmitter.enableDynamicPayloads();
+  RFtransmitter.stopListening();
+  RFtransmitter.setRetries(15,15);
+  RFtransmitter.setPayloadSize(sizeof(tower_package));
   
-  for (int i=0;i<NUM_TRANSMITTERS;i++){
-    RFtransmitter.openReadingPipe(i,r_addresses[i]);
-  }
-  
-  RFtransmitter.startListening();
   pinMode(ACC_WARNING_LED, OUTPUT); 
   pinMode(BUZZER_PIN, OUTPUT);
-  
-  // for debug
-  for(int i=1; i< 5;i++){
-    pinMode(debug_leds[i], OUTPUT);
-  }
   
   last_acc_time = millis();
   is_notify = false;
 }
 
 
-// talk to towers
-void talkToSlaves(int msg){
-    //TODO
-    RFtransmitter.openWritingPipe(r_addresses[0]);
-    RFtransmitter.stopListening();
-    delay(5);
-    RFtransmitter.write(&msg, sizeof(msg));
-    RFtransmitter.startListening();
-    delay(5);
-    
+void writeAccToSerial(){
+    Serial.print(5);        //ACC code is 4.
+    Serial.print(F(","));
+    Serial.print(acc_data.aaWorld.x);
+    Serial.print(F(","));
+    Serial.print(acc_data.aaWorld.y);
+    Serial.print(F(","));
+    Serial.print(acc_data.aaWorld.z);
+    Serial.print(F(","));
+    Serial.print(acc_data.gyro.x);
+    Serial.print(F(","));
+    Serial.print(acc_data.gyro.y);
+    Serial.print(F(","));
+    Serial.print(acc_data.gyro.z);
+    Serial.print(F("\n"));
+}
+
+void writeTowerToSerial(int id){
+    Serial.print(id);
+    Serial.print(F(","));
+    Serial.print(tower_data.button);
+    Serial.print(F(","));
+    Serial.print(tower_data.t_status);
+    Serial.print(F(","));
+    Serial.print(tower_data.leds[0]);
+    Serial.print(F(","));
+    Serial.print(tower_data.leds[1]);
+    Serial.print(F(","));
+    Serial.print(tower_data.leds[2]);
+    Serial.print(F(","));
+    Serial.print(tower_data.leds[3]);
+    Serial.print(F(","));
+    Serial.print(tower_data.num_presses);
+    Serial.print(F("\n"));
 }
 
 void loop(){
   
-    checkBatteryLevel();
+    float voltage = checkBatteryLevel();
 
-    // for debug
-    for(int i=1; i< 5;i++){
-        digitalWrite(debug_leds[i], LOW);
+    //Get player acceleration data
+    RFtransmitter.openWritingPipe(w_addresses[4]);
+    RFtransmitter.setPayloadSize(sizeof(acc_package));
+    delay(3);
+    if(RFtransmitter.write(msg,sizeof(msg))){
+        if(RFtransmitter.isAckPayloadAvailable()){
+            RFtransmitter.read(&acc_data,sizeof(acc_data));
+                last_acc_time = millis();
+                digitalWrite(ACC_WARNING_LED, HIGH);
+                writeAccToSerial();
+        }
     }
-    
-    uint8_t pipeNum;      
-    while(RFtransmitter.available(&pipeNum)){       //Check if received data from transmitters.
-      
-      digitalWrite((int) pipeNum+2, HIGH);          // light up a corresponding LED (for debug)
-      
-      // 0-3 represent the towers.
-      if (pipeNum != ACC_PIPE_INDEX){ 
-        RFtransmitter.read(&tower_data, sizeof(tower_data));
-        Serial.print(pipeNum+1);
-        Serial.print(F(","));
-        Serial.print(tower_data.button);
-        Serial.print(F(","));
-        Serial.print(tower_data.t_status);
-        Serial.print(F(","));
-        Serial.print(tower_data.leds[0]);
-        Serial.print(F(","));
-        Serial.print(tower_data.leds[1]);
-        Serial.print(F(","));
-        Serial.print(tower_data.leds[2]);
-        Serial.print(F(","));
-        Serial.print(tower_data.leds[3]);
-        Serial.print(F(","));
-        Serial.print(tower_data.num_presses);
-        Serial.print(F("\n"));
-      }else{
-        RFtransmitter.read(&acc_data, sizeof(acc_data));
-        last_acc_time = millis();
-        digitalWrite(ACC_WARNING_LED, HIGH);
-        Serial.print(pipeNum+1);
-        Serial.print(F(","));
-        Serial.print(acc_data.aaWorld.x);
-        Serial.print(F(","));
-        Serial.print(acc_data.aaWorld.y);
-        Serial.print(F(","));
-        Serial.print(acc_data.aaWorld.z);
-        Serial.print(F(","));
-        Serial.print(acc_data.gyro.x);
-        Serial.print(F(","));
-        Serial.print(acc_data.gyro.y);
-        Serial.print(F(","));
-        Serial.print(acc_data.gyro.z);
-        Serial.print(F(","));
-        Serial.print(acc_data.q.w);
-        Serial.print(F(","));
-        Serial.print(acc_data.q.x);
-        Serial.print(F(","));
-        Serial.print(acc_data.q.y);
-        Serial.print(F(","));
-        Serial.print(acc_data.q.z);
-        Serial.print(F("\n"));
-      }
-  }
 
-  // if acc data timed out turn OFF ACC_WARNING_LED.
-  if (millis() - last_acc_time > ACC_TIMEOUT_TRH){
-      digitalWrite(ACC_WARNING_LED, LOW);
-  }
+
+    // Get tower data
+    if (millis() - last_tw_sample_time > TOWER_SAMPLE_TIME){
+        last_tw_sample_time = millis();
+
+        int com_pipe_to_sample = com_counter % (NUM_TOWERS + 1);
+
+        if (com_pipe_to_sample == 5){
+            Serial.print(BAT_INDEX);
+            Serial.print(F(","));
+            Serial.print(voltage);
+            Serial.print(F("\n"));
+        }else{    // Sample towers
+            //Get tower data
+            RFtransmitter.openWritingPipe(w_addresses[com_pipe_to_sample]);
+            delay(5);
+            RFtransmitter.setPayloadSize(sizeof(tower_package));
+            if(RFtransmitter.write(msg,sizeof(msg))){
+                if(RFtransmitter.isAckPayloadAvailable()){
+                  RFtransmitter.read(&tower_data,sizeof(tower_data));
+                      writeTowerToSerial(com_pipe_to_sample+1);
+                  }
+            }
+        }
+
+        com_counter++;
+    }
+
+    // if acc data timed out turn OFF ACC_WARNING_LED.
+    if (millis() - last_acc_time > ACC_TIMEOUT_TRH){
+        last_acc_time = millis();
+        digitalWrite(ACC_WARNING_LED, LOW);
+    }
 }
 
 //This function turns the reciever into a transmitter briefly to tell one of the nRF24s
@@ -196,7 +207,7 @@ float getVoltageLevel(){
 
 // Checks the battery level and produces a beep in case it is low. Also writes
 // the voltage level to serial port.
-void checkBatteryLevel(){
+float checkBatteryLevel(){
   float voltage = getVoltageLevel();
   
   if (voltage <= LOW_BATTERY_VOLTAGE && voltage >= (LOW_BATTERY_VOLTAGE/2)){
@@ -213,15 +224,7 @@ void checkBatteryLevel(){
   }else{
     digitalWrite(BUZZER_PIN, LOW);
   }
-
-  if (millis() - last_battery_check_time > BAT_CHK_TIMEOUT_TRH){
-      last_battery_check_time = millis();
-      /* PUBLIC THE VOLTAGE */
-      Serial.print(BAT_INDEX);
-      Serial.print(F(","));
-      Serial.print(voltage);
-      Serial.print(F("\n"));
-  }
+  return voltage;
 }
 
 void beep(unsigned char delayms){

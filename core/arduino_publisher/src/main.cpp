@@ -18,8 +18,8 @@
 /* **** */
 
 /* Data sizes */
-#define TOWER_ARRAY_SIZE 10
-#define ACC_ARRAY_SIZE 11
+#define TOWER_ARRAY_SIZE 8
+#define ACC_ARRAY_SIZE 7
 
 bool isExit = false;
 
@@ -90,7 +90,7 @@ int main (int argc, char** argv){
 
         // read port
         int bytes = serialCom.read_port_until(buffer, SERIAL_COM_DELIMITER, 5000);
-        ROS_INFO_STREAM(buffer.str());
+        //ROS_INFO_STREAM(buffer.str());
         
         std::vector<std::string> data = split(buffer.str().c_str(),',');
         int income_pipe;
@@ -115,16 +115,14 @@ int main (int argc, char** argv){
                    
                         // Fill up msg
                         msg.header.stamp        = ros::Time::now(); 
-                        msg.pipe_id             = atof(data[0].c_str());
-                        msg.is_tower_enable     = atof(data[1].c_str());
-                        msg.is_button_pressed   = atof(data[2].c_str());
-                        msg.is_captured         = atof(data[3].c_str());
-                        msg.is_tower_down       = atof(data[4].c_str());
-                        msg.leds[0]             = atof(data[5].c_str());
-                        msg.leds[1]             = atof(data[6].c_str());
-                        msg.leds[2]             = atof(data[7].c_str());
-                        msg.leds[3]             = atof(data[8].c_str());
-                        msg.press_counter       = atof(data[9].c_str());
+                        msg.id                  = atof(data[0].c_str());
+                        msg.button              = atof(data[1].c_str());
+                        msg.status              = atof(data[2].c_str());
+                        msg.leds[0]             = atof(data[3].c_str());
+                        msg.leds[1]             = atof(data[4].c_str());
+                        msg.leds[2]             = atof(data[5].c_str());
+                        msg.leds[3]             = atof(data[6].c_str());
+                        msg.press_counter       = atof(data[7].c_str());
                     
                         // Publish the message.
                         tower_pub.publish(msg);
@@ -162,10 +160,6 @@ int main (int argc, char** argv){
                             msg.gyro.x = atof(data[4].c_str());
                             msg.gyro.y = atof(data[5].c_str());
                             msg.gyro.z = atof(data[6].c_str());
-                            msg.q[0]   = atof(data[7].c_str());
-                            msg.q[1]   = atof(data[8].c_str());
-                            msg.q[2]   = atof(data[9].c_str());
-                            msg.q[3]   = atof(data[10].c_str());
                             // Publish the message.
                             imu_pub.publish(msg);
                     } catch (...){

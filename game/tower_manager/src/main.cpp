@@ -74,7 +74,7 @@ public:
     void messageReceived(const arduino_publisher::TowerState& msg){
         tower_manager::TowerInfo tower_info;
         tower_info.header.stamp = ros::Time::now();
-        tower_info.id = msg.pipe_id;
+        tower_info.id = msg.id;
         int sum = 0;
 
         for (auto i: msg.leds){
@@ -83,10 +83,10 @@ public:
 
         tower_info.completion = (100.0 * sum) / LED_per_tower;
         
-        if (button_state[msg.pipe_id] != msg.is_button_pressed){
-            button_state[msg.pipe_id] = msg.is_button_pressed;
-            if (msg.is_button_pressed == true){
-                button_counter[msg.pipe_id] += 1; 
+        if (button_state[msg.id] != msg.button){
+            button_state[msg.id] = msg.button;
+            if (msg.button == true){
+                button_counter[msg.id] += 1; 
                 global_presses += 1;
                 /* PUBLISH TOWER BUTTON PRESS TIME DIFFERENCE.*/
                 if (global_presses > 1){
@@ -108,8 +108,8 @@ public:
         }
 
         if (global_presses != 0){
-            tower_info.press_rate = button_counter[msg.pipe_id]/float(global_presses);
-            tower_info.press_counter = button_counter[msg.pipe_id];
+            tower_info.press_rate = button_counter[msg.id]/float(global_presses);
+            tower_info.press_counter = button_counter[msg.id];
         }
 
         pub_tower_info.publish(tower_info);
