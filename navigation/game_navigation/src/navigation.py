@@ -39,6 +39,8 @@ class Navigation:
         self.current_vel = Twist()
         self.current_goal = 1
         self.current_angle_diff = 0
+        self.current_player_info = PlayerInfo()
+        self.time_stamp = 0
         self.current_range = LaserScan()
         
         self.br = tf.TransformBroadcaster()
@@ -83,6 +85,13 @@ class Navigation:
         """
         self.current_angle_diff = msg.angle
 
+    def playerInfoCallback(self,msg):
+        """
+        Updates current camera-player distance
+        """
+        self.current_player_info = copy.deepcopy(msg)
+
+
     def anglePController(self):
         """
         The proportional controller callback to adjust robot 
@@ -95,15 +104,18 @@ class Navigation:
                 may refer to it also as "bar_u3" or "bar_u3R" for consistency reasons but in fact we are 
                 always considering the output value of this function. 
         """
-
         # Dead zone (Jerk-smother) used in order to eliminate angular
         # jerking while tracking
-        
         if abs(self.current_angle_diff) < self.ANGLE_DEADZONE:
             self.current_angle_diff = 0
-
+            
         # Proportional Controller
         dot_theta = self.KP*self.current_angle_diff
+        if (self.current_player_info.distance < 1) and (abs(self.current_player_info.header.stamp.to_sec() - rospy.Time.now().to_sec()) < 1.5): 
+            # the condition is activated when the player is within 1 meter from the camera and when the received
+            # message is no older than 1.5 sec. The more the player is close the more the angular rotation command is smoothed
+            rospy.logwarn('im smoothing')
+            dot_theta = dot_theta * self.current_player_info.distance
 
         # Angular velocity clamping (max angular velocity in rad/sec)
         if dot_theta >= self.MAX_DOT_THETA:

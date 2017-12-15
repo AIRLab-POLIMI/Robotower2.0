@@ -15,7 +15,7 @@
 #define OFF 0
 #define ON 1
 #define BAT_CHK_TIMEOUT_TRH 5000     // publishes battery data every 5 secs.
-#define NUM_TRANSMITTERS 5
+#define NUM_TOWERS 5
 #define ACC_TIMEOUT_TRH 250
 #define BEEPING_INTERVAL 400
 #define LOW_BATTERY_VOLTAGE 22
@@ -59,13 +59,15 @@ bool is_notify;
 RF24 RFtransmitter(CE_PIN, CSN_PIN);
 
 /*r_addresses and w_addresses are com pipe addresses for the towers and accelerometer.
- * r_addresses[] = {tower, tower, tower, tower, accelerometer};
+ * w_addresses[] = {tower, tower, tower, tower, accelerometer};
  */
-const uint64_t r_addresses[] = {0xF0F0F0F0A1LL, 0xF0F0F0F0A2LL, 0xF0F0F0F0B4LL, 0xF0F0F0F0E9LL, 0xF0F0F0F0B9LL};
-const uint64_t w_addresses[] = {0xB00B1E50D2LL};
+const uint64_t w_addresses[] = {0xF0F0F0F0A1LL, 0xF0F0F0F0A2LL, 0xF0F0F0F0B4LL, 0xF0F0F0F0E9LL, 0xF0F0F0F0B9LL};
+const uint64_t r_addresses[] = {0xB00B1E50D2LL};
 
 
 const int debug_leds[] = {2,3,4,5,7};
+
+int msg[1] = {1};
 
 void setup(){
   Serial.begin(57600);
@@ -73,12 +75,14 @@ void setup(){
   RFtransmitter.setChannel(120);
   RFtransmitter.setPALevel(RF24_PA_MIN);
   RFtransmitter.setDataRate(RF24_250KBPS);
+
+  RFtransmitter.setAutoAck(true);
+  RFtransmitter.enableAckPayload();
+  RFtransmitter.enableDynamicPayloads();
+  RFtransmitter.stopListening();
+  RFtransmitter.setRetries(15,15);
+  RFtransmitter.setPayloadSize(sizeof(tower_package));
   
-  for (int i=0;i<NUM_TRANSMITTERS;i++){
-    RFtransmitter.openReadingPipe(i,r_addresses[i]);
-  }
-  
-  RFtransmitter.startListening();
   pinMode(ACC_WARNING_LED, OUTPUT); 
   pinMode(BUZZER_PIN, OUTPUT);
   
@@ -91,85 +95,90 @@ void setup(){
   is_notify = false;
 }
 
-
-// talk to towers
-void talkToSlaves(int msg){
-    //TODO
-    RFtransmitter.openWritingPipe(r_addresses[0]);
-    RFtransmitter.stopListening();
-    delay(5);
-    RFtransmitter.write(&msg, sizeof(msg));
-    RFtransmitter.startListening();
-    delay(5);
-    
-}
-
 void loop(){
   
     checkBatteryLevel();
 
-    // for debug
-    for(int i=1; i< 5;i++){
-        digitalWrite(debug_leds[i], LOW);
-    }
-    
-    uint8_t pipeNum;      
-    while(RFtransmitter.available(&pipeNum)){       //Check if received data from transmitters.
-      
-      digitalWrite((int) pipeNum+2, HIGH);          // light up a corresponding LED (for debug)
-      
-      // 0-3 represent the towers.
-      if (pipeNum != ACC_PIPE_INDEX){ 
-        RFtransmitter.read(&tower_data, sizeof(tower_data));
-        Serial.print(pipeNum+1);
-        Serial.print(F(","));
-        Serial.print(tower_data.button);
-        Serial.print(F(","));
-        Serial.print(tower_data.t_status);
-        Serial.print(F(","));
-        Serial.print(tower_data.leds[0]);
-        Serial.print(F(","));
-        Serial.print(tower_data.leds[1]);
-        Serial.print(F(","));
-        Serial.print(tower_data.leds[2]);
-        Serial.print(F(","));
-        Serial.print(tower_data.leds[3]);
-        Serial.print(F(","));
-        Serial.print(tower_data.num_presses);
-        Serial.print(F("\n"));
-      }else{
-        RFtransmitter.read(&acc_data, sizeof(acc_data));
-        last_acc_time = millis();
-        digitalWrite(ACC_WARNING_LED, HIGH);
-        Serial.print(pipeNum+1);
-        Serial.print(F(","));
-        Serial.print(acc_data.aaWorld.x);
-        Serial.print(F(","));
-        Serial.print(acc_data.aaWorld.y);
-        Serial.print(F(","));
-        Serial.print(acc_data.aaWorld.z);
-        Serial.print(F(","));
-        Serial.print(acc_data.gyro.x);
-        Serial.print(F(","));
-        Serial.print(acc_data.gyro.y);
-        Serial.print(F(","));
-        Serial.print(acc_data.gyro.z);
-        Serial.print(F(","));
-        Serial.print(acc_data.q.w);
-        Serial.print(F(","));
-        Serial.print(acc_data.q.x);
-        Serial.print(F(","));
-        Serial.print(acc_data.q.y);
-        Serial.print(F(","));
-        Serial.print(acc_data.q.z);
-        Serial.print(F("\n"));
-      }
-  }
+    for (int rx=0; rx < 5 ; rx ++){
+        RFtransmitter.openWritingPipe(w_addresses[rx]);
+        delay(5);
 
-  // if acc data timed out turn OFF ACC_WARNING_LED.
-  if (millis() - last_acc_time > ACC_TIMEOUT_TRH){
-      digitalWrite(ACC_WARNING_LED, LOW);
-  }
+        if (rx < 4){
+            RFtransmitter.setPayloadSize(sizeof(tower_package));
+            delay(5);
+            Serial.print("Rx: ");
+            Serial.print(rx);
+            if(RFtransmitter.write(msg,sizeof(msg))){
+                digitalWrite(debug_leds[rx], HIGH);          // light up a corresponding LED (for debug)
+                Serial.print(" ...tx success -->\t");
+                if(RFtransmitter.isAckPayloadAvailable()){
+                  RFtransmitter.read(&tower_data,sizeof(tower_data));
+                      Serial.print(rx+1);
+                      Serial.print(F(","));
+                      Serial.print(tower_data.button);
+                      Serial.print(F(","));
+                      Serial.print(tower_data.t_status);
+                      Serial.print(F(","));
+                      Serial.print(tower_data.leds[0]);
+                      Serial.print(F(","));
+                      Serial.print(tower_data.leds[1]);
+                      Serial.print(F(","));
+                      Serial.print(tower_data.leds[2]);
+                      Serial.print(F(","));
+                      Serial.print(tower_data.leds[3]);
+                      Serial.print(F(","));
+                      Serial.print(tower_data.num_presses);
+                      Serial.print(F("\n"));
+                  }
+            }
+        }else{
+            RFtransmitter.setPayloadSize(sizeof(acc_package));
+            delay(5);
+            Serial.print("Rx: ");
+            Serial.print(rx);
+            if(RFtransmitter.write(msg,sizeof(msg))){
+              digitalWrite(debug_leds[rx], HIGH);          // light up a corresponding LED (for debug)
+
+              Serial.print(" ...tx -->success\t");
+              if(RFtransmitter.isAckPayloadAvailable()){
+                RFtransmitter.read(&acc_data,sizeof(acc_data));
+                    last_acc_time = millis();
+                    digitalWrite(ACC_WARNING_LED, HIGH);
+                    
+                    Serial.print(rx+1);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.aaWorld.x);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.aaWorld.y);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.aaWorld.z);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.gyro.x);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.gyro.y);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.gyro.z);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.q.w);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.q.x);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.q.y);
+                    Serial.print(F(","));
+                    Serial.print(acc_data.q.z);
+                    Serial.print(F("\n"));
+              }
+            }
+        }
+      } // for loop over rx
+      // for debug
+      for(int i=1; i< 5;i++){
+          digitalWrite(debug_leds[i], LOW);
+      }
+      // if acc data timed out turn OFF ACC_WARNING_LED.
+      if (millis() - last_acc_time > ACC_TIMEOUT_TRH){
+          digitalWrite(ACC_WARNING_LED, LOW);
+      }
 }
 
 //This function turns the reciever into a transmitter briefly to tell one of the nRF24s

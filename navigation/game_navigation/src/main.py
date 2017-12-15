@@ -48,6 +48,7 @@ def main():
         exit(-1)
 
     # Subscribers 
+    player_dist_sub = rospy.Subscriber('/kinect2/player_info',PlayerInfo, navigation.playerInfoCallback)
     player_info_sub = rospy.Subscriber('/kinect2/player_filtered_info', PlayerInfo, navigation.angleCallback)
     game_goal_sub   = rospy.Subscriber('/game/goal', Goal, navigation.goalCallback)
     vel_sub   = rospy.Subscriber('/vel', Twist, navigation.velCallback)

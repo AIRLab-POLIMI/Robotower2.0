@@ -41,10 +41,11 @@ THE SOFTWARE.
 ===============================================
 */
 
+#include <SPI.h>
+#include <RF24.h>
 // I2Cdev and MPU6050 must be installed as libraries, or else the .cpp/.h files
 // for both classes must be in the include path of your project
 #include "I2Cdev.h"
-#include "RF24.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 //#include "MPU6050.h" // not necessary if using MotionApps include file
 
@@ -148,8 +149,7 @@ const int pinCE = 7; //This pin is used to set the nRF24 to standby (0) or activ
 const int pinCSN = 8; //This pin is used to tell the nRF24 whether the SPI communication is a command or message to send out
 
 RF24 RFtransmitter (pinCE, pinCSN);         // Create your nRF24 object or wireless SPI connection
-const uint64_t wAddress = 0xF0F0F0F0B9LL;   // Pipe to write or transmit on
-const uint64_t rAddress = 0xB00B1E50C4LL;   //pipe to recive data on
+const uint64_t wAddress = 0xF0F0F0F0B9LL;   // address to transmit on
 
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[14] = { '$', 0x02, 0,0, 0,0, 0,0, 0,0, 0x00, 0x00, '\r', '\n' };
@@ -186,12 +186,18 @@ void setup() {
     // really up to you depending on your project)
     
     Serial.begin(19200);
+    RFtransmitter.begin();
     delay(1000);
-    RFtransmitter.begin();  
-    //RFtransmitter.setChannel(115); 
-    RFtransmitter.setPALevel(RF24_PA_MAX);
-    RFtransmitter.setDataRate( RF24_250KBPS ) ; 
-    RFtransmitter.openWritingPipe(wAddress);        //open writing or transmit pipe
+    RFtransmitter.setChannel(120); 
+    RFtransmitter.setPALevel(RF24_PA_MIN);
+    RFtransmitter.setDataRate(RF24_250KBPS); 
+    RFtransmitter.setAutoAck(true);
+    RFtransmitter.enableAckPayload();
+    RFtransmitter.enableDynamicPayloads();
+    RFtransmitter.openReadingPipe(1,wAddress);
+    RFtransmitter.startListening();
+    RFtransmitter.setRetries(15,15);
+    RFtransmitter.setPayloadSize( sizeof(IMU_package)  );
     delay(1000);
     
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
@@ -415,9 +421,16 @@ void loop() {
               data.q.x = q.x;
               data.q.y = q.y;
               data.q.z = q.z;
-            
-              RFtransmitter.write(&data, sizeof(data));
-              delay(5);
+
+              int control_msg[1] = {1};
+              if (RFtransmitter.available()) {
+                IMU_package *pkg_address = &data;
+                RFtransmitter.writeAckPayload(1, &pkg_address, sizeof(IMU_package));
+                RFtransmitter.read(&control_msg,sizeof(control_msg));
+                Serial.print("integer got is : ");
+                Serial.println(control_msg[0]);
+              }
+                        
           #endif
       }
 }
