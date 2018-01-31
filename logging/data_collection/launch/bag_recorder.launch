@@ -1,0 +1,32 @@
+<launch>
+    
+    <arg name="path_save"   default="/home/airlab/Documents/bags/leg_tracker"/>
+	<arg name="topic"  	default="/scan /tf"/>
+	<arg name="file_name"  	default=""/>
+	
+	<!-- Robogame teleop node -->
+	<include file="$(find joystick)/launch/joystick.launch"/>
+	
+	<!-- triskar hokuyo nodes (lasers) -->
+	<include file="$(find triskar)/launch/hokuyo_nodes.launch"/>
+	
+	<!-- Merges the two lasers-->
+	<include file="$(find ira_laser_tools)/launch/laserscan_multi_merger.launch"/>
+	
+	<!-- Launch heartbeat and arduino_publisher -->
+	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
+
+	<group ns="record">
+		<param name="path_save" type="str" value="$(arg path_save)"	/>
+		<param name="topic" 	type="str" value="$(arg topic)"		/>
+		<param name="file_name" type="str" value="$(arg file_name)"	/>
+		<node name="record_ros" pkg="record_ros" type="record_ros" output="screen" respawn="true"/>
+	</group>
+    
+    <node pkg="record_bag" type="record.py" name="record_bag" output="screen" respawn="true" />
+
+	<!-- run rviz        
+  	<node pkg="rviz" type="rviz" name="rviz" /-->
+
+</launch>
+

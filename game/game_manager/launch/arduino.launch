@@ -1,0 +1,12 @@
+<launch>
+	
+	<!-- rosserial launch file for nova core -->
+	<include file="$(find rosserial_core)/launch/serial_node.launch">
+		<arg name="port" value="/dev/arduino" />
+	</include>
+
+	<node name="game_manager" pkg="game_manager" type="game_manager.py"/>
+
+	<node name="joy" pkg="joy" type="joy_node"/>
+	
+</launch> 

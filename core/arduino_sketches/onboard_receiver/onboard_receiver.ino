@@ -1,3 +1,4 @@
+
 /*
  * Author: Ewerton Lopes
  * Politecnico di Milano, December 13, 2017
@@ -7,7 +8,12 @@
 #include <SPI.h>
 #include <nRF24L01.h>
 #include <RF24.h>
-#include "MPU6050_6Axis_MotionApps20.h" // for acc_package type definitions
+#include <ros.h>
+#include <std_msgs/Bool.h>
+#include <std_msgs/Int8.h>
+#include <arduino_publisher/TowerState.h>
+#include <arduino_publisher/ImuState.h>
+//#include "MPU6050_6Axis_MotionApps20.h" // for acc_package type definitions
 
 
 #define TOWER_SAMPLE_TIME 500
@@ -18,7 +24,6 @@
 #define OFF 0
 #define ON 1
 #define BAT_CHK_TIMEOUT_TRH 5000     // publishes battery data every 5 secs.
-#define NUM_TOWERS 5
 #define ACC_TIMEOUT_TRH 100
 #define BEEPING_INTERVAL 400
 #define LOW_BATTERY_VOLTAGE 22
@@ -45,19 +50,22 @@ struct tower_package{
   int num_presses;
 };
 
+//struct acc_package{
+//  VectorInt16 aaWorld;
+//  VectorInt16 gyro;
+//};
+
 struct acc_package{
-  VectorInt16 aaWorld;
-  VectorInt16 gyro;
+  int acc[3];
 };
 
 struct tower_package tower_data;
 struct acc_package acc_data;
-static unsigned long last_tw_sample_time;
-static unsigned long last_battery_check_time;
-static unsigned long last_battery_beep_time;
-static unsigned long last_acc_time;          // last acc sample time that we saw. 
+unsigned long last_tw_sample_time;
+unsigned long last_battery_check_time;
+unsigned long last_battery_beep_time;
+unsigned long last_acc_time;          // last acc sample time that we saw. 
 int should_beep;
-bool is_notify;
 
 
 RF24 RFtransmitter(CE_PIN, CSN_PIN);
@@ -71,10 +79,37 @@ const uint64_t r_addresses[] = {0xB00B1E50D2LL};
 
 int com_counter= 0;     // keeps track of which tower to sample next
 
-int msg[1] = {1};
+int msg[1] = {0};
+
+ros::NodeHandle nh;
+std_msgs::Bool cmd;
+//std_msgs::Int8 bat_msg;
+arduino_publisher::TowerState tw_msg;
+arduino_publisher::ImuState imu_msg;
+
+void gameCmdCallback(const std_msgs::Bool& cmd_msg){
+  msg[0] = cmd_msg.data;
+}
+
+ros::Subscriber<std_msgs::Bool> sub("game_manager/isGameON", &gameCmdCallback);
+ros::Publisher tw_pub("arduino/tower_state", &tw_msg);
+ros::Publisher imu_pub("arduino/imu_state", &imu_msg);
+//ros::Publisher bat_pub("arduino/battery", &bat_msg);
+
 
 void setup(){
-  Serial.begin(57600);
+  nh.getHardware()->setBaud(115200);
+  nh.initNode();
+  delay(1000);
+  nh.advertise(tw_pub);
+  delay(1000);
+  nh.advertise(imu_pub);
+  delay(1000);
+//  nh.advertise(bat_pub);
+//  delay(1000);
+  nh.subscribe(sub);
+  delay(1000);
+  
   RFtransmitter.begin();
   RFtransmitter.setChannel(120);
   RFtransmitter.setPALevel(RF24_PA_MIN);
@@ -91,44 +126,6 @@ void setup(){
   pinMode(BUZZER_PIN, OUTPUT);
   
   last_acc_time = millis();
-  is_notify = false;
-}
-
-
-void writeAccToSerial(){
-    Serial.print(5);        //ACC code is 4.
-    Serial.print(F(","));
-    Serial.print(acc_data.aaWorld.x);
-    Serial.print(F(","));
-    Serial.print(acc_data.aaWorld.y);
-    Serial.print(F(","));
-    Serial.print(acc_data.aaWorld.z);
-    Serial.print(F(","));
-    Serial.print(acc_data.gyro.x);
-    Serial.print(F(","));
-    Serial.print(acc_data.gyro.y);
-    Serial.print(F(","));
-    Serial.print(acc_data.gyro.z);
-    Serial.print(F("\n"));
-}
-
-void writeTowerToSerial(int id){
-    Serial.print(id);
-    Serial.print(F(","));
-    Serial.print(tower_data.button);
-    Serial.print(F(","));
-    Serial.print(tower_data.t_status);
-    Serial.print(F(","));
-    Serial.print(tower_data.leds[0]);
-    Serial.print(F(","));
-    Serial.print(tower_data.leds[1]);
-    Serial.print(F(","));
-    Serial.print(tower_data.leds[2]);
-    Serial.print(F(","));
-    Serial.print(tower_data.leds[3]);
-    Serial.print(F(","));
-    Serial.print(tower_data.num_presses);
-    Serial.print(F("\n"));
 }
 
 void loop(){
@@ -144,7 +141,11 @@ void loop(){
             RFtransmitter.read(&acc_data,sizeof(acc_data));
                 last_acc_time = millis();
                 digitalWrite(ACC_WARNING_LED, HIGH);
-                writeAccToSerial();
+                imu_msg.header.stamp = nh.now();
+                imu_msg.acc[0] = acc_data.acc[0];
+                imu_msg.acc[1] = acc_data.acc[1];
+                imu_msg.acc[2] = acc_data.acc[2];
+                imu_pub.publish(&imu_msg);
         }
     }
 
@@ -153,25 +154,32 @@ void loop(){
     if (millis() - last_tw_sample_time > TOWER_SAMPLE_TIME){
         last_tw_sample_time = millis();
 
-        int com_pipe_to_sample = com_counter % (NUM_TOWERS + 1);
+        int com_pipe_to_sample = com_counter % (NUM_TOWERS);
 
-        if (com_pipe_to_sample == 5){
-            Serial.print(BAT_INDEX);
-            Serial.print(F(","));
-            Serial.print(voltage);
-            Serial.print(F("\n"));
-        }else{    // Sample towers
+//        if (com_pipe_to_sample == 5){
+////            bat_msg.data = voltage;
+////            bat_pub.publish(&bat_msg);
+//        }else{    // Sample towers
             //Get tower data
-            RFtransmitter.openWritingPipe(w_addresses[com_pipe_to_sample]);
-            delay(5);
-            RFtransmitter.setPayloadSize(sizeof(tower_package));
-            if(RFtransmitter.write(msg,sizeof(msg))){
-                if(RFtransmitter.isAckPayloadAvailable()){
-                  RFtransmitter.read(&tower_data,sizeof(tower_data));
-                      writeTowerToSerial(com_pipe_to_sample+1);
-                  }
-            }
-        }
+          RFtransmitter.openWritingPipe(w_addresses[com_pipe_to_sample]);
+          delay(5);
+          RFtransmitter.setPayloadSize(sizeof(tower_package));
+          if(RFtransmitter.write(msg,sizeof(msg))){
+              if(RFtransmitter.isAckPayloadAvailable()){
+                RFtransmitter.read(&tower_data,sizeof(tower_data));
+                tw_msg.header.stamp = nh.now();
+                tw_msg.id = com_pipe_to_sample+1;
+                tw_msg.button = tower_data.button;
+                tw_msg.status = tower_data.t_status;
+                tw_msg.leds[0] = tower_data.leds[0];
+                tw_msg.leds[1] = tower_data.leds[1];
+                tw_msg.leds[2] = tower_data.leds[2];
+                tw_msg.leds[3] = tower_data.leds[3];
+                tw_msg.press_counter = tower_data.num_presses;
+                tw_pub.publish(&tw_msg);
+              }
+          }
+        //}
 
         com_counter++;
     }
@@ -181,6 +189,9 @@ void loop(){
         last_acc_time = millis();
         digitalWrite(ACC_WARNING_LED, LOW);
     }
+
+    nh.spinOnce();
+    delay(1);
 }
 
 //This function turns the reciever into a transmitter briefly to tell one of the nRF24s

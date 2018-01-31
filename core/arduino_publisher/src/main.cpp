@@ -153,13 +153,13 @@ int main (int argc, char** argv){
                 if (data.size() == ACC_ARRAY_SIZE){   
                     try{  
                             // Fill up msg
-                            msg.header.stamp = ros::Time::now();
-                            msg.linear_acc.x = atof(data[1].c_str());
-                            msg.linear_acc.y = atof(data[2].c_str());
-                            msg.linear_acc.z = atof(data[3].c_str());
-                            msg.gyro.x = atof(data[4].c_str());
-                            msg.gyro.y = atof(data[5].c_str());
-                            msg.gyro.z = atof(data[6].c_str());
+                            // msg.header.stamp = ros::Time::now();
+                            // msg.linear_acc.x = atof(data[1].c_str());
+                            // msg.linear_acc.y = atof(data[2].c_str());
+                            // msg.linear_acc.z = atof(data[3].c_str());
+                            // msg.gyro.x = atof(data[4].c_str());
+                            // msg.gyro.y = atof(data[5].c_str());
+                            // msg.gyro.z = atof(data[6].c_str());
                             // Publish the message.
                             imu_pub.publish(msg);
                     } catch (...){

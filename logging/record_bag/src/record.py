@@ -33,7 +33,6 @@ def joyCallback(data):
 			
 		except rospy.ServiceException, e:
 			isRecording = False
-			## PUBLISH LED MESSAGE HERE
 		isPressed = True
 	elif data.buttons[5] and data.buttons[8] == 0:
 		isPressed = False
@@ -46,7 +45,7 @@ def joyCallback(data):
 
 def statusNode():
 	#Init node
-	rospy.init_node('status', anonymous=True)
+	rospy.init_node('status')
 	
 	#Setup subscriber 
 	rospy.Subscriber('/joy', Joy, joyCallback)

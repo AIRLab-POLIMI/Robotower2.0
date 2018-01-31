@@ -15,8 +15,8 @@ previous_decision(0), robot_speed(0), max_vel(0), min_vel(0){
     //     ROS_WARN("Waiting for the move_base action server to come up...");
     // }
 
-   goal_pub = nh_.advertise<behavior_manager::Goal>("game/goal", 1000);
-   tower_state_sub = nh_.subscribe("/arduino/tower_state", 10, &BehaviorManager::towerStateCallback, this);
+   goal_pub = nh_.advertise<behavior_manager::Goal>("game/goal", 1);
+   tower_state_sub = nh_.subscribe("/arduino/tower_state", 1, &BehaviorManager::towerStateCallback, this);
 
 
     // get action list
@@ -57,7 +57,7 @@ BehaviorManager::~BehaviorManager(void){
 
 void BehaviorManager::towerStateCallback(const arduino_publisher::TowerState::ConstPtr& msg){
     for (int i; i < NUM_LEDS_PER_TOWER; i ++){
-        leds_on_per_tower[msg->pipe_id] += (msg->leds[i] ? 1 : 0);
+        leds_on_per_tower[msg->id] += (msg->leds[i] ? 1 : 0);
     }
 }
 
