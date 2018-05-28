@@ -11,7 +11,7 @@
 #include <SPI.h>
 #include <RF24.h>
 
-#define TOWER_NUMBER 4               // <-- SET THIS PRIOR TO UPLOAD THE CODE. RANGE MUST BE [1-4] INT VALUES.
+#define TOWER_NUMBER 4                // <-- SET THIS PRIOR TO UPLOAD THE CODE. RANGE MUST BE [1-4] INT VALUES.
 
 /***** GENERAL PINS *****/
 #define TRIGGER_DELAY   20
@@ -27,17 +27,18 @@
 #define TIME_LISTENING_MASTER 100     // time waiting for master arduino.
 
 /***** LED PINS *****/
-#define GREEN_LED       1
-#define RED_LED         A1
-#define CHARGE_LED1     A2
-#define CHARGE_LED2     A3
-#define CHARGE_LED3     A4
-#define CHARGE_LED4     A5
+#define RED_LED         5
+#define GREEN_LED       4
+#define BLUE_LED        3
+#define CHARGE_LED1     6
+#define CHARGE_LED2     7
+#define CHARGE_LED3     8
+
 
 /***** TRANSCEIVER PINS *****/
-#define CSN_PIN         9
-#define CE_PIN          10
+#define CSN_PIN         10
 #define MOSI_PIN        11
+#define CE_PIN          9
 #define MISO_PIN        12
 #define SCK_PIN         13
 
@@ -80,9 +81,15 @@ struct Package{
 };
 
 /***** CONFIG VARIABLES *****/
-int led_array[] = {GREEN_LED, RED_LED, CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, CHARGE_LED4 }; // All LEDs
-int charge_LEDs[] = {CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, CHARGE_LED4};                    // All charge LEDs.
-int ledMask[N_CHARGE_LEDS];                                                                  // which charge LEDs are on.
+int led_array[] = {GREEN_LED, RED_LED, BLUE_LED, CHARGE_LED1, CHARGE_LED2, CHARGE_LED3 }; // All LEDs
+int charge_LEDs[] = {CHARGE_LED1, CHARGE_LED2, CHARGE_LED3};                            // All charge LEDs.
+int ledMask[N_CHARGE_LEDS];                                                             // which charge LEDs are on.
+int STATUS_LED[] = {RED_LED,GREEN_LED,BLUE_LED};
+
+int RED_COLOR[] = {1,0,0};
+int GREEN_COLOR[] = {0,1,0};
+int BLUE_COLOR[] = {0,0,1};
+int BLANK_COLOR[] = {0,0,0};
 
 /***** TOWER CONTROL VARIABLES *****/
 int feedback_blink_state;                 // keeps the RED/GREEN LED blink state.
@@ -92,11 +99,12 @@ volatile int button_state;                // Keeps the current button state (LOW
 int previous_button_state;                // Controls the previous state of the button (LOW/HIGH)
 int press_counter;                        // Counts the ammount of button presses;
 
-static unsigned long listening_timer;      // Controls time when to listen to the master
+static unsigned long listening_timer;     // Controls time when to listen to the master
 static unsigned long transmit_timer;      // Controls time between data transmission
 static unsigned long press_timer;         // Controls "turn on" time between LEDs.
 static unsigned long blink_timer;         // Control the blink time of the tower RED/GREEN LED.
 static unsigned long charge_blink_timer;  // Control the blink time of the tower charging LED.
+static unsigned long bt_lowpass_timer;
 int n_leds_ON;                            // keeps how many charging LEDs are on.
 
 bool isGameRunning;                       // Keeps the state of the game: True (Game is ON).
@@ -156,7 +164,7 @@ void setup() {
  */
 void checkFall(){
   if (digitalRead(TILT_SENSOR_PIN) == HIGH){
-      digitalWrite(RED_LED,HIGH);
+      changeStatusLEDColor(RED_COLOR);
       has_fallen = true;
       turnOFFAllChargeLEDs();
   }
@@ -194,8 +202,7 @@ Package prepareData(){
  */
 void checkCapture(){
   if (n_leds_ON == N_CHARGE_LEDS){
-      digitalWrite(RED_LED,LOW);
-      digitalWrite(GREEN_LED,HIGH);
+      changeStatusLEDColor(GREEN_COLOR);
       turnONAllChargeLEDs();
       is_captured = true;
    }
@@ -206,58 +213,78 @@ void checkCapture(){
  */
 void receiveCmd(){
   if (RFtransmitter.available()) {
-    Package pkg = prepareData();
-    RFtransmitter.writeAckPayload(1, &pkg, sizeof(Package));
     RFtransmitter.read(&control_msg,sizeof(control_msg));
-    Serial.print("integer got is : ");
-    Serial.println(control_msg[0]);
+    if (control_msg[0]){
+      isGameRunning = true;
+      Package pkg = prepareData();
+      RFtransmitter.writeAckPayload(1, &pkg, sizeof(Package));
+    }else{
+      isGameRunning = false;
+      resetTower();
+      Package pkg = prepareData();
+      RFtransmitter.writeAckPayload(1, &pkg, sizeof(Package));
+    }
+    
+  }
+}
+
+void changeStatusLEDColor(int color[]){
+  for (int i=0; i<3; i++){
+    digitalWrite(STATUS_LED[i],color[i]);
   }
 }
 
 void loop() {
-
-    if((millis() - listening_timer) > TIME_LISTENING_MASTER){
-        listening_timer = millis();
-        receiveCmd();
-    }else{
-        if(isGameRunning) {
-          if (!has_fallen || !is_captured){
-              checkFall();     // Checks whether tower has fallen
-        
-              if (has_fallen){
-                digitalWrite(RED_LED,HIGH);
-              }else if (!is_captured){ 
-                  if (button_state == HIGH){
-        
-                      // Pressing feedback: blinks LED to notify the button is being pressed.
-                      if((millis() - charge_blink_timer) > CHARGE_BLINKING_INTERVAL){
-                          charge_blink_timer = millis();                  // reset the timer
-                          charge_blink_state = !charge_blink_state;       // invert the blinking_state.
-                          digitalWrite(GREEN_LED,charge_blink_state);
+    
+    receiveCmd();
+    
+    if(isGameRunning) {
+      if (!has_fallen || !is_captured){
+          checkFall();     // Checks whether tower has fallen
+    
+          if (has_fallen){
+            changeStatusLEDColor(RED_COLOR);
+          }else if (!is_captured){ 
+              if (button_state == HIGH){
+                  // Pressing feedback: blinks LED to notify the button is being pressed.
+                  if((millis() - charge_blink_timer) > CHARGE_BLINKING_INTERVAL){
+                      charge_blink_timer = millis();                  // reset the timer
+                      charge_blink_state = !charge_blink_state;       // invert the blinking_state.
+    
+                      if (charge_blink_state){
+                        changeStatusLEDColor(BLUE_COLOR);
+                      }else{
+                        changeStatusLEDColor(BLANK_COLOR);
                       }
-        
-                      // Count time of button press
-                      if ((millis() - press_timer) > LED_CHARGING_TIME){
-                        press_timer = millis();
-                        n_leds_ON += 1;           // increase LED counter
-                      }
-        
-                      checkCapture();  
                   }
+                  
+                  // Count time of button press
+                  if ((millis() - press_timer) > LED_CHARGING_TIME){
+                    press_timer = millis();
+                    n_leds_ON += 1;           // increase LED counter
+                  }
+    
+                  checkCapture();  
+              }else{
+                changeStatusLEDColor(RED_COLOR);
               }
           }
-          
-        }else{        // Game is not running
-            // Check interval for RED LED blinking.
-            if((millis() - blink_timer) > BLINKING_INTERVAL){
-                blink_timer = millis();           // reset the timer
-                feedback_blink_state = !feedback_blink_state;       // invert the blinking_state.
-                digitalWrite(RED_LED,feedback_blink_state);
+      }
+      
+    }else{        // Game is not running
+        // Check interval for RED LED blinking.
+        if((millis() - blink_timer) > BLINKING_INTERVAL){
+            blink_timer = millis();           // reset the timer
+            feedback_blink_state = !feedback_blink_state;       // invert the blinking_state.
+            if (feedback_blink_state){
+              changeStatusLEDColor(RED_COLOR);
+            }else{
+              changeStatusLEDColor(BLANK_COLOR);
             }
         }
-    
-        updateChargeLEDs();
     }
+    
+    updateChargeLEDs();
 }
 
 /*
@@ -277,12 +304,14 @@ void resetTower(){
   charge_blink_timer    = 0;     // Control the blink time of the tower charging LED.
   n_leds_ON             = 0;     // keeps how many charging LEDs are on.
   
-  isGameRunning         = false;     // Keeps the state of the game: True (Game is ON).
+  isGameRunning         = false;  // Keeps the state of the game: True (Game is ON).
   has_fallen            = false; // True if the tower has fallen.
   is_captured           = false; // True if player has charged the LEDs and the tower did not fall.
   turnOFFAllChargeLEDs();        // turn all LEDs OFF.
 
-  digitalWrite(RED_LED,HIGH);               // set the RED_LED ON, at the beginning.
+  bt_lowpass_timer           = 0;     // low pass time to the button.
+
+  changeStatusLEDColor(RED_COLOR);               // set the RED_LED ON, at the beginning.
   digitalWrite(SCHMITT_TRIGGER_PIN,LOW);    
 }
 
@@ -327,7 +356,11 @@ void updateChargeLEDs(){
  */
 void handleButton(){
     button_state = digitalRead(SCHMITT_TRIGGER_PIN);
-    if (button_state && !has_fallen){
-        press_counter += 1;
+    if((millis() - bt_lowpass_timer) > 15){
+      bt_lowpass_timer = millis();  
+      if (button_state && !has_fallen){
+          press_timer = millis();
+          press_counter += 1;
+      }
     }
 }
