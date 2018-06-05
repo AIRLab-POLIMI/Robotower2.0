@@ -24,7 +24,10 @@
     <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
     
     <!-- player classification module -->
-    <node pkg="activity_recognition" type="classifier.py" name="activity_classifier" output="screen" respawn="true" />
+    <!-- <node pkg="activity_recognition" type="classifier.py" name="activity_classifier" output="screen" respawn="true" / -->
+    
+    <!-- manager joystick -->
+    <node pkg="game_manager" type="game_manager.py" name="game_manager" output="screen" respawn="true" />
 
     <!-- kinect_nodes --> 
     <include file="$(find kinect_tracker)/launch/run.launch"/>

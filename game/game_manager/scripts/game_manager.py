@@ -24,7 +24,6 @@ def towerCallback(data):
 	# 		status = False
 	# 	else:
 
-
 	if (sum(data.leds) == 0):
 		tower_status[data.id-1] = 1
 
@@ -39,6 +38,7 @@ def joyCallback(data):
 			time_since_to_start = rospy.get_rostime()
 	elif data.buttons[5] and data.buttons[9] == 1 and to_start:
 		to_start = False
+		rospy.loginfo("Stopping..")
 
 		
 		
@@ -66,18 +66,14 @@ def gameManagerNode():
 	started = False
 
 	while not rospy.is_shutdown():
-		rospy.loginfo(tower_status)
+		rospy.loginfo_throttle(3, "Tower ON Status: {}".format(tower_status))
 		if (to_start and not started):
 			if (sum(tower_status) == 4):
 				rospy.loginfo("Game is ready to go! TOWER RED LED SHOULD BE STILL!")
 				started = True
-				msg = Bool()
-				msg.data = started
-				pub_game_on.publish(msg)
 			else:	# continue trying to reset towers
-
 				if (rospy.get_rostime().secs - time_since_to_start.secs > RESET_THD):
-					rospy.logwarn_throttle(5,"Taking too long to successfully confirm all towers are reset! Are you sure they are ALL turned on? RETRYING...")
+					rospy.logwarn("Taking too long to successfully confirm all towers are reset! Are you sure they are ALL turned on? RETRYING...")
 
 		elif not to_start and started:
 			rospy.loginfo("Stoping game! TOWER RED LED SHOULD BE BLINKING!")
