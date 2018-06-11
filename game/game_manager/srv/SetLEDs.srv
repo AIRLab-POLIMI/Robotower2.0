@@ -1,0 +1,4 @@
+bool[3] charge_leds
+bool[3] status_led_color
+---
+bool success

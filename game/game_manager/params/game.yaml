@@ -1,0 +1,58 @@
+
+##########################################################################
+##                             TOWER SETTINGS                           ##
+##########################################################################
+
+num_towers: 4                   # number of towers
+num_charge_leds_per_tower: 4    # number of charging leds per tower
+charging_time: 2.5              # charging time for a led
+led_feedback_duration: 0.5      # blink duration for the tower status led when
+                                #  feedbacking button presses
+
+tilt_sensor_topic_name: tower/tilt_sensor
+button_topic_name: tower/button_state
+tower_service_names: {'1': 'tower1/set_leds'} #,
+                      #'2': 'tower2/set_leds',
+                      #'3': 'tower3/set_leds',
+                      #'4': 'tower4/set_leds'}
+
+
+# XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):
+pos_tower_1: [1.52, 0.96]
+pos_tower_2: [4.36, 1.89]
+pos_tower_3: [0.26, 4.34]
+pos_tower_4: [3.00, 5.44]
+
+##########################################################################
+##                         DIFFICULTY SETTINGS                          ##
+##########################################################################
+
+# Here, we assume there exist some set of difficulties. For each one of
+# of those, we set "max_speed" (both x and y axis), "min_speed", and the
+# exponent of the "blocking factor".
+ 
+# difficulties: {
+#                 very_easy: {max_speed: 0.2,
+#                             min_speed: 0.1,
+#                             bf_exponent: 1},
+                            
+#                 easy: {max_speed: 0.4,
+#                        min_speed: 0.1,
+#                        bf_exponent: 1},
+                       
+#                 medium: {max_speed: 0.5,
+#                          min_speed: 0.2,
+#                          bf_exponent: 1},
+                         
+#                 hard: {max_speed: 0.8,
+#                        min_speed: 0.3,
+#                        bf_exponent: 1},
+                       
+#                 very_hard: {max_speed: 0.9,
+#                             min_speed: 0.3,
+#                             bf_exponent: 1}
+#                }
+
+current_difficulty: medium
+
+block_timeout: 3.0    #the time span for consider the player has blocked the robot

@@ -4,6 +4,7 @@
     <rosparam command="load" file="$(find tower_manager)/config/tower_config.yaml" />
     <rosparam command="load" file="$(find behavior_manager)/config/config.yaml" />
     <rosparam command="load" file="$(find game_manager)/params/velocity_config.yaml" />
+    <rosparam command="load" file="$(find game_manager)/config/game.yaml" />
 
     <!--<param name="enable_statistics" value="true" /> -->
 

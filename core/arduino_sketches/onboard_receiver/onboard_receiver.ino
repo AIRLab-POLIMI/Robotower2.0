@@ -16,7 +16,7 @@
 //#include "MPU6050_6Axis_MotionApps20.h" // for acc_package type definitions
 
 
-#define TOWER_SAMPLE_TIME 500
+#define TOWER_SAMPLE_TIME 600
 #define ACC_WARNING_LED 8
 #define BUZZER_PIN  6
 #define BATTERY_PIN A2
@@ -112,7 +112,7 @@ void setup(){
   
   RFtransmitter.begin();
   RFtransmitter.setChannel(120);
-  RFtransmitter.setPALevel(RF24_PA_MIN);
+  RFtransmitter.setPALevel(RF24_PA_MAX);
   RFtransmitter.setDataRate(RF24_250KBPS);
 
   RFtransmitter.setAutoAck(true);
@@ -132,22 +132,22 @@ void loop(){
   
     float voltage = checkBatteryLevel();
 
-    //Get player acceleration data
-    RFtransmitter.openWritingPipe(w_addresses[4]);
-    RFtransmitter.setPayloadSize(sizeof(acc_package));
-    delay(3);
-    if(RFtransmitter.write(msg,sizeof(msg))){
-        if(RFtransmitter.isAckPayloadAvailable()){
-            RFtransmitter.read(&acc_data,sizeof(acc_data));
-                last_acc_time = millis();
-                digitalWrite(ACC_WARNING_LED, HIGH);
-                imu_msg.header.stamp = nh.now();
-                imu_msg.acc[0] = acc_data.acc[0];
-                imu_msg.acc[1] = acc_data.acc[1];
-                imu_msg.acc[2] = acc_data.acc[2];
-                imu_pub.publish(&imu_msg);
-        }
-    }
+//    //Get player acceleration data
+//    RFtransmitter.openWritingPipe(w_addresses[4]);
+//    RFtransmitter.setPayloadSize(sizeof(acc_package));
+//    delay(3);
+//    if(RFtransmitter.write(msg,sizeof(msg))){
+//        if(RFtransmitter.isAckPayloadAvailable()){
+//            RFtransmitter.read(&acc_data,sizeof(acc_data));
+//                last_acc_time = millis();
+//                digitalWrite(ACC_WARNING_LED, HIGH);
+//                imu_msg.header.stamp = nh.now();
+//                imu_msg.acc[0] = acc_data.acc[0];
+//                imu_msg.acc[1] = acc_data.acc[1];
+//                imu_msg.acc[2] = acc_data.acc[2];
+//                imu_pub.publish(&imu_msg);
+//        }
+//    }
 
 
     // Get tower data
@@ -166,17 +166,20 @@ void loop(){
           RFtransmitter.setPayloadSize(sizeof(tower_package));
           if(RFtransmitter.write(msg,sizeof(msg))){
               if(RFtransmitter.isAckPayloadAvailable()){
-                RFtransmitter.read(&tower_data,sizeof(tower_data));
-                tw_msg.header.stamp = nh.now();
-                tw_msg.id = com_pipe_to_sample+1;
-                tw_msg.button = tower_data.button;
-                tw_msg.status = tower_data.t_status;
-                tw_msg.leds[0] = tower_data.leds[0];
-                tw_msg.leds[1] = tower_data.leds[1];
-                tw_msg.leds[2] = tower_data.leds[2];
-                tw_msg.leds[3] = tower_data.leds[3];
-                tw_msg.press_counter = tower_data.num_presses;
-                tw_pub.publish(&tw_msg);
+                if (RFtransmitter.read(&tower_data, sizeof(tower_data))){
+             
+                  tw_msg.header.stamp = nh.now();
+                  tw_msg.id = com_pipe_to_sample+1;
+                  tw_msg.button = tower_data.button;
+                  tw_msg.status = tower_data.t_status;
+                  tw_msg.leds[0] = tower_data.leds[0];
+                  tw_msg.leds[1] = tower_data.leds[1];
+                  tw_msg.leds[2] = tower_data.leds[2];
+                  tw_msg.leds[3] = tower_data.leds[3];
+                  tw_msg.press_counter = tower_data.num_presses;
+                  //if (tw_msg.id == 1 && 1 == com_pipe_to_sample+1)
+                  tw_pub.publish(&tw_msg);
+                }
               }
           }
         //}
@@ -199,13 +202,13 @@ void loop(){
 //successful
 /*
 bool sendCorrectNumber(byte xMitter) {
-    bool success; 												//variable to track if write was successful
-    RFtransmitter.stopListening();								//Stop listening, stop recieving data.
-    RFtransmitter.openWritingPipe(w_addresses[xMitter-1]);			//Open writing pipe to the nRF24 that guessed the right number
-    if(!RFtransmitter.write(&daNumber, 1))  worked = false;		//write the correct number to the nRF24 module, and check that it was recieved
-    else success = true; 										//it was recieved
-    RFtransmitter.startListening(); 							//Switch back to a reciever
-    return success;  											//return whether write was successful
+    bool success;                         //variable to track if write was successful
+    RFtransmitter.stopListening();                //Stop listening, stop recieving data.
+    RFtransmitter.openWritingPipe(w_addresses[xMitter-1]);      //Open writing pipe to the nRF24 that guessed the right number
+    if(!RFtransmitter.write(&daNumber, 1))  worked = false;   //write the correct number to the nRF24 module, and check that it was recieved
+    else success = true;                    //it was recieved
+    RFtransmitter.startListening();               //Switch back to a reciever
+    return success;                       //return whether write was successful
 }*/
 
 
