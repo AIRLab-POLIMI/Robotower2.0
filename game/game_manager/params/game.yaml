@@ -11,10 +11,10 @@ led_feedback_duration: 0.5      # blink duration for the tower status led when
 
 tilt_sensor_topic_name: tower/tilt_sensor
 button_topic_name: tower/button_state
-tower_service_names: {'1': 'tower1/set_leds'} #,
-                      #'2': 'tower2/set_leds',
-                      #'3': 'tower3/set_leds',
-                      #'4': 'tower4/set_leds'}
+tower_service_names: {'1': 'tower1/set_leds',
+                      '2': 'tower2/set_leds',
+                      '3': 'tower3/set_leds',
+                      '4': 'tower4/set_leds'}
 
 
 # XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):

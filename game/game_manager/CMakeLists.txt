@@ -53,7 +53,7 @@ add_message_files(
   ButtonState.msg
   TiltSensor.msg
   TowerState.msg
-#   Message2.msg
+  ChangeLEDs.msg
 )
 
 ## Generate services in the 'srv' folder

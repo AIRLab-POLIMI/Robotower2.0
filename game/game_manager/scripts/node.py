@@ -3,7 +3,7 @@
 import rospy, copy
 from std_msgs.msg import Bool
 from sensor_msgs.msg import Joy
-from game_manager.msg import ButtonState, TowerState, TiltSensor, Towers
+from game_manager.msg import ButtonState, TowerState, TiltSensor, Towers, ChangeLEDs
 from game_manager.srv import SetLEDs
 
 class Tower():
@@ -13,7 +13,7 @@ class Tower():
 						TowerState.TYPE_TOWER_OFFLINE,
 						TowerState.TYPE_TOWER_ONLINE]
 	
-	LED_COLOR = {'red':(1,0,0), 'green': (0,1,0), 'blue': (0,0,1), 'blank': (0,0,0)}
+	LED_COLOR = {'red':(1,0), 'green': (0,1), 'blank': (0,0)}
 
 	def __init__(self, id, service_name):
 		# the tower id
@@ -27,7 +27,7 @@ class Tower():
 		# the current number of button presses 
 		self._num_presses = 0
 		# the current color for the tower status led
-		self._status_led_color = Tower.LED_COLOR['blank']
+		self._status_led_color = Tower.LED_COLOR['red']
 	
 	@property
 	def id(self):
@@ -57,7 +57,7 @@ class Tower():
 	@status_led_color.setter
 	def status_led_color(self, value):
 		if value in Tower.LED_COLOR.values():
-			self.status_led_color = value
+			self._status_led_color = value
 	
 	@property
 	def num_presses(self):
@@ -95,7 +95,10 @@ class Tower():
 		self._status = TowerState.TYPE_TOWER_OFFLINE
 		self._leds = [0 for i in range(Tower.NUM_CHARGE_LEDS)]
 		self._num_presses = 0
-		self._status_led_color = Tower.LED_COLOR['blank']
+		self._status_led_color = Tower.LED_COLOR['red']
+
+	def __str__(self):
+		return "TowerStatus: {}, ChargLEDS:{}, StatusLED:{}, NumPresses: {}".format(self._status, self._leds, self._status_led_color, self._num_presses)
 
 
 class GameManagerNode:
@@ -106,7 +109,6 @@ class GameManagerNode:
 		
 		# setup subscriber 
 		rospy.Subscriber('/joy', Joy, self.joy_callback)
-
 		rospy.Subscriber(rospy.get_param("/button_topic_name"), ButtonState,  self.tower_bt_callback)
 		rospy.Subscriber(rospy.get_param("/tilt_sensor_topic_name"), TiltSensor,  self.tower_tilt_sensor_callback)
 		
@@ -121,10 +123,10 @@ class GameManagerNode:
 		self.NUM_TOWERS = rospy.get_param("/num_towers")
 		self.FEEDBACK_DURATION =  rospy.get_param("/led_feedback_duration")
 
-		# This publisher is used to signal the game_start
+		# Setup publishers
 		self.pub_game_on = rospy.Publisher('game_manager/isGameON', Bool, queue_size=1)
-		# This publisher is used to signal the game_start
 		self.pub_tws_state = rospy.Publisher('game_manager/towers/State', Towers, queue_size=10)
+		self.pub_led = rospy.Publisher('game_manager/towers/ChangeLEDs', ChangeLEDs, queue_size=10)
 		
 		# ros rate
 		self.rate = rospy.Rate(10) # 10hz
@@ -136,44 +138,10 @@ class GameManagerNode:
 		self.trying_reset = False
 
 		self.bt_msg_on_process   = None
-		
-		self.srv_handlers = dict((i,None) for i in self.towers.keys())
-		self.srv_error_list = []
-		self.sub_to_services()
 
 		self.reset_game()
 
-	def sub_to_services(self, com_timeout=3):
-		""" Subscribe to all tower LED services
-			Params
-				com_timeout wait timeout
-			Return
-				None
-		"""
-		retry = False
-		while not retry and not rospy.is_shutdown():
-			for i in self.towers.keys():
-				
-				if self.srv_handlers[i] is not None:
-					continue
-				else:
-					if i not in self.srv_error_list:
-						rospy.loginfo("Trying to contact {} service...".format(self.towers[i].service_name))
-					else:
-						rospy.loginfo("Retrying contact with {} service...".format(self.towers[i].service_name))
-					try:
-						rospy.wait_for_service(self.towers[i].service_name, timeout=com_timeout)
-						rospy.loginfo("SUCCESS... establishing connection to {}...".format(self.towers[i].service_name))
-						self.srv_handlers[i] = rospy.ServiceProxy(self.towers[i].service_name, SetLEDs)
-						rospy.loginfo("SUCCESS... connection with {} established!".format(self.towers[i].service_name))
-						self.towers[i].status = TowerState.TYPE_TOWER_ONLINE
-						if i in self.srv_error_list:
-							self.srv_error_list.remove(i)
-							
-					except rospy.exceptions.ROSException as exc:
-						rospy.logerr("TIMEOUT: Service {} seems to be offline! Retrying soon...".format(self.towers[i].service_name))
-						self.srv_error_list.append(i)
-			retry = True if not len(self.srv_error_list) else False
+	
 
 	def tower_bt_callback(self, msg):
 		"""Tower button callback"""
@@ -198,8 +166,7 @@ class GameManagerNode:
 
 	def tower_tilt_sensor_callback(self, msg):
 		"""Tilt sensor callback"""
-		self.towers[msg.id].status(TowerState.TYPE_TOWER_HAS_FALLEN
-								   if msg.value else TowerState.TYPE_TOWER_ONLINE)
+		self.towers[msg.id].status = TowerState.TYPE_TOWER_HAS_FALLEN if msg.value else TowerState.TYPE_TOWER_ONLINE
 	
 	def checkCapture(self, tw_id):
 		"""
@@ -224,31 +191,20 @@ class GameManagerNode:
 		self.feedback_timer = None
 
 	def feedback_callback(self, event):
-		self.send_update_to_service(self.bt_msg_on_process.id)
+		self.publish_LED_update(self.bt_msg_on_process.id)
 
 	def update_tw_led(self, tower_number):
 		old_num_ON = self.towers[tower_number].num_ON_leds()
 		self.towers[tower_number].update_led(old_num_ON, 1)
-		self.send_update_to_service(tower_number)
+
+		if self.checkCapture(tower_number):
+			self.towers[tower_number].status = TowerState.TYPE_TOWER_CAPTURED
+			self.towers[tower_number].status_led_color = Tower.LED_COLOR['green']
+			self.bt_msg_on_process = None
+
+		self.publish_LED_update(tower_number)
 		rospy.logwarn("#leds in tower{}: {}".format(tower_number,self.towers[tower_number].leds))
 		rospy.logwarn("Bt_presses in tower{}: {}".format(tower_number,self.towers[tower_number].num_presses))
-	
-	def talk_to_service(self, tw_id, num_LED_ON, status_LED_color):
-		"""
-		Calls the tower led service
-			Params
-				tw_id :	the tower id
-            	req : a request msg
-            	resp : the response msg container
-        	Returns
-            	None
-		"""
-		try:
-			handle = self.srv_handlers[tw_id]
-			resp = handle(num_LED_ON, status_LED_color)
-			return resp
-		except rospy.ServiceException, e:
-			print "Service call failed: %s"%e
 
 
 	def joy_callback(self, msg):
@@ -267,39 +223,33 @@ class GameManagerNode:
 		"""Reset game by reseting tower data"""
 		for tw in self.towers.keys():
 			self.towers[tw].reset_data()
-			if not self.send_update_to_service(tw):
-				rospy.signal_shutdown("Could not reset game due to bad response from tower service!")
-			else:
-				rospy.loginfo("Game was reset! ")
-		
-		self.trying_reset = False
-		return True
+			rospy.loginfo("Tower {} was reset! New State:\n{}".format(tw,self.towers[tw]))
+			for i in range(5):		# make sure the towers listen to the call
+				self.publish_LED_update(tw)
+				self.rate.sleep()
 
 	def count_time(self):
 		"""Counts second past button presses"""
 		if self.bt_msg_on_process is not None:
-
-			if self.checkCapture(self.bt_msg_on_process.id):
-				self.towers[self.bt_msg_on_process.id].status = TowerState.TYPE_TOWER_CAPTURED
-				self.bt_msg_on_process = None
-			else:
-				now = rospy.Time.now()
-				time_diff = now.to_sec() - self.bt_msg_on_process.header.stamp.to_sec()
-				if time_diff < 0: rospy.logerr("count_time(): Time diff bettween pressing and unpressing button cannot be negative!")
-				if (time_diff / self.BT_PRESS_THD) >= 1 and self.towers[self.bt_msg_on_process.id].status == TowerState.TYPE_TOWER_ONLINE:
-					self.update_tw_led(self.bt_msg_on_process.id)
+			now = rospy.Time.now()
+			time_diff = now.to_sec() - self.bt_msg_on_process.header.stamp.to_sec()
+			if time_diff < 0: rospy.logerr("count_time(): Time diff bettween pressing and unpressing button cannot be negative!")
+			if (time_diff / self.BT_PRESS_THD) >= 1 and self.towers[self.bt_msg_on_process.id].status == TowerState.TYPE_TOWER_ONLINE:
+				self.update_tw_led(self.bt_msg_on_process.id)
+				if self.bt_msg_on_process is not None:
 					self.bt_msg_on_process.header.stamp = now
 				
 
-	def send_update_to_service(self, tw_id):
-		""" Sends the new LED state to towers """
-		try:
-			resp = self.talk_to_service(tw_id, self.towers[tw_id].leds[:3], Tower.LED_COLOR['blank'])
-			rospy.logwarn("send_update_to_service(): Response from {}: {}".format(self.towers[tw_id].service_name,
-														'SUCCESS' if resp else 'FAILURE'))
-			return resp
-		except Exception as exc:
-			rospy.logerr("Could not talk to {} service!".format(self.towers[tw_id].service_name))
+	def publish_LED_update(self, tw_id):
+		"""Publish the new led state to LEDs"""
+		msg = ChangeLEDs()
+		msg.header.stamp = rospy.Time.now()
+		msg.id = tw_id
+		msg.charge_leds = self.towers[tw_id].leds[:3]
+		msg.status_led_color = self.towers[tw_id].status_led_color
+		self.pub_led.publish(msg)
+		rospy.logwarn("New LED state published!")
+		return True
 
 	def publish_state_of_towers(self):
 		"""Publish state of towers"""
@@ -309,9 +259,11 @@ class GameManagerNode:
 			setattr(msg, "tw"+str(i), self.towers[i].get_data_as_ros_msg())
 		self.pub_tws_state.publish(msg)
 
+
 	def run(self):
 		"""main loop"""
 		while not rospy.is_shutdown():
+			rospy.loginfo_throttle(3,"Subscribers to ChangeLEDs: {}".format(self.pub_led.get_num_connections()))
 			self.count_time()
 			self.publish_state_of_towers()
 			self.rate.sleep()
