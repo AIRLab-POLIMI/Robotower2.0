@@ -6,16 +6,11 @@
 num_towers: 4                   # number of towers
 num_charge_leds_per_tower: 4    # number of charging leds per tower
 charging_time: 2.5              # charging time for a led
-led_feedback_duration: 0.5      # blink duration for the tower status led when
+led_feedback_duration: 0.25      # blink duration for the tower status led when
                                 #  feedbacking button presses
 
 tilt_sensor_topic_name: tower/tilt_sensor
 button_topic_name: tower/button_state
-tower_service_names: {'1': 'tower1/set_leds',
-                      '2': 'tower2/set_leds',
-                      '3': 'tower3/set_leds',
-                      '4': 'tower4/set_leds'}
-
 
 # XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):
 pos_tower_1: [1.52, 0.96]

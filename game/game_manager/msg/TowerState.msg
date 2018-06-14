@@ -9,3 +9,4 @@ uint8 id
 uint8 status
 bool[4] leds
 uint8 bt_presses
+float32 press_accuracy

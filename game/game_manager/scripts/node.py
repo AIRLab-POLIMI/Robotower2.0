@@ -15,27 +15,24 @@ class Tower():
 	
 	LED_COLOR = {'red':(1,0), 'green': (0,1), 'blank': (0,0)}
 
-	def __init__(self, id, service_name):
+
+	def __init__(self, id):
 		# the tower id
 		self._id = id
-		# the led ros service name from which to communicate led statuses.
-		self._service_name = service_name
 		# the current tower state (see Tower.ALLOWED_STATUSES static variable)
 		self._status = TowerState.TYPE_TOWER_OFFLINE
 		# the current charge led statuses
 		self._leds = [0 for i in range(Tower.NUM_CHARGE_LEDS)]
 		# the current number of button presses 
 		self._num_presses = 0
+		# the ration between button presses and leds turned on
+		self._press_accuracy = 0.0
 		# the current color for the tower status led
 		self._status_led_color = Tower.LED_COLOR['red']
 	
 	@property
 	def id(self):
 		return self._id
-	
-	@property
-	def service_name(self):
-		return self._service_name
 
 	@property
 	def status(self):
@@ -75,6 +72,8 @@ class Tower():
 			id_led (int, range: 1-NUM_CHARGE_LEDS):	the charge led number
 			state (bool):	the new state for the led
 			"""
+		if self.feedback_timer is not None:
+			self.stop_feedback_timer()
 		self._leds[id_led] = state
 
 	def num_ON_leds(self):
@@ -88,7 +87,14 @@ class Tower():
 		data.status = self.status
 		data.leds = self.leds
 		data.bt_presses = self.num_presses
+		data.press_accuracy = self.press_accuracy
 		return data
+	
+	@property
+	def press_accuracy(self):
+		"""Calculates the ratio between button presses and the number of leds captured"""
+		return self.num_ON_leds() / float(self._num_presses) if self._num_presses != 0 else 0.0
+		
 
 	def reset_data(self):
 		"""Reset data to init values"""
@@ -96,6 +102,7 @@ class Tower():
 		self._leds = [0 for i in range(Tower.NUM_CHARGE_LEDS)]
 		self._num_presses = 0
 		self._status_led_color = Tower.LED_COLOR['red']
+		self._press_accuracy = 0.0
 
 	def __str__(self):
 		return "TowerStatus: {}, ChargLEDS:{}, StatusLED:{}, NumPresses: {}".format(self._status, self._leds, self._status_led_color, self._num_presses)
@@ -107,21 +114,21 @@ class GameManagerNode:
 		# init node
 		rospy.init_node('game_manager')
 		
+		self.BT_PRESS_THD = rospy.get_param("/charging_time")
+		self.CHAR_LED_PER_TW = rospy.get_param("/num_charge_leds_per_tower")
+		self.NUM_TOWERS = rospy.get_param("/num_towers")
+		self.FEEDBACK_DURATION =  rospy.get_param("/led_feedback_duration")
+
 		# setup subscriber 
 		rospy.Subscriber('/joy', Joy, self.joy_callback)
 		rospy.Subscriber(rospy.get_param("/button_topic_name"), ButtonState,  self.tower_bt_callback)
 		rospy.Subscriber(rospy.get_param("/tilt_sensor_topic_name"), TiltSensor,  self.tower_tilt_sensor_callback)
 		
 		# setting towers
-		self.service_names = rospy.get_param("/tower_service_names")
-		self.towers = dict((int(i),0) for i in self.service_names.keys())
-		for id, service_name in self.service_names.iteritems():
-			self.towers[int(id)] = Tower(int(id),service_name)
+		self.towers = dict((int(i),0) for i in range(1,self.NUM_TOWERS+1))
+		for id in range(1,self.NUM_TOWERS+1):
+			self.towers[int(id)] = Tower(int(id))
 
-		self.BT_PRESS_THD = rospy.get_param("/charging_time")
-		self.CHAR_LED_PER_TW = rospy.get_param("/num_charge_leds_per_tower")
-		self.NUM_TOWERS = rospy.get_param("/num_towers")
-		self.FEEDBACK_DURATION =  rospy.get_param("/led_feedback_duration")
 
 		# Setup publishers
 		self.pub_game_on = rospy.Publisher('game_manager/isGameON', Bool, queue_size=1)
@@ -139,9 +146,35 @@ class GameManagerNode:
 
 		self.bt_msg_on_process   = None
 
+		self.feedback_timer = (None,None)
+		self.feedback_state = 0
 		self.reset_game()
 
+
+	def start_feedback_timer(self, tw_id):
+		"""Starts a timer for blinking the next led to be ON. This gives player a feedback
+		when pressing the button."""
+		self.feedback_timer = (tw_id,rospy.Timer(self.FEEDBACK_DURATION,
+										  self._feedback_callback))
 	
+	def stop_feedback_timer(self):
+		"""Stops a timer for blinking feedback"""
+		self.feedback_timer[1].shutdown()
+		self.feedback_timer = (None,None)
+
+	def _feedback_callback(self, event):
+		"""Feedback callback for the led"""
+		tw_id = self.feedback_timer[0]
+		msg = ChangeLEDs()
+		msg.header.stamp = rospy.Time.now()
+		msg.id = tw_id
+		current_led_state = self.towers[tw_id].leds[:3]
+		current_led_state[self.towers[tw_id].num_ON_leds()] = not feedback_state 
+		msg.charge_leds = current_led_state
+		msg.status_led_color = self.towers[tw_id].status_led_color
+		self.pub_led.publish(msg)
+		rospy.logwarn("Feedback LED state published!")
+		
 
 	def tower_bt_callback(self, msg):
 		"""Tower button callback"""
@@ -155,7 +188,10 @@ class GameManagerNode:
 		if msg.value:
 			self.bt_msg_on_process = msg
 			self.towers[msg.id].num_presses_add_one()    # add press counter for the corresponding tower
+			self.start_feedback_timer(msg.id)
+
 		elif msg.value==False and self.bt_msg_on_process is not None:
+			self.stop_feedback_timer()
 			time_diff = msg.header.stamp.to_sec() - self.bt_msg_on_process.header.stamp.to_sec()
 			if time_diff < 0: rospy.logerr("Time diff bettween pressing and unpressing button cannot be negative!")
 			if (time_diff / self.BT_PRESS_THD) >= 1:
@@ -179,20 +215,6 @@ class GameManagerNode:
 		return  self.towers[tw_id].num_ON_leds() == self.CHAR_LED_PER_TW
 
 
-	def start_feedback_timer(self):
-		"""Starts a timer for blinking the status led on tower, giving the player a feedback
-		when pressing the button"""
-		self.feedback_timer = rospy.Timer(rospy.Duration(self.FEEDBACK_DURATION),
-										  self.feedback_callback)
-	
-	def stop_feedback_timer(self, parameter_list):
-		"""Stops a timer for blinking the status led on tower"""
-		self.feedback_timer.shutdown()
-		self.feedback_timer = None
-
-	def feedback_callback(self, event):
-		self.publish_LED_update(self.bt_msg_on_process.id)
-
 	def update_tw_led(self, tower_number):
 		old_num_ON = self.towers[tower_number].num_ON_leds()
 		self.towers[tower_number].update_led(old_num_ON, 1)
@@ -201,6 +223,7 @@ class GameManagerNode:
 			self.towers[tower_number].status = TowerState.TYPE_TOWER_CAPTURED
 			self.towers[tower_number].status_led_color = Tower.LED_COLOR['green']
 			self.bt_msg_on_process = None
+			self.stop_feedback_timer()
 
 		self.publish_LED_update(tower_number)
 		rospy.logwarn("#leds in tower{}: {}".format(tower_number,self.towers[tower_number].leds))
