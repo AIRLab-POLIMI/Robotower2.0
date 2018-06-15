@@ -120,9 +120,9 @@ class GameManagerNode:
 		self.FEEDBACK_DURATION =  rospy.get_param("/led_feedback_duration")
 
 		# setup subscriber 
-		rospy.Subscriber('/joy', Joy, self.joy_callback)
+		rospy.Subscriber('/joy', Joy, self.joy_callback, queue_size=1)
 		rospy.Subscriber(rospy.get_param("/button_topic_name"), ButtonState,  self.tower_bt_callback)
-		rospy.Subscriber(rospy.get_param("/tilt_sensor_topic_name"), TiltSensor,  self.tower_tilt_sensor_callback)
+		rospy.Subscriber(rospy.get_param("/tilt_sensor_topic_name"), TiltSensor,  self.tower_tilt_sensor_callback, queue_size=1)
 		
 		# setting towers
 		self.towers = dict((int(i),0) for i in range(1,self.NUM_TOWERS+1))
@@ -215,8 +215,18 @@ class GameManagerNode:
 		"""Tilt sensor callback"""
 		self.towers[msg.id].status = TowerState.TYPE_TOWER_HAS_FALLEN if msg.value else TowerState.TYPE_TOWER_ONLINE
 		self.game_running = False
+		self.publish_game_state(self.game_running)
 
-	def checkCapture(self, tw_id):
+	def check_player_won(self):
+		"""Checks whether player has won by capturing all towers"""
+		
+		for tw in self.towers.keys():
+			if self.towers[tw].status != TowerState.TYPE_TOWER_CAPTURED:
+				return False
+		self.game_running = False
+		return True
+
+	def check_capture(self, tw_id):
 		"""
 		Checks wether player has captured the tower
 		Params
@@ -231,7 +241,7 @@ class GameManagerNode:
 		old_num_ON = self.towers[tower_number].num_ON_leds()
 		self.towers[tower_number].update_led(old_num_ON, 1)
 
-		if self.checkCapture(tower_number):
+		if self.check_capture(tower_number):
 			self.towers[tower_number].status = TowerState.TYPE_TOWER_CAPTURED
 			self.towers[tower_number].status_led_color = Tower.LED_COLOR['green']
 			self.bt_msg_on_process = None
@@ -241,6 +251,11 @@ class GameManagerNode:
 		rospy.logdebug("#leds in tower{}: {}".format(tower_number,self.towers[tower_number].leds))
 		rospy.logdebug("Bt_presses in tower{}: {}".format(tower_number,self.towers[tower_number].num_presses))
 
+	def publish_game_state(self, value):
+		"""Publishes the whether game is running"""
+		msg = Bool()
+		msg.data = value
+		self.pub_game_on.publish(msg)
 
 	def joy_callback(self, msg):
 		"""
@@ -251,9 +266,7 @@ class GameManagerNode:
 			rospy.loginfo("Trying to reset towers AND start game..")
 			success = self.reset_game()
 			rospy.loginfo("back from reset..")
-			msg = Bool()
-			msg.data = success
-			self.pub_game_on.publish(msg)
+			self.publish_game_state(success)
 
 	def reset_game(self):
 		"""Reset game by reseting tower data"""
@@ -264,8 +277,10 @@ class GameManagerNode:
 			rospy.loginfo("Tower {} was reset! New State:\n{}".format(tw, str(self.towers[tw])))
 			for i in range(5):		# make sure the towers listen to the call
 				self.publish_LED_update(tw)
+				self.rate.sleep()
 		self.trying_reset = False
 		self.game_running = True
+		return True
 
 	def count_time(self):
 		"""Counts second past button presses"""
@@ -307,6 +322,9 @@ class GameManagerNode:
 				self.count_time()
 				self.publish_state_of_towers()
 			
+				if self.check_player_won():
+					self.publish_game_state(self.game_running)
+
 			self.rate.sleep()
 			
 
