@@ -1,6 +1,7 @@
 <launch>
 
     <rosparam command="load" file="$(find game_manager)/params/game.yaml" />
+    <include file="$(find joystick)/launch/joystick.launch" />
     <node pkg="game_manager" type="node.py" name="game_manager" output="screen" respawn="true" />
     
 </launch>

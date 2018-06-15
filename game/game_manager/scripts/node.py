@@ -6,12 +6,12 @@ from sensor_msgs.msg import Joy
 from game_manager.msg import ButtonState, TowerState, TiltSensor, Towers, ChangeLEDs
 from game_manager.srv import SetLEDs
 
-class Tower():
+class Tower(object):
 	NUM_CHARGE_LEDS = 4
-	ALLOWED_STATUSES = [TowerState.TYPE_TOWER_CAPTURED,
+	ALLOWED_STATUSES = (TowerState.TYPE_TOWER_CAPTURED,
 						TowerState.TYPE_TOWER_HAS_FALLEN,
 						TowerState.TYPE_TOWER_OFFLINE,
-						TowerState.TYPE_TOWER_ONLINE]
+						TowerState.TYPE_TOWER_ONLINE)
 	
 	LED_COLOR = {'red':(1,0), 'green': (0,1), 'blank': (0,0)}
 
@@ -42,6 +42,8 @@ class Tower():
 	def status(self, value):
 		if value in Tower.ALLOWED_STATUSES:
 			self._status = value
+		else: 
+			rospy.logerr("Tried to set tower status with unknown value.")
 	
 	@property
 	def leds(self):
@@ -72,8 +74,6 @@ class Tower():
 			id_led (int, range: 1-NUM_CHARGE_LEDS):	the charge led number
 			state (bool):	the new state for the led
 			"""
-		if self.feedback_timer is not None:
-			self.stop_feedback_timer()
 		self._leds[id_led] = state
 
 	def num_ON_leds(self):
@@ -141,45 +141,55 @@ class GameManagerNode:
 		# 
 		self.feedback_timer = None
 		self.feedback_status = False
+		self.game_running = False
 
 		self.trying_reset = False
 
 		self.bt_msg_on_process   = None
 
-		self.feedback_timer = (None,None)
-		self.feedback_state = 0
-		self.reset_game()
+		self.feedback_timer = None
+		self.feedback_charled_state = 0
+		self.feedback_statusled_state = Tower.LED_COLOR['blank']
+
 
 
 	def start_feedback_timer(self, tw_id):
 		"""Starts a timer for blinking the next led to be ON. This gives player a feedback
 		when pressing the button."""
-		self.feedback_timer = (tw_id,rospy.Timer(self.FEEDBACK_DURATION,
-										  self._feedback_callback))
+		self.feedback_timer = rospy.Timer(rospy.Duration(self.FEEDBACK_DURATION),
+										  self._feedback_callback)
 	
 	def stop_feedback_timer(self):
 		"""Stops a timer for blinking feedback"""
-		self.feedback_timer[1].shutdown()
-		self.feedback_timer = (None,None)
+		self.feedback_timer.shutdown()
 
 	def _feedback_callback(self, event):
 		"""Feedback callback for the led"""
-		tw_id = self.feedback_timer[0]
+		tw_id = self.bt_msg_on_process.id
 		msg = ChangeLEDs()
 		msg.header.stamp = rospy.Time.now()
 		msg.id = tw_id
 		current_led_state = self.towers[tw_id].leds[:3]
-		current_led_state[self.towers[tw_id].num_ON_leds()] = not feedback_state 
+		
+		if self.towers[tw_id].num_ON_leds() != 3:
+			self.feedback_charled_state = not self.feedback_charled_state
+			current_led_state[self.towers[tw_id].num_ON_leds()] = self.feedback_charled_state 
+			msg.status_led_color = self.towers[tw_id].status_led_color
+		else:
+			if self.feedback_statusled_state == Tower.LED_COLOR['red']:
+				self.feedback_statusled_state = Tower.LED_COLOR['blank']
+			elif self.feedback_statusled_state == Tower.LED_COLOR['blank']:
+				self.feedback_statusled_state = Tower.LED_COLOR['red']
+			
 		msg.charge_leds = current_led_state
-		msg.status_led_color = self.towers[tw_id].status_led_color
+		msg.status_led_color = self.feedback_statusled_state
 		self.pub_led.publish(msg)
-		rospy.logwarn("Feedback LED state published!")
 		
 
 	def tower_bt_callback(self, msg):
 		"""Tower button callback"""
 
-		rospy.loginfo("Button state from tower #{} is {}!".format(msg.id,msg.value))
+		rospy.logdebug("Button state from tower #{} is {}!".format(msg.id,msg.value))
 
 		if self.towers[msg.id].status == TowerState.TYPE_TOWER_CAPTURED or \
 			self.towers[msg.id].status == TowerState.TYPE_TOWER_HAS_FALLEN:
@@ -197,13 +207,15 @@ class GameManagerNode:
 			if (time_diff / self.BT_PRESS_THD) >= 1:
 				self.update_tw_led(self.bt_msg_on_process.id)
 			else:
-				rospy.loginfo("Time elapsed from last led: {:.2f}".format(time_diff))
+				self.publish_LED_update(self.bt_msg_on_process.id)
+				rospy.logdebug("Time elapsed from last led: {:.2f}".format(time_diff))
 			self.bt_msg_on_process = None
 
 	def tower_tilt_sensor_callback(self, msg):
 		"""Tilt sensor callback"""
 		self.towers[msg.id].status = TowerState.TYPE_TOWER_HAS_FALLEN if msg.value else TowerState.TYPE_TOWER_ONLINE
-	
+		self.game_running = False
+
 	def checkCapture(self, tw_id):
 		"""
 		Checks wether player has captured the tower
@@ -226,30 +238,34 @@ class GameManagerNode:
 			self.stop_feedback_timer()
 
 		self.publish_LED_update(tower_number)
-		rospy.logwarn("#leds in tower{}: {}".format(tower_number,self.towers[tower_number].leds))
-		rospy.logwarn("Bt_presses in tower{}: {}".format(tower_number,self.towers[tower_number].num_presses))
+		rospy.logdebug("#leds in tower{}: {}".format(tower_number,self.towers[tower_number].leds))
+		rospy.logdebug("Bt_presses in tower{}: {}".format(tower_number,self.towers[tower_number].num_presses))
 
 
 	def joy_callback(self, msg):
 		"""
 		Reads the joy message and checks whether start button was pressed.
 		"""
-		if msg.buttons[5] and msg.buttons[9] == 1 and not trying_reset:
-			self.trying_reset = not trying_reset
+		if msg.buttons[5] and (msg.buttons[9] == 1) and not self.trying_reset:
+			self.trying_reset = True #not self.trying_reset
 			rospy.loginfo("Trying to reset towers AND start game..")
-			sucess = reset_game()
+			success = self.reset_game()
+			rospy.loginfo("back from reset..")
 			msg = Bool()
-			msg.data = self.started
+			msg.data = success
 			self.pub_game_on.publish(msg)
 
 	def reset_game(self):
 		"""Reset game by reseting tower data"""
 		for tw in self.towers.keys():
+		
 			self.towers[tw].reset_data()
-			rospy.loginfo("Tower {} was reset! New State:\n{}".format(tw,self.towers[tw]))
+			self.towers[tw].status = TowerState.TYPE_TOWER_ONLINE
+			rospy.loginfo("Tower {} was reset! New State:\n{}".format(tw, str(self.towers[tw])))
 			for i in range(5):		# make sure the towers listen to the call
 				self.publish_LED_update(tw)
-				self.rate.sleep()
+		self.trying_reset = False
+		self.game_running = True
 
 	def count_time(self):
 		"""Counts second past button presses"""
@@ -271,7 +287,6 @@ class GameManagerNode:
 		msg.charge_leds = self.towers[tw_id].leds[:3]
 		msg.status_led_color = self.towers[tw_id].status_led_color
 		self.pub_led.publish(msg)
-		rospy.logwarn("New LED state published!")
 		return True
 
 	def publish_state_of_towers(self):
@@ -285,10 +300,13 @@ class GameManagerNode:
 
 	def run(self):
 		"""main loop"""
+		rospy.logwarn("***** MAKE SURE THE TOWERS WERE TURNED ON (WITH ALL LEDS AND STATUS LED SET TO GREEN) BEFORE CALLING THIS NODE! *****")
 		while not rospy.is_shutdown():
-			rospy.loginfo_throttle(3,"Subscribers to ChangeLEDs: {}".format(self.pub_led.get_num_connections()))
-			self.count_time()
-			self.publish_state_of_towers()
+
+			if self.game_running:
+				self.count_time()
+				self.publish_state_of_towers()
+			
 			self.rate.sleep()
 			
 
