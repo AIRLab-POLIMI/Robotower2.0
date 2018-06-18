@@ -18,7 +18,6 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
-find_package(arduino_publisher REQUIRED)
 find_package(sim_arduino_publisher REQUIRED)
 
 ## System dependencies are found with CMake's conventions
