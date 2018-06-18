@@ -1,0 +1,7 @@
+float32 max_speed     # robot's maximum velocity
+float32 min_speed     # robot's minimum velocity
+int8 bf_exponent      # blocking factor exponent
+---
+float32 max_speed     # robot's maximum velocity
+float32 min_speed     # robot's minimum velocity
+int8 bf_exponent      # blocking factor exponent

@@ -150,43 +150,6 @@ void loop(){
 //    }
 
 
-    // Get tower data
-    if (millis() - last_tw_sample_time > TOWER_SAMPLE_TIME){
-        last_tw_sample_time = millis();
-
-        int com_pipe_to_sample = com_counter % (NUM_TOWERS);
-
-//        if (com_pipe_to_sample == 5){
-////            bat_msg.data = voltage;
-////            bat_pub.publish(&bat_msg);
-//        }else{    // Sample towers
-            //Get tower data
-          RFtransmitter.openWritingPipe(w_addresses[com_pipe_to_sample]);
-          delay(5);
-          RFtransmitter.setPayloadSize(sizeof(tower_package));
-          if(RFtransmitter.write(msg,sizeof(msg))){
-              if(RFtransmitter.isAckPayloadAvailable()){
-                if (RFtransmitter.read(&tower_data, sizeof(tower_data))){
-             
-                  tw_msg.header.stamp = nh.now();
-                  tw_msg.id = com_pipe_to_sample+1;
-                  tw_msg.button = tower_data.button;
-                  tw_msg.status = tower_data.t_status;
-                  tw_msg.leds[0] = tower_data.leds[0];
-                  tw_msg.leds[1] = tower_data.leds[1];
-                  tw_msg.leds[2] = tower_data.leds[2];
-                  tw_msg.leds[3] = tower_data.leds[3];
-                  tw_msg.press_counter = tower_data.num_presses;
-                  //if (tw_msg.id == 1 && 1 == com_pipe_to_sample+1)
-                  tw_pub.publish(&tw_msg);
-                }
-              }
-          }
-        //}
-
-        com_counter++;
-    }
-
     // if acc data timed out turn OFF ACC_WARNING_LED.
     if (millis() - last_acc_time > ACC_TIMEOUT_TRH){
         last_acc_time = millis();

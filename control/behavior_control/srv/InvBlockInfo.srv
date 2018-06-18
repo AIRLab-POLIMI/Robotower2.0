@@ -1,0 +1,3 @@
+bool compute_and_reset   # compute the value and reset the count
+---
+float32 inv_bloc_frq     # inverse blocking frequency

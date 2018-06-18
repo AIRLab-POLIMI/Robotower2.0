@@ -1,0 +1,17 @@
+<launch>
+
+    <rosparam 
+        command="load"
+        file="$(find arduino_publisher)/config/arduino.yaml"
+    />
+
+    <node 
+        pkg="arduino_publisher" 
+        type="arduino_publisher_node" 
+        name="arduino_publisher"
+        output="screen"
+        respawn="true"
+        >
+    </node>
+
+</launch>

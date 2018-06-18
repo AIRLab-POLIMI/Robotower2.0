@@ -3,14 +3,16 @@
 	<!-- Robogame teleop nodes -->
 	<include file="$(find joystick)/launch/joystick.launch"/>
 	
-	<!-- rosserial launch file for nova core -->
+	<!-- rosserial launch file for arduino -->
 	<include file="$(find rosserial_core)/launch/serial_node.launch">
 		<arg name="port" value="/dev/arduino" />
 	</include>
 	
-	<!-- Launch heartbeat and arduino_publisher -->
+	<!-- For TCP connection to the towers -->
+    <!-- <include file="$(find rosserial_server)/launch/socket.launch"/ -->
+
+	<!-- Launch heartbeat-->
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
-	<!-- <node pkg="arduino_publisher" type="arduino_publisher_node" name="arduino_publisher" respawn="true"/> <launch-prefix="xterm -e gdb"/> -->
 	
 	<!-- Data logger -->
 	<!--<include file="$(find data_collection)/launch/slippage_data_recorder.launch"/> -->

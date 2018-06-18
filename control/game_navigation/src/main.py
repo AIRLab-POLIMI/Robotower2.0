@@ -9,6 +9,8 @@ import rospy
 import copy
 import tf
     
+# TODO: Change nomenclature of MAX_VEL param, which is better to be called MAX_SPEED.
+
 def main():
     """ The main ros loop"""
     #Init node
@@ -16,6 +18,8 @@ def main():
 
     rate = rospy.Rate(60)
     navigation = None    # init navigation module variable
+
+    difficulties = None  # init the difficulty control variable
     
     # get param values
     try:
@@ -25,7 +29,7 @@ def main():
         T_MAX = rospy.get_param("/game_navigation/t_max")
         KS = rospy.get_param("/game_navigation/ks")
         ANGLE_DEADZONE = rospy.get_param("/game_navigation/angle_deadzone")
-        MAX_VEL = rospy.get_param("/game_navigation/max_vel")
+        MAX_VEL = rospy.get_param("/game_navigation/max_vel")           # this reading is not needed.
         TOWER1 = rospy.get_param("/tower_1")
         TOWER2 = rospy.get_param("/tower_2")
         TOWER3 = rospy.get_param("/tower_3")
@@ -39,6 +43,7 @@ def main():
         FL_LOWER_BOUND = rospy.get_param("/game_navigation/fl_lower_bound")
         L_LOWER_BOUND = rospy.get_param("/game_navigation/l_lower_bound")
         RL_LOWER_BOUND = rospy.get_param("/game_navigation/rl_lower_bound")
+        difficulties = rospy.get_param("/difficulties")
 
         navigation = Navigation(KP, MAX_DOT_THETA, MAX_ACC, T_MAX, KS, ANGLE_DEADZONE, MAX_VEL, TOWER1, TOWER2, TOWER3, TOWER4, NEAR_GOAL_DISTANCE,
                     PROXIMITY_THREESHOLD, DONTCARE, RR_LOWER_BOUND, R_LOWER_BOUND, FL_LOWER_BOUND, FL_LOWER_BOUND, L_LOWER_BOUND, RL_LOWER_BOUND)
@@ -58,6 +63,10 @@ def main():
     pub = rospy.Publisher('unsafe/cmd_vel', Twist, queue_size=1)
 
     while not rospy.is_shutdown():
+
+        cur_difficulty = rospy.get_param('/current_difficulty')
+        navigation.set_max_speed(difficulties[cur_difficulty]['max_speed'])
+
         # publish vel commands in /unsafe/cmd_vel topic
         pub.publish(navigation.navigate())
         rate.sleep()

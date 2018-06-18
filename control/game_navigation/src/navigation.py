@@ -58,6 +58,8 @@ class Navigation:
         self.is_safe = True
 
 
+    def set_max_speed(self,value):
+        self.MAX_VEL = value
 
     def velCallback(self,msg):
         """
@@ -114,7 +116,6 @@ class Navigation:
         if (self.current_player_info.distance < 1) and (abs(self.current_player_info.header.stamp.to_sec() - rospy.Time.now().to_sec()) < 1.5): 
             # the condition is activated when the player is within 1 meter from the camera and when the received
             # message is no older than 1.5 sec. The more the player is close the more the angular rotation command is smoothed
-            rospy.logwarn('im smoothing')
             dot_theta = dot_theta * self.current_player_info.distance
 
         # Angular velocity clamping (max angular velocity in rad/sec)
