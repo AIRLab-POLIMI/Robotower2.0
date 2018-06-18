@@ -1,3 +1,9 @@
+/**
+ *	This new tower code is based on the module ESP8266-12F dev board v3.
+ *  Author: Ewerton Lopes
+ *	Date: Jun 18, 2018
+ **/
+
 #include <ESP8266WiFi.h>
 #include <ros.h>
 #include <WString.h>
