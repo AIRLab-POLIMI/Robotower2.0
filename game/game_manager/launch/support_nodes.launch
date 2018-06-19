@@ -9,7 +9,7 @@
 	</include>
 	
 	<!-- For TCP connection to the towers -->
-    <!-- <include file="$(find rosserial_server)/launch/socket.launch"/ -->
+    <include file="$(find rosserial_server)/launch/socket.launch"/>
 
 	<!-- Launch heartbeat-->
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>

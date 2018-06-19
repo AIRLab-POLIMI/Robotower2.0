@@ -46,8 +46,8 @@ public:
         //pub_press_delta = nh.advertise<tower_manager::TowerButtonPressInfo>("player/tower_button_info", 1, this);
         sub = nh.subscribe("arduino/tower_state", 1, &TowerManager::messageReceived, this);
 
-        nh.getParam("/LED_per_tower", LED_per_tower);
-        nh.getParam("/number_of_game_towers", num_tower);
+        nh.getParam("/num_charge_leds_per_tower", LED_per_tower);
+        nh.getParam("/num_towers", num_tower);
 
         total_LED = num_tower * total_LED;
 

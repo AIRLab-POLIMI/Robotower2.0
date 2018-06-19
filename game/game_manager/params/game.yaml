@@ -13,10 +13,10 @@ tilt_sensor_topic_name: tower/tilt_sensor
 button_topic_name: tower/button_state
 
 # XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):
-pos_tower_1: [1.52, 0.96]
-pos_tower_2: [4.36, 1.89]
-pos_tower_3: [0.26, 4.34]
-pos_tower_4: [3.00, 5.44]
+tower_1: [-1.04, 2.27]
+tower_2: [2.31, 1.12]
+tower_3: [-2.04, -0.90]
+tower_4: [1.37, -1.91]
 
 ##########################################################################
 ##                         DIFFICULTY SETTINGS                          ##

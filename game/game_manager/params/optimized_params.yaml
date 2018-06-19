@@ -40,7 +40,7 @@ dictitems:
       odom_alpha4: 0.2
       odom_alpha5: 0.1
       odom_frame_id: odom
-      odom_model_type: omni
+      odom_model_type: omni-corrected
       parameters: !!python/object/new:dynamic_reconfigure.encoding.Config
         state: []
       parent: 0
@@ -79,7 +79,7 @@ dictitems:
   odom_alpha4: 0.2
   odom_alpha5: 0.1
   odom_frame_id: odom
-  odom_model_type: omni
+  odom_model_type: omni-corrected
   recovery_alpha_fast: 0.0
   recovery_alpha_slow: 0.0
   resample_interval: 1

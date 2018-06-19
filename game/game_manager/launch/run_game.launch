@@ -1,8 +1,6 @@
 <launch>
 
     <!-- Parameters -->
-    <rosparam command="load" file="$(find arduino_publisher)/config/arduino.yaml" />
-    <rosparam command="load" file="$(find tower_manager)/config/tower_config.yaml" />
     <rosparam command="load" file="$(find behavior_control)/config/config.yaml" />
     <rosparam command="load" file="$(find game_manager)/params/velocity_config.yaml" />
     <rosparam command="load" file="$(find game_manager)/params/game.yaml" />
@@ -14,7 +12,7 @@
 	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_params.yaml" />
 
     <!-- For TCP connection to the towers -->
-    <include file="$(find rosserial_server)/launch/socket.launch"/>
+    
 
     <!-- behavior manager -->
     <include file="$(find behavior_control)/launch/run.launch" />

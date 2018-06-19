@@ -341,7 +341,9 @@ bool Behavior::Planner::isCancelGoal(int new_goal_ID){
     if (previous_decision_ != new_goal_ID){
         ROS_INFO("Goal changed!");
         previous_decision_ = new_goal_ID;
-        mb_action_client_->cancelGoal();
+        if (on_simulation_){
+            mb_action_client_->cancelGoal();
+        }
         num_blocks_ += checkBlockTimeout();     //if no block timeout add one to the count.
         return true;
     }
