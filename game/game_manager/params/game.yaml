@@ -11,12 +11,13 @@ led_feedback_duration: 0.25      # blink duration for the tower status led when
 
 tilt_sensor_topic_name: tower/tilt_sensor
 button_topic_name: tower/button_state
+behavior_service_name: change_behavior
 
 # XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):
-tower_1: [-1.04, 2.27]
-tower_2: [2.31, 1.12]
-tower_3: [-2.04, -0.90]
-tower_4: [1.37, -1.91]
+tower_1: [-0.669, -2.131]
+tower_2: [-1.483, -0.021]
+tower_3: [2.988, -0.781]
+tower_4: [2.352, 1.398]
 
 ##########################################################################
 ##                         DIFFICULTY SETTINGS                          ##
@@ -27,27 +28,27 @@ tower_4: [1.37, -1.91]
 # exponent of the "blocking factor".
  
 difficulties: {
-                very_easy: {max_speed: 0.2,
-                            min_speed: 0.1,
-                            bf_exponent: 1},
                             
-                easy: {max_speed: 0.4,
+                easy: {max_speed: 0.5,
                        min_speed: 0.1,
-                       bf_exponent: 1},
+                       max_acc: 0.2,
+                       ks: 50., 
+                       bf_exponent: 4},
                        
-                medium: {max_speed: 0.5,
-                         min_speed: 0.2,
-                         bf_exponent: 1},
+                medium: {max_speed: 0.7,
+                         min_speed: 0.5,
+                         max_acc: 0.5,
+                         ks: 50., 
+                         bf_exponent: 2},
                          
-                hard: {max_speed: 0.8,
-                       min_speed: 0.3,
-                       bf_exponent: 1},
                        
-                very_hard: {max_speed: 0.9,
-                            min_speed: 0.3,
-                            bf_exponent: 1}
+                hard: {max_speed: 1.,
+                       min_speed: 0.7,
+                       max_acc: 0.5,
+                       ks: 50., 
+                       bf_exponent: 1}
                }
 
-current_difficulty: medium
+current_difficulty: easy
 
 block_timeout: 3.0    #the time span for consider the player has blocked the robot

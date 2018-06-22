@@ -29,6 +29,9 @@
 
     <!-- navigation -->
     <include file="$(find game_navigation)/launch/navigation.launch"/>
+
+    <!-- navigation -->
+    <include file="$(find player_tracker)/launch/experiments/run.launch"/>
    
 
 </launch>

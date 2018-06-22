@@ -2,7 +2,7 @@
 
   	<arg name="simulation"			default='false'/>
 	<arg name="min_dist_to_tower"	default='0.1'/> 
-	<arg name="goal_topic"			default='goal'/>
+	<arg name="goal_topic"			default='/game/goal'/>
 	<arg name="block_timeout"		default='3.0'/>
 	<arg name="robot_base"			default='/base_link'/>
 	<arg name="player_base"			default='/player_filtered_link'/>

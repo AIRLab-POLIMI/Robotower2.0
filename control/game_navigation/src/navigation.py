@@ -60,6 +60,12 @@ class Navigation:
 
     def set_max_speed(self,value):
         self.MAX_VEL = value
+    
+    def set_max_acc(self,value):
+        self.MAX_ACC = value
+
+    def set_ks(self,value):
+        self.KS = value
 
     def velCallback(self,msg):
         """

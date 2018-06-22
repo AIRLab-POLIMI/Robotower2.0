@@ -118,13 +118,13 @@ Behavior::Planner::Planner(){
 }
 
 bool Behavior::Planner::calcInvBlockFreq(behavior_control::InvBlockInfo::Request &req, behavior_control::InvBlockInfo::Response &resp){
+    
+    //send inver_block frequency data
+    resp.inv_bloc_frq = (1/num_blocks_ ? num_blocks_ != 0 : 0.0);
 
     if (req.compute_and_reset){
         num_blocks_ = 0;
     }
-    
-    //send inver_block frequency data
-    resp.inv_bloc_frq = (1/num_blocks_ ? num_blocks_ != 0 : 0.0);
 
     return true;
 }
@@ -186,7 +186,6 @@ bool Behavior::Planner::getTransform(std::string target, std::string source, ros
 
 void Behavior::Planner::updateDecisionVariables(){
 
-    
     ROS_INFO("Max vel: [%f]", max_speed_);
     ROS_INFO("Min vel: [%f]", min_speed_);
 
@@ -339,7 +338,7 @@ bool Behavior::Planner::checkBlockTimeout(){
 
 bool Behavior::Planner::isCancelGoal(int new_goal_ID){
     if (previous_decision_ != new_goal_ID){
-        ROS_INFO("Goal changed!");
+        ROS_WARN("Goal changed!");
         previous_decision_ = new_goal_ID;
         if (on_simulation_){
             mb_action_client_->cancelGoal();
@@ -368,5 +367,5 @@ void Behavior::Planner::makeDecision(){
         start_decision_timer_ = ros::Time::now();
     }
 
-    ROS_INFO("Decision: %s", decision->getName().c_str());
+    ROS_WARN("Decision: %s", decision->getName().c_str());
 }

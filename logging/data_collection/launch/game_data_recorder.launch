@@ -9,7 +9,7 @@
  /cmd_vel /scan /player_global_position /tower_1 /tower_2 /tower_3 /tower_4 /tower_button_press_entropy
  /tower_button_press_mean /tower_button_press_var /robogame/goal /robogame/player_global_position
  /robogame/player_local_position /robogame/player_relative_angle /player/tower_button_info /player_act_prediction /game_manager/towers/State
- /proximity /joy"/>
+ /proximity /joy /game/goal"/>
 	<arg name="file_name"  	default=""/>
 
 	<group ns="record">

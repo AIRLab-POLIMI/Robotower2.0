@@ -72,7 +72,7 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 		}else{
 			ROS_WARN("unsafe/cmd_vel too old... skipping..");
 		}
-	}else if (msg->buttons[deadmanButton]) {		// if deadman switch is pressed
+	}else if (msg->buttons[deadmanButton] && !msg->buttons[6]) {		// if deadman switch is pressed
 		if (msg->buttons[3]){
 			ROS_DEBUG_STREAM("Increasing linearScale by 0.5\%...");
 			linearScale += 0.01;//linearScale * 0.05;
