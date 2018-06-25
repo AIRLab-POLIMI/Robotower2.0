@@ -4,6 +4,7 @@ from kinect_tracker.msg import PlayerInfo
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
 from navigation import Navigation
+from std_msgs.msg import Float32
 import numpy as np
 import rospy
 import copy
@@ -56,8 +57,8 @@ def main():
         exit(-1)
 
     # Subscribers 
-    player_dist_sub = rospy.Subscriber('/kinect2/player_info',PlayerInfo, navigation.playerInfoCallback)
-    player_info_sub = rospy.Subscriber('/kinect2/player_filtered_info', PlayerInfo, navigation.angleCallback)
+    player_dist_sub = rospy.Subscriber('/kinect2/player_filtered_info',PlayerInfo, navigation.playerInfoCallback)
+    player_info_sub = rospy.Subscriber('/playground_center', Float32, navigation.angleCallback)
     game_goal_sub   = rospy.Subscriber('/game/goal', Goal, navigation.goalCallback)
     vel_sub   = rospy.Subscriber('/vel', Twist, navigation.velCallback)
     laser_sub   = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)

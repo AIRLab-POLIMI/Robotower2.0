@@ -1,5 +1,5 @@
 kp: 4                       # Proportional Gain (anglePControllerCallback())
-max_dot_theta: 1.5          # Maximum allowed angular velocity (in rad/sec)
+max_dot_theta: 0.75          # Maximum allowed angular velocity (in rad/sec)
 max_acc: 0.5                # Maximum allowed acceleration in the velocity smoother (avoid slippage)
 t_max: 3.                   # Time constant for the velocity smoother
 ks: 50.                     # Gain factor of the velocity smoother

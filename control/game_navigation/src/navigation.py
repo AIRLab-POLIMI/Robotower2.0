@@ -91,8 +91,8 @@ class Navigation:
         """
         Updates current camera off-center player angle
         """
-        self.current_angle_diff = msg.angle
-
+        self.current_angle_diff = msg.data
+        
     def playerInfoCallback(self,msg):
         """
         Updates current camera-player distance
