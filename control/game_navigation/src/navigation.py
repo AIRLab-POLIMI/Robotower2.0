@@ -1,4 +1,4 @@
-from behavior_manager.msg import Goal
+from behavior_control.msg import Goal
 from kinect_tracker.msg import PlayerInfo
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan

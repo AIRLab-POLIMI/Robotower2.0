@@ -32,6 +32,8 @@
 
     <!-- navigation -->
     <include file="$(find player_tracker)/launch/experiments/run.launch"/>
+
+    <node pkg="scan_filter" type="scan_filter_node" name="scan_filter" output="screen" respawn="true"/> <!--launch-prefix="xterm -e gdb args"-->
    
 
 </launch>
