@@ -61,6 +61,10 @@
 
 #include "gob/gob.h"
 
+
+#define MOVE_BASE "move_base"
+#define FUZZY "fuzzy"
+
 namespace Behavior{
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
@@ -107,7 +111,7 @@ private:
     float num_blocks_;
     float block_timeout_;
 
-    bool on_simulation_;
+    std::string nav_mode_;
     bool is_game_over_;
     
     double min_dist_to_tower_;

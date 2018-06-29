@@ -30,10 +30,10 @@ tower_4: [2.304, 1.356]
 difficulties: {
                             
                 easy: {max_speed: 0.5,
-                       min_speed: 0.1,
-                       max_acc: 0.2,
+                       min_speed: 0.05,
+                       max_acc: 0.1,
                        ks: 50., 
-                       bf_exponent: 4},
+                       bf_exponent: 1},
                        
                 medium: {max_speed: 0.7,
                          min_speed: 0.5,

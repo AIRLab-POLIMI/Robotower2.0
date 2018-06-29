@@ -14,14 +14,14 @@ Behavior::Planner::Planner(){
     tf_listener_ = new tf::TransformListener();
 
     // read whether we should run on simulation
-    if (!nh_.getParam("/planner_node/simulation", on_simulation_)){
+    if (!nh_.getParam("/planner_node/nav_mode", nav_mode_)){
         ROS_ERROR("BEHAVIOR MANAGER: could not read 'simulation' from rosparam!");
         exit(-1);
     }
 
-    if (on_simulation_){
+    if (nav_mode_ == MOVE_BASE){
         
-        mb_action_client_ = new Behavior::MoveBaseClient("/robot_0/move_base", true);
+        mb_action_client_ = new Behavior::MoveBaseClient("/move_base", true);
 
         // wait for the action server to come up
         while(!mb_action_client_->waitForServer(ros::Duration(5.0))){
@@ -40,7 +40,7 @@ Behavior::Planner::Planner(){
             exit(-1);
         }
 
-        goal_pub_ = nh_.advertise<move_base_msgs::MoveBaseGoal>(goal_topic.c_str(), 1);
+        //goal_pub_ = nh_.advertise<move_base_msgs::MoveBaseGoal>(goal_topic.c_str(), 1);
     }else{
         // set publisher for actual game
         std::string goal_topic;
@@ -293,8 +293,9 @@ void Behavior::Planner::publishDecision(){
 
     ROS_INFO("Sending goal");
 
-    if (on_simulation_){        // send new move base goal using action lib (move base)
+    if (nav_mode_ == MOVE_BASE){        // send new move base goal using action lib (move base)
         current_mb_goal_.target_pose.header.frame_id = decision->getName();
+        ROS_WARN_STREAM( decision->getName().c_str() );
         current_mb_goal_.target_pose.header.stamp = ros::Time::now();
         current_mb_goal_.target_pose.pose.orientation.w = 1;
         mb_action_client_->sendGoal(current_mb_goal_);
@@ -340,7 +341,7 @@ bool Behavior::Planner::isCancelGoal(int new_goal_ID){
     if (previous_decision_ != new_goal_ID){
         ROS_WARN("Goal changed!");
         previous_decision_ = new_goal_ID;
-        if (on_simulation_){
+        if (nav_mode_ == MOVE_BASE){
             mb_action_client_->cancelGoal();
         }
         num_blocks_ += checkBlockTimeout();     //if no block timeout add one to the count.

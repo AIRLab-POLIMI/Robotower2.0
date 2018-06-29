@@ -1,8 +1,8 @@
 <launch>
 
-  	<arg name="simulation"			default='false'/>
+  	<arg name="nav_mode"			default='move_base'/>
 	<arg name="min_dist_to_tower"	default='0.1'/> 
-	<arg name="goal_topic"			default='/game/goal'/>
+	<arg name="goal_topic"			default='/move_base/goal'/>
 	<arg name="block_timeout"		default='3.0'/>
 	<arg name="robot_base"			default='/base_link'/>
 	<arg name="player_base"			default='/player_filtered_link'/>
@@ -10,7 +10,7 @@
 	
 	<node name="planner_node" pkg="behavior_control" type="planner_node" output="screen" respawn="true"> <!-- launch-prefix="xterm -e gdb -args" -->
 		 <rosparam command="load" file="$(find behavior_control)/config/config.yaml"/>
-		 <param name="simulation" 		 type="bool" value="$(arg simulation)"/>
+		 <param name="nav_mode" 		 type="str" value="$(arg nav_mode)"/>
 		 <param name="min_dist_to_tower" type="double" value="$(arg min_dist_to_tower)"/>
 		 <param name="goal_topic" 		 type="str" value="$(arg goal_topic)"/>
 		 <param name="block_timeout" 	 type="double" value="$(arg block_timeout)"/>

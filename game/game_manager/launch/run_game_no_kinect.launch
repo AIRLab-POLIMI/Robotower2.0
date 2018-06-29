@@ -27,13 +27,14 @@
     <!-- game manager -->
     <node pkg="game_manager" type="node.py" name="game_manager" output="screen" respawn="true" />
 
-    <!-- navigation -->
-    <include file="$(find game_navigation)/launch/navigation.launch"/>
+    <!-- navigation 
+    <include file="$(find game_navigation)/launch/navigation.launch"/> -->
 
     <!-- navigation -->
     <include file="$(find player_tracker)/launch/experiments/run.launch"/>
 
-    <node pkg="scan_filter" type="scan_filter_node" name="scan_filter" output="screen" respawn="true"/> <!--launch-prefix="xterm -e gdb args"-->
+	
+    <!-- <node pkg="scan_filter" type="scan_filter_node" name="scan_filter" output="screen" respawn="true"/> launch-prefix="xterm -e gdb args"-->
    
 
 </launch>

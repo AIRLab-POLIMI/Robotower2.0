@@ -61,7 +61,7 @@ def main():
     player_info_sub = rospy.Subscriber('/playground_center', Float32, navigation.angleCallback)
     game_goal_sub   = rospy.Subscriber('/game/goal', Goal, navigation.goalCallback)
     vel_sub   = rospy.Subscriber('/vel', Twist, navigation.velCallback)
-    laser_sub   = rospy.Subscriber('/scan_filtered', LaserScan, navigation.scanCallback)
+    laser_sub   = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)
 
     # Publishers
     pub = rospy.Publisher('unsafe/cmd_vel', Twist, queue_size=1)

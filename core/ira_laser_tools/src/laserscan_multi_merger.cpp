@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <string.h>
+#include <limits>
 #include <tf/transform_listener.h>
 #include <tf/tf.h>
 #include <pcl_ros/transforms.h>
@@ -222,7 +223,7 @@ void LaserscanMerger::pointcloud_to_laserscan(Eigen::MatrixXf points, pcl::PCLPo
 	output->range_max = this->range_max;
 
 	uint32_t ranges_size = std::ceil((output->angle_max - output->angle_min) / output->angle_increment);
-	output->ranges.assign(ranges_size, output->range_max + 1.0);
+	output->ranges.assign(ranges_size, output->range_max-0.005); //std::numeric_limits<double>::infinity()); // + 1.0);
 
 	for(int i=0; i<points.cols(); i++)
 	{
@@ -251,9 +252,13 @@ void LaserscanMerger::pointcloud_to_laserscan(Eigen::MatrixXf points, pcl::PCLPo
 		}
 		int index = (angle - output->angle_min) / output->angle_increment;
 
-
+/*
 		if (output->ranges[index] * output->ranges[index] > range_sq)
+		*/
+		//Ignore if the detected range is largere than the max_range
+		if(output->range_max * output->range_max > range_sq){
 			output->ranges[index] = sqrt(range_sq);
+		}
 	}
 
 	laser_scan_publisher_.publish(output);
