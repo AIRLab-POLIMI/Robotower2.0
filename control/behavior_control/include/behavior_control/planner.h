@@ -47,6 +47,7 @@
 #include <vector>
 #include <cmath>
 #include <map>
+#include <utility>      // std::pair
 
 #include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
@@ -58,6 +59,7 @@
 #include <behavior_control/InvBlockInfo.h>
 #include <behavior_control/BehaviorParams.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Point.h>
 
 #include "gob/gob.h"
 
@@ -91,6 +93,7 @@ private:
     std::vector<float> tower_robot_distances_;
     std::vector<float> tower_player_distances_;
     std::vector<int> leds_on_;
+    std::map<std::string, geometry_msgs::Point*> tower_map_positions;
 
     ros::Time start_decision_timer_;
 
@@ -113,6 +116,7 @@ private:
 
     std::string nav_mode_;
     bool is_game_over_;
+    bool has_goal_;
     
     double min_dist_to_tower_;
     double max_speed_;
@@ -150,6 +154,8 @@ public:
     void monitorCollision();
 
     void updateLoop();
+
+    void CancelCurrentGoal();
 
     void makeDecision();
 

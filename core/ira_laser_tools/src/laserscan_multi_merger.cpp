@@ -223,7 +223,8 @@ void LaserscanMerger::pointcloud_to_laserscan(Eigen::MatrixXf points, pcl::PCLPo
 	output->range_max = this->range_max;
 
 	uint32_t ranges_size = std::ceil((output->angle_max - output->angle_min) / output->angle_increment);
-	output->ranges.assign(ranges_size, output->range_max-0.005); //std::numeric_limits<double>::infinity()); // + 1.0);
+	output->ranges.assign(ranges_size, output->range_max + 1); // This distance will be ignored by the costmap as above laser range
+	//std::numeric_limits<double>::infinity()); // + 1.0);
 
 	for(int i=0; i<points.cols(); i++)
 	{

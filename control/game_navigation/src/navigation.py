@@ -13,27 +13,27 @@ class Navigation:
 
     def __init__(self, kp, max_dot_theta, max_acc, t_max, ks, angle_deadzone, max_vel, tower1, tower2, tower3, tower4, near_goal_distance,
                  proximity_threeshold, dontcare, rr_lower_bound, r_lower_bound, fr_lower_bound, fl_lower_bound, l_lower_bound, rl_lower_bound):
-        self.KP = kp                                    # Proportional Gain (anglePControllerCallback())
-        self.MAX_DOT_THETA = max_dot_theta              # Maximum allowed angular velocity (in rad/sec)
-        self.MAX_ACC = max_acc                          # Maximum allowed acceleration in the velocity smoother (avoid slippage)
-        self.T_MAX = t_max                              # Time constant for the velocity smoother
-        self.KS = ks                                    # Gain factor of the velocity smoother
-        self.ANGLE_DEADZONE = angle_deadzone            # DeadZone range (in rad/sec), values in this range are considered zero
-        self.MAX_VEL = max_vel                          #(rosparam_get max_vel) Maximum desired velocity
-        self.TOWER1 = tower1                            # Tower1 x,y coordinate
-        self.TOWER2 = tower2                            # Tower2 x,y coordinate
-        self.TOWER3 = tower3                            # Tower3 x,y coordinate
-        self.TOWER4 = tower4                            # Tower4 x,y coordinate
-        self.NEAR_GOAL_DISTANCE = near_goal_distance    # robot-tower distance that activates near_goal.
-        self.PROXIMITY_THREESHOLD = proximity_threeshold# If an obstacle is sensed below this threeshold it is said to be in "proximity condition"
-        self.DONTCARE = dontcare                        # Obstacle in proximity condition but still don't affect the navigation trajectory
-        self.RR_LOWER_BOUND  = rr_lower_bound           # Rear Right laser sector lower bound
-        self.R_LOWER_BOUND = r_lower_bound              # Right laser sector lower bound
-        self.FR_LOWER_BOUND = fr_lower_bound            # Front Right laser sector lower bound
-        self.FL_LOWER_BOUND = fl_lower_bound            # Front Left laser sector lower bound
-        self.L_LOWER_BOUND = l_lower_bound              # Left laser sector lower bound
-        self.RL_LOWER_BOUND = rl_lower_bound            # Rear Left laser sector lower bound
-        self.TOWERS = (self.TOWER1,self.TOWER2,         # list of towers
+        self.KP = kp                                        # Proportional Gain (anglePControllerCallback())
+        self.MAX_DOT_THETA = max_dot_theta                  # Maximum allowed angular velocity (in rad/sec)
+        self.MAX_ACC = max_acc                              # Maximum allowed acceleration in the velocity smoother (avoid slippage)
+        self.T_MAX = t_max                                  # Time constant for the velocity smoother
+        self.KS = ks                                        # Gain factor of the velocity smoother
+        self.ANGLE_DEADZONE = angle_deadzone                # DeadZone range (in rad/sec), values in this range are considered zero
+        self.MAX_VEL = max_vel                              #(rosparam_get max_vel) Maximum desired velocity
+        self.TOWER1 = tower1                                # Tower1 x,y coordinate
+        self.TOWER2 = tower2                                # Tower2 x,y coordinate
+        self.TOWER3 = tower3                                # Tower3 x,y coordinate
+        self.TOWER4 = tower4                                # Tower4 x,y coordinate
+        self.NEAR_GOAL_DISTANCE = near_goal_distance        # robot-tower distance that activates near_goal.
+        self.PROXIMITY_THREESHOLD = proximity_threeshold    # If an obstacle is sensed below this threeshold it is said to be in "proximity condition"
+        self.DONTCARE = dontcare                            # Obstacle in proximity condition but still don't affect the navigation trajectory
+        self.RR_LOWER_BOUND  = rr_lower_bound               # Rear Right laser sector lower bound
+        self.R_LOWER_BOUND = r_lower_bound                  # Right laser sector lower bound
+        self.FR_LOWER_BOUND = fr_lower_bound                # Front Right laser sector lower bound
+        self.FL_LOWER_BOUND = fl_lower_bound                # Front Left laser sector lower bound
+        self.L_LOWER_BOUND = l_lower_bound                  # Left laser sector lower bound
+        self.RL_LOWER_BOUND = rl_lower_bound                # Rear Left laser sector lower bound
+        self.TOWERS = (self.TOWER1,self.TOWER2,             # list of towers
                        self.TOWER3, self.TOWER4) 
     
         self.current_vel = Twist()
@@ -41,7 +41,7 @@ class Navigation:
         self.current_angle_diff = 0
         self.current_player_info = PlayerInfo()
         self.time_stamp = 0
-        self.current_range = LaserScan()
+        self.current_scan = LaserScan()
         
         self.br = tf.TransformBroadcaster()
         self.tf_listener = tf.TransformListener()
@@ -56,6 +56,7 @@ class Navigation:
 
         self.U_bar = np.array([[0.],[0.],[0.]])
         self.is_safe = True
+        self.last_cmd_vel = Twist()         #last cmd_vel given
 
 
     def set_max_speed(self,value):
@@ -85,7 +86,7 @@ class Navigation:
         OUTPUTS:
         @ current_range: a numpy array of length 1000 containing the measurements from each laser ray.
         """
-        self.current_range = copy.deepcopy(msg) #msg.ranges
+        self.current_scan = copy.deepcopy(msg) #msg.ranges
 
     def angleCallback(self,msg):
         """
@@ -228,13 +229,13 @@ class Navigation:
         goal_distance = (delta_x**2 + delta_y**2)**0.5
         
         # set is_near_goal
-        is_near_goal = 0
+        is_near_goal = False
         if goal_distance < self.NEAR_GOAL_DISTANCE:
-            is_near_goal = 1
+            is_near_goal = True
 
         # SAFETY CHECK: the controller will generates cmd_vel commands only if the safety condition is satisfied
         # if safety condition is satisfied then: enable == 1;
-        if self.is_safe == 1:
+        if self.is_safe == True:
             self.U_bar[0] = self.MAX_VEL*np.cos(alpha)
             self.U_bar[1] = self.MAX_VEL*np.sin(alpha)
 
@@ -266,13 +267,15 @@ class Navigation:
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             rospy.logerr("Navigation node: " + str(e))
 
+    
     def laserScanManager(self):
         """
         Process the informations coming from the laser scan (topic: /scan), divide the scanned area around the robot into
         'sectors' (rear right, right, front right, front left, left, rear left) and for each sector compute the minimum
         detected distance from obstacles and the index of each computed minimum. 
-        This function also manage the value of 'is_safe' value deciding wheter to perform the navigation using 'tower_navigation'
+        This function also manage the value of 'is_safe' value deciding whether to perform the navigation using 'tower_navigation'
         (is_safe = TRUE) or 'obstacleAvoidance' (is_safe = FALSE).
+        
         INPUTS:
             @ current_range: a numpy array of length 1000 containing the measurements from each laser ray.
         OUTPUTS:
@@ -288,25 +291,39 @@ class Navigation:
 
         # check if an obstacle is detected below the proximity threeshold
         proximity = False
-        for values in self.current_range.ranges:
+        for values in self.current_scan.ranges:
             if values < self.PROXIMITY_THREESHOLD:
                 proximity = True
                 break
 
-        # perform a safety check
-        dontcare_condition = np.array(self.current_range.ranges) < self.DONTCARE
-        new_is_safe = True
-        if proximity and (all(dontcare_condition) == False) and (len(dontcare_condition) != 0):
-            new_is_safe = False
-        self.is_safe = new_is_safe
+        # NOTE:  Why do we have proximity and dontcare as well? Can we just keep one?
+
+        # perform a safety check (NOTE: Does not care for direction of movement)
+        dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
+
         
+        # Angle between direction of motion and robot coordinate frame. (0.0rads mean the robot is moving forward.)
+        '''alpha = np.arctan2(self.last_cmd_vel.position.y, self.last_cmd_vel.position.x)
+        left_endpoint_alpha = alpha - (np.pi/2)
+        right_endpoint_alpha = alpha + (np.pi/2)'''
+    
+        #left_endpoint_alpha / self.current_scan.angle_increment
+        #right_endpoint_alpha / self.current_scan.angle_increment  
+
+        
+        if proximity and (all(dontcare_condition) == False):# and (len(dontcare_condition) != 0):
+            # we are in proximity and have at least one sensor measure below self.DONTCARE.
+            self.is_safe = False
+        else:
+            self.is_safe = True
+
         # Generate sensing areas: rear right, right, front right, front left, left, rear left
-        rear_right_sec  = self.current_range.ranges[0:149]
-        right_sec       = self.current_range.ranges[150:309]
-        front_right_sec = self.current_range.ranges[310:499]
-        front_left_sec  = self.current_range.ranges[500:689]
-        left_sec        = self.current_range.ranges[690:859]
-        rear_left_sec   = self.current_range.ranges[850:999]
+        rear_right_sec  = self.current_scan.ranges[0:149]
+        right_sec       = self.current_scan.ranges[150:309]
+        front_right_sec = self.current_scan.ranges[310:499]
+        front_left_sec  = self.current_scan.ranges[500:689]
+        left_sec        = self.current_scan.ranges[690:859]
+        rear_left_sec   = self.current_scan.ranges[850:999]
 
         # Get the minimum value for each sensed area
         min_rear_right  = min(rear_right_sec)
@@ -372,7 +389,7 @@ class Navigation:
         # updates is_safe and process /scan information
         rear_right, right, front_right, front_left, left, rear_left = (None,None,None,None,None,None)
         
-        if len(self.current_range.ranges) != 0:
+        if len(self.current_scan.ranges) != 0:
             rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
 
         # Fuzzy
@@ -383,5 +400,8 @@ class Navigation:
         unsafe_msg.linear.x = smoothed_cmd_vel[0]
         unsafe_msg.linear.y = smoothed_cmd_vel[1]
         unsafe_msg.angular.z = self.anglePController()
+
+        # save last cmd given
+        self.last_cmd_vel = unsafe_msg;
 
         return unsafe_msg

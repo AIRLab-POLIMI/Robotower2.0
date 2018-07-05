@@ -220,6 +220,7 @@ public:
 
 
     void laserCallback(const sensor_msgs::LaserScanConstPtr& scan){
+        float max_range = 5.6;
 
         // Get min angle from scan if undefined. Assumed constant.
         if(std::isnan(MIN_ANGLE)){
@@ -275,7 +276,8 @@ public:
                         for(int k=0; k< point_indexes.size(); k++){
                             int range_index = point_indexes[k];
                             ROS_DEBUG("Setting position %d to NaN around tower %d", range_index, t);
-                            filtered_scan.ranges[range_index] = std::numeric_limits<double>::quiet_NaN();
+                            filtered_scan.ranges[range_index] = max_range + 1; // This distance will be ignored by the costmap as above laser range
+                            //PREVIOUS_VALUE std::numeric_limits<double>::quiet_NaN();
                         }
                     }
                 }
@@ -308,6 +310,8 @@ int main (int argc, char** argv){
     // set heartbeat node state to started
     // state = heartbeat::State::STARTED;
     // bool success = hb.setState(state);
+    
+    ros::Duration(3.0).sleep(); // sleep for 3 seconds before beginning.
 
      while(ros::ok()){
         // Issue heartbeat.

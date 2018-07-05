@@ -14,10 +14,10 @@ button_topic_name: tower/button_state
 behavior_service_name: change_behavior
 
 # XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):
-tower_1: [-0.669, -2.131]
-tower_2: [-1.483, -0.021]
-tower_3: [2.988, -0.781]
-tower_4: [2.304, 1.356]
+tower_1: [2.02451276779, -3.36508965492]
+tower_2: [2.88112926483, -0.500505328178]
+tower_3: [0.494375228882, 0.16442990303]
+tower_4: [-0.135583043098, -2.78914022446]
 
 ##########################################################################
 ##                         DIFFICULTY SETTINGS                          ##
