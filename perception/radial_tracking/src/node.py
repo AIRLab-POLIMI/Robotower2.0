@@ -4,6 +4,8 @@ import random
 import traceback
 import operator
 import numpy as np
+import tf
+from geometry_msgs.msg import PointStamped
 from std_msgs.msg import Float32, Float32MultiArray
 from player_tracker.msg import PersonArray, Person
 from radial_tracking.msg import SectorProbabilities
@@ -16,17 +18,16 @@ __author__ = ['Ewerton Lopes', 'Stefano Boriero']
 __author_email__ = ['ewerton.lopes@polimi.it', 'stefano.boriero@mail.polimi.it']
 
 class Particle(object):
-    def __init__(self, radius, alpha, orientation):
+    def __init__(self, radius, alpha):
         self.radius = radius
         self.alpha = alpha
-        self.orientation = orientation
     
-    def update(self, observed_displacement):
+    def update(self, observed_displacement, observed_orientation):
         """updates particle position based on its velocity"""
         curr_x = self.radius * np.cos(self.alpha)
         curr_y = self.radius * np.sin(self.alpha)
-        new_x = curr_x + (np.cos(self.orientation) * observed_displacement)
-        new_y = curr_y + (np.sin(self.orientation) * observed_displacement)
+        new_x = curr_x + (np.cos(observed_orientation) * observed_displacement)
+        new_y = curr_y + (np.sin(observed_orientation) * observed_displacement)
         self.alpha = np.arctan2(new_y,new_x)
         self.radius = np.sqrt(new_x**2 + new_y**2)
     
@@ -42,10 +43,7 @@ class ParticleFilter(object):
 
     def initialize(self):
         """Randomly initialize particles"""
-
-        range_radius = np.linspace(1., 2., 50)
-        range_alpha = np.linspace(-np.pi, np.pi, 50)
-        return [Particle(random.choice(range_radius), random.choice(range_alpha), random.random()*2.0*np.pi) for i in range(self.N_PARTICLES)]
+        return [Particle(np.random.uniform(1,2,1)[0], np.random.uniform(-np.pi,np.pi,1)[0]) for i in range(self.N_PARTICLES)]
     
     def propagate(self, observed_displacement):
         """Updates particles"""
@@ -89,11 +87,14 @@ class RadialTracking(ParticleFilter):
         self.sector_pub = rospy.Publisher('sector_probabilities', SectorProbabilities, queue_size=1)
         self.sub = rospy.Subscriber('people_tracked', PersonArray, self.callback)
 
+        self.listener = tf.TransformListener()
+
         self.last_msg = PersonArray()
         self.last_person_msg = Person()
         self.msg_time_thd = msg_time_thd    # threshold for accepting the msg.
         self.dead_rck_counter = 0.0
         self.dead_rck_reset_thd = dead_rck_reset_thd
+        self.is_on_dead_rck = False
 
         self.sectors_labels = [(-4,"-180/135"),
                                (-3, "-135/90"),
@@ -108,15 +109,28 @@ class RadialTracking(ParticleFilter):
 
     def callback(self, msg):
         """callback for PersonArray msgs"""
-        self.last_msg = msg
         max_confidence = float("-inf")
-        # get best person hipotheses
+        best_track = None
+        # get best person hipothesis
         for person in msg.people:
             if person.confidence > max_confidence:
                 max_confidence = person.confidence
-                self.last_known_obs = person
+                best_track = person
+
         if max_confidence != float("-inf"):
-            rospy.loginfo("New max speed: {}".format(self.last_known_obs.speed))
+            ps = PointStamped()
+            ps.header.frame_id = msg.header.frame_id
+            ps.header.stamp = msg.header.stamp
+            ps.point.x = best_track.pose.position.x
+            ps.point.y = best_track.pose.position.y
+
+            try:
+                self.listener.waitForTransform("base_link", msg.header.frame_id, rospy.get_rostime(), rospy.Duration(1.0))
+                ps = self.listener.transformPoint("base_link", ps)
+                self.last_person_msg.pose.position = ps.point
+                self.last_msg = msg
+            except Exception as e:
+                rospy.logerr("Not publishing people due to no transform from fixed_frame-->robot_frame! Details: {}".format(traceback.print_exc(e)))
 
     def check_msg_validity(self):
         """Checks whether to use the last msg to propagate particles
@@ -125,19 +139,40 @@ class RadialTracking(ParticleFilter):
         """
         return not (abs((self.last_msg.header.stamp.to_sec() - rospy.get_rostime().to_sec())) > self.msg_time_thd)
 
+
+    def get_player_orientation(self):
+        """Return orientation of the player wrt. the robot."""
+        ps = PointStamped()
+        ps.header.frame_id = self.last_msg.header.frame_id
+        ps.header.stamp = self.last_msg.header.stamp
+        ps.point.x = self.last_person_msg.pose.position.x
+        ps.point.y = self.last_person_msg.pose.position.y
+
+        try:
+            self.listener.waitForTransform("base_link", ps.header.frame_id, rospy.get_rostime(), rospy.Duration(1.0))
+            ps = self.listener.transformPoint("base_link", ps)
+            return np.arctan2(ps.point.y, ps.point.x)
+
+        except Exception as e:
+            rospy.logerr("Not publishing people due to no transform from fixed_frame-->robot_frame! Details: {}".format(traceback.print_exc(e)))
+
+    def calc_speed(self, velocity):
+        return np.sqrt(velocity.x**2 + velocity.y**2)
+
     def calculate_displacement(self):
-        return (self.last_msg.header.stamp.to_sec() - rospy.get_rostime().to_sec()) * self.last_person_msg.speed
+        return (self.last_msg.header.stamp.to_sec() - rospy.get_rostime().to_sec()) * self.calc_speed(self.last_person_msg.velocity)
 
     def propagate(self):
         """ Overriding Base function propagate method """
         observed_displacement = self.calculate_displacement()
+        orientation = self.get_player_orientation()
         for p in self.particles:
-            p.update(observed_displacement)
+            p.update(observed_displacement, orientation)
 
     def propagate_dead_reckoning(self):
         """ Propagate particles when on dead reckoning"""
         for p in self.particles:
-           p.update(np.random.normal(0, 0.005))
+           p.update(np.random.normal(0, 1), np.random.uniform(-np.pi,np.pi,1)[0])
 
 
     def measurement_prob(self):
@@ -181,11 +216,13 @@ class RadialTracking(ParticleFilter):
         self.pub.publish(msg)
 
     def publish_sector_probabilities(self, data):
+        """Publish data for visualization with online_hist.py"""
         msg = SectorProbabilities()
         sorted_by_sector = sorted(data,key=operator.itemgetter(0))
         msg.labels = [i[1] for i in self.sectors_labels]
         msg.probabilities = [i[1] for i in sorted_by_sector]
         msg.plot_ordering = self.plot_ordering
+        msg.on_dead_rck = self.is_on_dead_rck
         self.sector_pub.publish(msg)
 
     def run(self):
@@ -199,15 +236,16 @@ class RadialTracking(ParticleFilter):
             
             # propagate particles and weight particles with measurement probability
             if self.check_msg_validity():
+                self.is_on_dead_rck = False
                 self.propagate()
                 weights = self.measurement_prob()
                 rospy.loginfo("On dead_reckoning")
             else:
+                self.is_on_dead_rck = True
                 self.propagate_dead_reckoning()
                 weights = self.measurement_prob_dead_reckoning()
                 if sum(weights) < self.dead_rck_reset_thd:
                     self.dead_rck_counter = 0
-                    self.particles = self.initialize()
 
             try:
                 # normalize weights

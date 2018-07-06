@@ -72,7 +72,8 @@ class OnlineHist(PlotWindow):
         bars = self.axes.bar(
             x_poss, [data.probabilities[i] for i in data.plot_ordering],
             width=np.deg2rad(45)-0.01,
-            color="#f39c12", edgecolor="black"
+            color="#f39c12" if not data.on_dead_rck else "#0000ff",
+            edgecolor="black"
         )
  
         self.axes.set_title("Radial Player Tracking with Particle Filter")
@@ -80,7 +81,7 @@ class OnlineHist(PlotWindow):
 
       
         bars = self.axes.bar(
-            np.pi/2, 1,
+            0, 1,
             width=np.pi/2,
             color="#FF0000",
             edgecolor="black",
@@ -91,9 +92,12 @@ class OnlineHist(PlotWindow):
                                   markersize=15, label='robot front')
         
         occ_leg = mlines.Line2D([], [], color="#f39c12", marker='s',
-                                  markersize=15, label='player occ. probability')
+                                  markersize=15, label='player prob')
+        
+        drck_leg = mlines.Line2D([], [], color="#0000ff", marker='s',
+                                  markersize=15, label='player prob. on dead_rck')
 
-        self.axes.legend(handles=[front_leg, occ_leg], bbox_to_anchor=(1.1, -.002))
+        self.axes.legend(handles=[front_leg, occ_leg, drck_leg], bbox_to_anchor=(1.1, -.001))
        
         self.canvas.draw()
 
