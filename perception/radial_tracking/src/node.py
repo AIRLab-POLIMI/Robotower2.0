@@ -103,16 +103,20 @@ class RadialTracking(ParticleFilter):
                                (1, "45/90"),
                                (2, "90/135"),
                                (3, "135/180")]
+        
+        self.plot_ordering = [4,5,6,7,0,1,2,3]
 
     def callback(self, msg):
         """callback for PersonArray msgs"""
-        rospy.logerr("NEW PERSON ARRAY ARRIVED")
         self.last_msg = msg
         max_confidence = float("-inf")
         # get best person hipotheses
         for person in msg.people:
             if person.confidence > max_confidence:
+                max_confidence = person.confidence
                 self.last_known_obs = person
+        if max_confidence != float("-inf"):
+            rospy.loginfo("New max speed: {}".format(self.last_known_obs.speed))
 
     def check_msg_validity(self):
         """Checks whether to use the last msg to propagate particles
@@ -159,11 +163,15 @@ class RadialTracking(ParticleFilter):
     def get_sectors_probabilities(self, weights):
         """Returns the best orientation (angle sector) to rotate."""
         sectors = dict(zip(range(int(-np.pi/0.785398), int(np.pi/0.785398)),[0.0 for x in range(int(-np.pi/0.785398), int(np.pi/0.785398))]))
+        angles = []
         for i,p in enumerate(self.particles):
+            angles.append(p.alpha)
             if p.get_sector() == 4:
                 sectors[3] += weights[i]
             else:
                 sectors[p.get_sector()] += weights[i]
+        
+        rospy.logerr("Mean angle: {:.2f} degrees".format(np.mean(np.rad2deg(angles))))
         return sorted(sectors.items(), key=operator.itemgetter(0))
 
     def publish_orientation(self, data):
@@ -175,9 +183,9 @@ class RadialTracking(ParticleFilter):
     def publish_sector_probabilities(self, data):
         msg = SectorProbabilities()
         sorted_by_sector = sorted(data,key=operator.itemgetter(0))
-        rospy.logwarn(sorted_by_sector)
         msg.labels = [i[1] for i in self.sectors_labels]
         msg.probabilities = [i[1] for i in sorted_by_sector]
+        msg.plot_ordering = self.plot_ordering
         self.sector_pub.publish(msg)
 
     def run(self):
@@ -193,10 +201,10 @@ class RadialTracking(ParticleFilter):
             if self.check_msg_validity():
                 self.propagate()
                 weights = self.measurement_prob()
+                rospy.loginfo("On dead_reckoning")
             else:
                 self.propagate_dead_reckoning()
                 weights = self.measurement_prob_dead_reckoning()
-                rospy.logerr(sum(weights))
                 if sum(weights) < self.dead_rck_reset_thd:
                     self.dead_rck_counter = 0
                     self.particles = self.initialize()

@@ -3,12 +3,15 @@ from plotwindow import PlotWindow
 
 
 import rospy
+import pandas as pd
 import sys, random
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-import numpy
+import numpy as np
+import matplotlib.lines as mlines
 import matplotlib.mlab as mlab
+import matplotlib.pyplot as plt
 from scipy.stats import norm
 from collections import deque
 from std_msgs.msg import Int8
@@ -19,7 +22,7 @@ class OnlineHist(PlotWindow):
   def __init__(self):
     PlotWindow.__init__(self)
 
-    self.window_size=1000
+    self.window_size=500
     self.values= deque(maxlen=self.window_size)  #numpy.zeros((self.window_size))
     self.index=0
     self.draw_counter =0
@@ -58,29 +61,40 @@ class OnlineHist(PlotWindow):
     if self.draw_counter > 10 and not self.paused:
         self.draw_counter = 0
         
-        self.axes.clear()        
-        #n, bins, patches = self.axes.hist(list(self.values), bins = 100, normed=True, facecolor='green', alpha=0.75, align='left')
+        self.axes.clear()      
 
-        #I want to also fit the data to a Gaussian
-        # best fit of data
-        #(mu, sigma) = norm.fit(list(self.values))
-        # add a 'best fit' line
-        #y = mlab.normpdf( bins, mu, sigma)
-        #l = self.axes.plot(bins, y, 'r--', linewidth=2)
+        width = np.arange(0,2*np.pi, np.deg2rad(45))
+        #width = 0.35       # the width of the bars
+        #bins = self.axes.bar(range(len(data.probabilities)), data.probabilities, width, color='r')
 
-        width = 0.35       # the width of the bars
-        bins = self.axes.bar(range(len(data.probabilities)), data.probabilities, width, color='r')
+        x_poss = np.arange(np.deg2rad(45)/2, 2*np.pi, np.deg2rad(45)).tolist()
 
-        self.axes.set_title("Particle Filter")
-        self.axes.set_xlabel("Sectors")
-        self.axes.set_ylabel("Probability")
-        self.axes.set_xticks(range(len(data.labels)),data.labels)
+        bars = self.axes.bar(
+            x_poss, [data.probabilities[i] for i in data.plot_ordering],
+            width=np.deg2rad(45)-0.01,
+            color="#f39c12", edgecolor="black"
+        )
+ 
+        self.axes.set_title("Radial Player Tracking with Particle Filter")
         self.axes.set_ylim([0,1])
-        # #output= "Data Size: "+str(len(self.values))
-        # min_x, max_x=self.axes.get_xlim()
-        # min_y, max_y=self.axes.get_ylim()
-        #max_x*0.5,max_y*0.5,output,horizontalalignment='left',verticalalignment='center')        
-        #self.axes.annotate(output, (0.05,0.9), xycoords = 'axes fraction') 
+
+      
+        bars = self.axes.bar(
+            np.pi/2, 1,
+            width=np.pi/2,
+            color="#FF0000",
+            edgecolor="black",
+            alpha= .1
+        )
+        
+        front_leg = mlines.Line2D([], [], color="#FF0000", marker='s', alpha= .1,
+                                  markersize=15, label='robot front')
+        
+        occ_leg = mlines.Line2D([], [], color="#f39c12", marker='s',
+                                  markersize=15, label='player occ. probability')
+
+        self.axes.legend(handles=[front_leg, occ_leg], bbox_to_anchor=(1.1, -.002))
+       
         self.canvas.draw()
 
 if __name__ == "__main__":

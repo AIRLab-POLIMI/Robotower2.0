@@ -98,7 +98,7 @@ Behavior::Planner::Planner(){
 
     // create action object list from gob namespace
     for (int i=0; i < action_list.size(); i++){
-        ROS_INFO("ACTION NAME: %s", action_list[i].c_str());
+        ROS_DEBUG("ACTION NAME: %s", action_list[i].c_str());
         gob::Action* action = new gob::Action(action_list[i].c_str());
         actions_.push_back(action);
     }
@@ -128,7 +128,7 @@ Behavior::Planner::Planner(){
         (*position).y = tower_pos[1];
         (*position).z = tower_pos[2]; 
 
-        ROS_INFO_STREAM(str << ": " << tower_pos[0] << ", " << tower_pos[1] << ", " << tower_pos[2]);
+        ROS_DEBUG_STREAM(str << ": " << tower_pos[0] << ", " << tower_pos[1] << ", " << tower_pos[2]);
         tower_map_positions[str] = position;
     }
 
@@ -170,10 +170,10 @@ void Behavior::Planner::towerStateCallback(const arduino_publisher::TowerState::
 }
 
 void Behavior::Planner::odomCallback(const nav_msgs::Odometry::ConstPtr& msg){
-    ROS_INFO("Seq: [%d]", msg->header.seq);
-    ROS_INFO("Position-> x: [%f], y: [%f], z: [%f]", msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z);
-    ROS_INFO("Orientation-> x: [%f], y: [%f], z: [%f], w: [%f]", msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-    ROS_INFO("Vel-> Linear: [%f], Angular: [%f]", msg->twist.twist.linear.x,msg->twist.twist.angular.z);
+    ROS_DEBUG("Seq: [%d]", msg->header.seq);
+    ROS_DEBUG("Position-> x: [%f], y: [%f], z: [%f]", msg->pose.pose.position.x,msg->pose.pose.position.y, msg->pose.pose.position.z);
+    ROS_DEBUG("Orientation-> x: [%f], y: [%f], z: [%f], w: [%f]", msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+    ROS_DEBUG("Vel-> Linear: [%f], Angular: [%f]", msg->twist.twist.linear.x,msg->twist.twist.angular.z);
 }
 
 bool Behavior::Planner::changeGameBehavior(behavior_control::BehaviorParams::Request &req,
@@ -207,8 +207,8 @@ bool Behavior::Planner::getTransform(std::string target, std::string source, ros
 
 void Behavior::Planner::updateDecisionVariables(){
 
-    ROS_INFO("Max vel: [%f]", max_speed_);
-    ROS_INFO("Min vel: [%f]", min_speed_);
+    ROS_DEBUG("Max vel: [%f]", max_speed_);
+    ROS_DEBUG("Min vel: [%f]", min_speed_);
 
     /****** UPDATE TOWERS AND PLAYER POSTIONS ******/
     auto now = ros::Time(0);
@@ -257,7 +257,7 @@ void Behavior::Planner::updateDecisionVariables(){
                 /* BLOCKING FACTOR */
                 alpha_tower[i] = atan2(y_tower, x_tower);
                 blocking_factor_[i] = 1 - 1/M_PI * atan2(fabs(sin(alpha_player - alpha_tower[i])), cos(alpha_player - alpha_tower[i]));
-                ROS_INFO("blocking_factor[%i] = %1.3f", i, blocking_factor_[i]);
+                ROS_DEBUG("blocking_factor[%i] = %1.3f", i, blocking_factor_[i]);
             }
 
 
@@ -285,7 +285,7 @@ void Behavior::Planner::updateDecisionVariables(){
             }
             float bad_value = -utility;
             actions_[i]->setGoalChange(goals_[j]->getName(), bad_value); // algorithm minimizes Goal Value, 
-            ROS_INFO_STREAM("Action: " << actions_[i]->getName() << "\tGoal: " << goals_[j]->getName()<< "\tUtility: " << utility);
+            ROS_DEBUG_STREAM("Action: " << actions_[i]->getName() << "\tGoal: " << goals_[j]->getName()<< "\tUtility: " << utility);
         }
     }
 
@@ -326,7 +326,7 @@ void Behavior::Planner::publishDecision(){
     navigation parameters (velocity)*/
 
     if (!has_goal_){
-        ROS_INFO("Sending goal...");
+        ROS_DEBUG("Sending goal...");
         
         if (nav_mode_ == MOVE_BASE){                        // send new move base goal using action lib (move base)
             std::string t_name = decision->getName();
@@ -334,7 +334,7 @@ void Behavior::Planner::publishDecision(){
             current_mb_goal_.target_pose.header.stamp = ros::Time::now();
             current_mb_goal_.target_pose.pose.orientation.w = 1;
             mb_action_client_->sendGoal(current_mb_goal_);
-            ROS_INFO("Goal sent to %s", MOVE_BASE);
+            ROS_DEBUG("Goal sent to %s", MOVE_BASE);
 
         }else{                                               // sends the goal using custom message
             behavior_control::Goal goal;
@@ -349,7 +349,7 @@ void Behavior::Planner::publishDecision(){
 }
 
 void Behavior::Planner::monitorCollision(){
-    //ROS_INFO("Action Halted");     
+    //ROS_DEBUG("Action Halted");     
     // set the MoveBase action client state to preempted.
     //mb_action_client_->cancelGoal();
 }
@@ -359,7 +359,7 @@ void Behavior::Planner::updateLoop(){
     updateDecisionVariables();
 
     if (is_game_over_){
-        ROS_INFO("Game is over!");
+        ROS_DEBUG("Game is over!");
         CancelCurrentGoal();
     }else{
         makeDecision();

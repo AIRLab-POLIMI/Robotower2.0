@@ -8,6 +8,8 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as  NavigationToolbar
 from matplotlib.figure import Figure
 
+matplotlib.rcParams['axes.titlepad'] = 20 
+
 class PlotWindow(QMainWindow):
     def __init__(self, parent=None):
         QMainWindow.__init__(self, parent)
@@ -35,7 +37,7 @@ class PlotWindow(QMainWindow):
         self.fig = Figure((10.0, 6.0), dpi=self.dpi)
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setParent(self.main_frame)
-        self.axes = self.fig.add_subplot(111)
+        self.axes = self.fig.add_subplot(111, polar=True)
         self.canvas.mpl_connect('pick_event', self.on_pick)
         self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
         self.pauseButton = QPushButton('Pause', self)
