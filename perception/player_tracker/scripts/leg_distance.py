@@ -4,12 +4,14 @@ import tf
 import math
 import copy
 import numpy as np
+import itertools
+
 from scipy import spatial
 
 # Custom messages
-from player_tracker.msg import Person, PersonArray, Leg, LegArray, PersonEvidence, PersonEvidenceArray
+from player_tracker.msg import Person, PersonArray, Leg, LegArray, PersonEvidence, PersonEvidenceArray, TowerArray
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import PolygonStamped, Point32, PointStamped
+from geometry_msgs.msg import PolygonStamped, Point32, PointStamped, Point
 
 from munkres import Munkres, print_matrix # For the minimum matching assignment problem. To install: https://pypi.python.org/pypi/munkres 
 from scipy.stats import beta
@@ -274,8 +276,10 @@ class LegDistance:
         self.leg_context = LegContextProcessor('/home/airlab/catkin_ws/src/phd_robogame/perception/player_tracker/model/leg_distance-gmm.pkl')
 
         self.tf_listener = tf.TransformListener()
+        self.pub_tower_markers = rospy.Publisher('tower_rectangle', PolygonStamped, queue_size=1)
         self.marker_pub = rospy.Publisher('detected_legs_in_bounding_box', Marker, queue_size=300)
         self.evidence_pub = rospy.Publisher('evidence_of_player', PersonEvidenceArray, queue_size=3)
+        self.pub_towers = rospy.Publisher('estimated_tower_positions', TowerArray, queue_size=5)
 
         self.isSaveToFile = logfile != ''
         self.fixed_frame = rospy.get_param('fixed_frame')
@@ -300,9 +304,77 @@ class LegDistance:
         # ROS publishers
         self.pub = rospy.Publisher('bounding_box', PolygonStamped, queue_size=1)
 
+        self.tower_positions, _ = self.get_tower_distances()
+        self.tower_target_distances = set([])
+        self.tower_triangle_areas = []
+        for perm in itertools.permutations(self.tower_positions, r=3):
+            dist1_2 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[1].x, perm[1].y]))
+            dist1_3 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[2].x, perm[2].y]))
+            dist2_3 = spatial.distance.euclidean(np.array([perm[1].x, perm[1].y]),np.array([perm[2].x, perm[2].y]))
+            self.tower_target_distances.add(dist1_2)
+            self.tower_target_distances.add(dist1_3)
+            self.tower_target_distances.add(dist2_3)
+            p = (dist1_2 + dist1_3 + dist2_3) / 2.0     # perimeter
+            area = np.sqrt(p*(p-dist1_2)*(p-dist1_3)*(p-dist2_3))
+            self.tower_triangle_areas.append(area)
+        
+        self.tower_triangle_areas = list(set(self.tower_triangle_areas))
+        self.tower_target_distances = list(set(self.tower_target_distances))
+
         #rospy.spin() # So the node doesn't immediately shut down
 
-    
+    def get_trans_wrt_robot(self, tower):
+        """
+        Gets tower position with respect to base_link. That is, performs a TF transformation from 'tower_link' to /base_link and returns
+        x,y and theta.
+        Param:
+            @tower the name of the tower tf.
+        Returns:
+            @ a 3D-numpy array defined as: [x, y, theta] w.r.t /map.
+        """
+        try:
+            self.tf_listener.waitForTransform('/base_link', tower, rospy.Time(0), rospy.Duration(1.0))
+            trans, rot = self.tf_listener.lookupTransform('/base_link', tower, rospy.Time(0))
+            # transform from quaternion to euler angles
+            euler = tf.transformations.euler_from_quaternion(rot)
+ 
+            return np.array([trans[0], trans[1], euler[2]])   # [xR,yR,theta]
+
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+            rospy.logerr("Navigation node: " + str(e))
+
+    def is_compatible_with_playground(self, side_to_compare):
+        for d in self.tower_target_distances:
+            if(self.is_close_enough(side_to_compare, d, tol=0.1)):
+                return True
+        return False
+
+    def publish_poligon(self, pts):
+        '''Publish poligon for the bouding box'''
+        
+        polygon = PolygonStamped()
+        polygon.header.stamp = rospy.get_rostime()
+        polygon.header.frame_id = 'map'
+        polygon.polygon.points = pts
+        self.pub_tower_markers.publish(polygon)
+
+    def get_tower_distances(self, num_towers=4):
+        """Calculate tower distances from each other in the robot frame"""
+        # TODO: get num of towers from param server
+        towers = []
+        for t in range(1,num_towers+1):
+            tower = self.get_trans_wrt_robot("tower_"+str(t))
+            towers.append(Point(tower[0],tower[1],0))
+
+        distances = []
+        for t in range(num_towers):
+            if t != num_towers-1:
+                distances.append(round(spatial.distance.euclidean((towers[t].x,towers[t].y) , (towers[t+1].x,towers[t+1].y)),3))
+            else:
+                distances.append(round(spatial.distance.euclidean((towers[t].x,towers[t].y), (towers[0].x,towers[0].y)),3))
+        
+        return towers, distances
+
     def publish(self):
         '''Publish poligon for the bouding box'''
             
@@ -341,6 +413,9 @@ class LegDistance:
             p1x, p1y = p2x, p2y
         return inside
 
+    def is_close_enough(self, num1, num2, tol=0.1):
+        return abs(num1-num2) < tol
+
     def detected_clusters_callback(self, detected_clusters_msg):    
         """
         Callback for every time detect_leg_clusters publishes new sets of detected clusters. 
@@ -356,7 +431,7 @@ class LegDistance:
 
         for i,cluster in enumerate(detected_clusters_msg.legs):         
            
-            in_bounding_box =  self.inside_polygon(cluster.position.x, cluster.position.y)
+            in_bounding_box =  True #self.inside_polygon(cluster.position.x, cluster.position.y)
             
             
             if in_bounding_box:
@@ -402,11 +477,42 @@ class LegDistance:
                 
                 # save cluster
                 accepted_clusters.append(cluster)
+
         if len(accepted_clusters) <= 1:
             return
         #z = np.array([[complex(c.position.x, c.position.y) for c in accepted_clusters]]) # notice the [[ ... ]])
         
         tree = spatial.KDTree(np.array([[c.position.x, c.position.y] for c in accepted_clusters]))
+
+        pos_dis_distances = [ Point(c.position.x, c.position.y, 0) for c in accepted_clusters]
+        
+        tower_array_msg = TowerArray()
+        if len(pos_dis_distances) > 3:
+            for perm in itertools.permutations(pos_dis_distances, r=3):
+                dist1_2 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[1].x, perm[1].y]))
+                dist1_3 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[2].x, perm[2].y]))
+                dist2_3 = spatial.distance.euclidean(np.array([perm[1].x, perm[1].y]),np.array([perm[2].x, perm[2].y]))
+                triangle_distances = [dist1_2, dist1_3, dist2_3]
+                p = (dist1_2 + dist1_3 + dist2_3) / 2.0     # perimeter
+                
+                area = np.sqrt(p*(p-dist1_2)*(p-dist1_3)*(p-dist2_3))
+                
+                for a in self.tower_triangle_areas:
+                    if self.is_close_enough(a, area, tol=0.1):
+                        to_pub = True
+
+                        for side in triangle_distances:
+                            if not self.is_compatible_with_playground(side):
+                                to_pub = False
+                                break
+
+                        if to_pub:
+                            tower_array_msg.towers = perm
+                            self.publish_poligon(perm)
+
+        if len(tower_array_msg.towers) != 0:
+            self.pub_towers.publish(tower_array_msg)
+
 
         for j, pts in enumerate(tree.data):
             nearest_point = tree.query(pts, k=2)
@@ -449,6 +555,8 @@ class LegDistance:
                 #rospy.logwarn(self.leg_context.getProbability(out[row][column]))
 
             evidences.evidences.append(new_evidence)
+
+
         
         self.evidence_pub.publish(evidences)
 

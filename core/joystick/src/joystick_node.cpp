@@ -61,7 +61,7 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 	// process and publish
 	geometry_msgs::Twist twistMsg;
 
-	if (msg->buttons[4]){							// if autonomous
+	if (msg->buttons[deadmanButton] && msg->buttons[4]){							// if autonomous
 		// let /unsafe/cmd_vel be published on /cmd_vel
 
 		ros::Time now = ros::Time::now();

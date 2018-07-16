@@ -34,7 +34,7 @@ dictitems:
       max_particles: 8496
       min_particles: 665
       name: Default
-      odom_alpha1: 2.2
+      odom_alpha1: 0.2
       odom_alpha2: 0.2
       odom_alpha3: 0.5
       odom_alpha4: 0.2
@@ -73,7 +73,7 @@ dictitems:
   laser_z_short: 0.05
   max_particles: 8496
   min_particles: 665
-  odom_alpha1: 2.2
+  odom_alpha1: 0.2
   odom_alpha2: 0.2
   odom_alpha3: 0.5
   odom_alpha4: 0.2

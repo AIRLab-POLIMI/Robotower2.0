@@ -82,12 +82,15 @@ add_message_files(
   FILES
   TrackVariance.msg
   Blob.msg
+  Cluster.msg
+  ClusterArray.msg
   Person.msg
   PersonArray.msg
   Leg.msg
   LegArray.msg
   PersonEvidence.msg
   PersonEvidenceArray.msg
+  TowerArray.msg
 )
 
 generate_messages(
@@ -278,6 +281,20 @@ target_link_libraries(
   ${PCL_LIBRARIES}
 )
 
+##########################
+# laser_cluster_extractor
+##########################
+add_executable(
+    laser_cluster_extractor
+    src/laser_cluster_extractor.cpp
+    src/laser_processor.cpp
+)
+
+target_link_libraries(
+  laser_cluster_extractor
+  ${catkin_LIBRARIES}
+)
+
 add_dependencies(test_local_occupancy_grid_mapping ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(local_occupancy_grid_mapping ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(local_occupancy_grid_mapping ${PROJECT_NAME}_gencfg)
@@ -292,6 +309,7 @@ add_dependencies(spatial_temporal_node ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(test_local_occupancy_grid_mapping ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(cloud_cluster ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(blob_publisher ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(laser_cluster_extractor ${PROJECT_NAME}_generate_messages_cpp)
 
 install(
   PROGRAMS scripts/joint_leg_tracker.py

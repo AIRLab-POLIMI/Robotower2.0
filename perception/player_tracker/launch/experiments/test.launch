@@ -16,7 +16,7 @@
   <node pkg="player_tracker" type="leg_distance.py" name="leg_distance" output="screen"/> 
 
   <!-- run joint_player_tracker -->
-  <node pkg="player_tracker" type="detector.py" name="detector" output="screen"/> 
+  <node pkg="player_tracker" type="detector.py" name="detector" output="screen" respawn="true"/> 
 
   <!-- run particle_filter 
   <node pkg="player_tracker" type="particle_filter" name="particle_filter" output="screen"/-->
@@ -33,7 +33,7 @@
     --clock 
     --rate=1.0
     -s 0
-    $(find player_tracker)/rosbags/experiments/_2017-12-12-18-48-16.bag"/>
+    $(find player_tracker)/rosbags/experiments/_2017-12-12-18-45-06.bag"/>
   <param name="use_sim_time" value="true" />
     
 </launch>

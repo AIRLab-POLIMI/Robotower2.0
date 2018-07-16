@@ -151,6 +151,17 @@ public:
             transform.setRotation(q);
             br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", str));
         }
+
+        static tf::TransformBroadcaster br;
+        float x_center = (tower_positions[0][0] + tower_positions[2][0]) / 2.0;
+        float y_center = (tower_positions[0][1] + tower_positions[2][1]) / 2.0;
+        tf::Transform transform;
+        transform.setOrigin( tf::Vector3(x_center, y_center, 0.0) );
+        tf::Quaternion q;
+        q.setRPY(0, 0, 0);
+        transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "/playground_center"));
+
     }
 
 };

@@ -11,28 +11,30 @@
     <!-- Load dynamic reconfigure parameters for acml -->
 	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_params.yaml" />   
 
-    <!-- behavior manager 
-    <include file="$(find behavior_control)/launch/run.launch" /> --> 
-    
-    <!-- player and tower game information 
+    <!-- behavior manager  REMOVE PLANNER  -->
+    <include file="$(find behavior_control)/launch/run.launch" /> 
+   
+
+    <!-- player and tower game information -->
     <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
-    <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />-->
+    <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
     
     <!-- player classification module
     <node pkg="activity_recognition" type="classifier.py" name="activity_classifier" output="screen" respawn="true" /> -->
     
-    <!-- game manager
-    <node pkg="game_manager" type="node.py" name="game_manager" output="screen" respawn="true" /> -->
+    <!-- game manager -->
+    <node pkg="game_manager" type="node.py" name="game_manager" output="screen" respawn="true" />
+    
 
-    <!-- navigation
-    <include file="$(find game_navigation)/launch/navigation.launch"/> -->
+    <!-- navigation -->
+    <include file="$(find game_navigation)/launch/navigation.launch"/> 
     
     <!-- Player Tracking  -->
     <include file="$(find player_tracker)/launch/experiments/run.launch"/> 
 
-    <!-- Player Particle Filter -->
+    <!-- Player Particle Filter 
     <node pkg="radial_tracking" type="node.py" name="radial_tracking" output="screen" respawn="true"/>
-
+	-->
 	
     <!-- <node pkg="scan_filter" type="scan_filter_node" name="scan_filter" output="screen" respawn="true"/>  launch-prefix="xterm -e gdb args" -->
    

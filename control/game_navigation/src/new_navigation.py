@@ -1,6 +1,7 @@
 from behavior_control.msg import Goal
 from kinect_tracker.msg import PlayerInfo
-from geometry_msgs.msg import Twist
+from player_tracker.msg import LegArray, Leg
+from geometry_msgs.msg import Twist, Point
 from sensor_msgs.msg import LaserScan
 from avoidance import FuzzyAvoider
 from KFfiltering import EKF
@@ -8,6 +9,45 @@ import numpy as np
 import rospy
 import copy
 import tf
+
+
+class Obstacle(object):
+    '''A class that defines obstacles and their chance to be at the corners of the playground'''
+    def __init__(self, cluster_centroid):
+        self.position = cluster_centroid
+        self.tower_prob_ = 0
+    
+    def distance_to(self, other):
+        """Calculate distance to another vector"""
+        return ((other.x - self.position.x)**2 + (other.y-self.position.y)**2)**0.5
+        
+    def calc_tower_prob(self, target_area):
+        '''Calculate the probability of being at the corner of the playground
+        
+        O <--d--> O
+        ^        /^
+        |      /  |
+        d2    h   d2   <--- REPRESENTATION OF THE PLAYGROUND, O represents tower positions,
+        |   /     |         whereas d, d2 and h distances. We expect to be able to get an 
+        v /       v         accurate tower position using the the lasers when at most 3 
+        O <--d--> O         towers are seen from the lasers.
+
+        '''
+
+
+    def leg_array_callback(self, msg):
+
+        n_legs = len(msg.legs)        
+        distances = np.zeros((n_legs, n_legs))
+
+        for leg in msg.legs:
+            distance = (leg.position.x**2 + leg.position.y**2)**0.5   # note the legs are wrt the base_link
+
+            if distance > 3.0:
+                continue
+            else:
+
+
 
 class Navigation:
 
@@ -59,6 +99,9 @@ class Navigation:
         self.last_cmd_vel = Twist()         #last cmd_vel given
 
 
+        
+
+
     def set_max_speed(self,value):
         self.MAX_VEL = value
     
@@ -87,6 +130,10 @@ class Navigation:
         @ current_range: a numpy array of length 1000 containing the measurements from each laser ray.
         """
         self.current_scan = copy.deepcopy(msg) #msg.ranges
+
+    def cluster_array_callback(self, msg):
+        """"""
+        self.current_cluster_array = msg
 
     def angleCallback(self,msg):
         """
@@ -297,7 +344,6 @@ class Navigation:
                 break
 
         # NOTE:  Why do we have proximity and dontcare as well? Can we just keep one?
-
         # perform a safety check (NOTE: Does not care for direction of movement)
         dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
 

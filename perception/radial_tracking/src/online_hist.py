@@ -81,7 +81,7 @@ class OnlineHist(PlotWindow):
 
       
         bars = self.axes.bar(
-            0, 1,
+            np.pi/2, 1,
             width=np.pi/2,
             color="#FF0000",
             edgecolor="black",
