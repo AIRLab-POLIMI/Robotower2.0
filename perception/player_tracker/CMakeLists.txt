@@ -90,6 +90,7 @@ add_message_files(
   LegArray.msg
   PersonEvidence.msg
   PersonEvidenceArray.msg
+  Tower.msg
   TowerArray.msg
 )
 

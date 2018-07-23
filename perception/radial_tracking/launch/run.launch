@@ -1,0 +1,10 @@
+<launch>
+
+<!-- Parameters -->
+    <rosparam command="load" file="$(find radial_tracking)/config/config.yaml" />
+
+    <!-- player and tower game information -->
+    <node pkg="radial_tracking" type="radial_tracker.py" name="radial_tracker" output="screen" respawn="true" />
+      
+
+</launch>

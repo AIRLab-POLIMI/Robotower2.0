@@ -2,9 +2,11 @@
 from behavior_control.msg import Goal
 from kinect_tracker.msg import PlayerInfo
 from geometry_msgs.msg import Twist
+from player_tracker.msg import TowerArray
 from sensor_msgs.msg import LaserScan
 from navigation import Navigation
 from std_msgs.msg import Float32
+from geometry_msgs.msg import PolygonStamped
 import numpy as np
 import rospy
 import copy
@@ -62,8 +64,11 @@ def main():
     #player_dist_sub = rospy.Subscriber('/kinect2/player_filtered_info',PlayerInfo, navigation.playerInfoCallback)
     #player_info_sub = rospy.Subscriber('/playground_center', Float32, navigation.angleCallback)
     game_goal_sub   = rospy.Subscriber('/game/goal', Goal, navigation.goalCallback)
-    vel_sub   = rospy.Subscriber('/vel', Twist, navigation.velCallback)
-    laser_sub   = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)
+    vel_sub         = rospy.Subscriber('/vel', Twist, navigation.velCallback)
+    laser_sub       = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)
+    laser_tower_sub = rospy.Subscriber('/estimated_tower_positions', TowerArray, navigation.tpos_callback)
+    tower_rectangle_sub = rospy.Subscriber('/tower_rectangle', PolygonStamped, navigation.tower_rectangle_callback)
+
     # TODO adjust this subscriber: move to another location, ask Ewerton
     angle_sub = rospy.Subscriber('/angle', Float32, navigation.angleCallback)
  
@@ -71,6 +76,7 @@ def main():
     pub = rospy.Publisher('unsafe/cmd_vel', Twist, queue_size=1)
 
     previous_diff = rospy.get_param('/current_difficulty')
+
 
     while not rospy.is_shutdown():
 

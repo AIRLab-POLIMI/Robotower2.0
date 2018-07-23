@@ -1,0 +1,14 @@
+<launch>
+
+	<rosparam command="load" file="$(find game_manager)/params/game.yaml" />
+	
+	 <!-- Load dynamic reconfigure parameters for acml -->
+	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_params.yaml" />
+	
+    <!-- player and tower game information -->
+    <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
+    
+    <!-- game manager -->
+    <node pkg="game_manager" type="node.py" name="game_manager" output="screen" respawn="true" />
+
+</launch>

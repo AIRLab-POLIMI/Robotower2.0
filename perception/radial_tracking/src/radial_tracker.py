@@ -26,16 +26,17 @@ class Context:
     current state.
     """
 
-    def __init__(self, state):
+    def __init__(self, state, recovery_timeout):
         self._state = state
         self._lost = False
+        self.recovery_timeout = recovery_timeout
 
     def request(self, last_message, listener = None):
         """ Returns the angle where to rotate the robot, according to current tracker state"""
         return self._state.handle(last_message, listener)
 
     def evaluate_state(self, is_lost):
-        next_state = self._state.next_state(is_lost)
+        next_state = self._state.next_state(is_lost, recovery_timeout)
         self._state = next_state
 
 
@@ -62,7 +63,7 @@ class TrackingActive(State):
 
     def handle(self, player_info, listener):
         """ Rotate towards the player """
-        rospy.loginfo("Handling correct tracking")
+        #rospy.loginfo("Handling correct tracking")
         if (player_info.position != None):
             player_position = self.transformPoint(listener, player_info.position)
             angle = np.arctan2(player_position[1], player_position[0])
@@ -83,7 +84,7 @@ class TrackingActive(State):
         return (tweaked_ps.point.x, tweaked_ps.point.y)
         
     
-    def next_state(self, is_lost):
+    def next_state(self, is_lost, timeout):
         if(is_lost):
             # We've just lost track of the player
             return TrackingLost()
@@ -103,7 +104,7 @@ class TrackingLost(State):
 
     def handle(self, last_msg, listener):
         """ Rotate towards the last tower the player intended to reach"""
-        rospy.loginfo("Handling lost tracking")
+        #rospy.loginfo("Handling lost tracking")
 
         index = self.identify_intended_tower(last_msg)
         #rospy.logerr("Heading to quadrant: {}".format(self.quadrant_index_decoder[index]))
@@ -114,7 +115,7 @@ class TrackingLost(State):
         tf_align_angle = tf.transformations.euler_from_quaternion(rot)
 
         trans_align_angle = np.arctan2(trans[1], trans[0]) # rotation needed to face player once aligned
-        rospy.loginfo("Angle trans in deg: {}".format(np.rad2deg(trans_align_angle - np.pi)))
+        #rospy.loginfo("Angle trans in deg: {}".format(np.rad2deg(trans_align_angle - np.pi)))
         delta = tf_align_angle[2] - (trans_align_angle - np.pi)
         
         
@@ -139,10 +140,10 @@ class TrackingLost(State):
             return False
         return True
 
-    def next_state(self, is_lost):
+    def next_state(self, is_lost, timeout):
         if(is_lost):
             # We've lost track of the player
-            if self.check_recovery_mode():
+            if self.check_recovery_mode(recovery_thd=timeout):
                 # We've lost track for too much time
                 return Recovery()
             else:
@@ -160,7 +161,7 @@ class Recovery(State):
 
     def handle(self, last_player_msg, listener):
         """ Rotate towards the center of the field """
-        rospy.loginfo("Handling recovery mode tracking")
+        #rospy.loginfo("Handling recovery mode tracking")
 
         listener.waitForTransformFull( "/playground_center", rospy.Time(0), "/base_link", rospy.Time(0), "map", timeout=rospy.Duration(2))
         (trans, rot) = listener.lookupTransformFull( "/playground_center" , rospy.Time(0), "/base_link", rospy.Time(0), "map") 
@@ -176,7 +177,7 @@ class Recovery(State):
 
         return -delta
 
-    def next_state(self, is_lost):
+    def next_state(self, is_lost, timeout):
         if(is_lost):
             return self
         else:
@@ -218,11 +219,11 @@ class PlayerInfo(object):
 
 class RadialTracking():
 
-    def __init__(self, is_lost = True):
+    def __init__(self, lost_timeout, recovery_timeout, is_lost = True):
         # Instantiating the initial state of the tracker
         track_active = TrackingActive()
         # Saving the context of the tracker in a variable
-        self.ctx = Context(track_active)
+        self.ctx = Context(track_active, recovery_timeout)
 
         # Instantiating angle publisher
         self.pub_angle = rospy.Publisher('angle', Float32, queue_size=1)
@@ -237,6 +238,8 @@ class RadialTracking():
         self.robot_frame = "/base_link"
         self.tf_listener = tf.TransformListener()
 
+        self.lost_timeout = lost_timeout
+
     def callback_person_array(self, msg):
         """callback for PersonArray msgs """
         self.is_lost = False
@@ -247,6 +250,7 @@ class RadialTracking():
             if person.confidence > max_confidence:
                 max_confidence = person.confidence
                 best_track = person
+        
 
         if max_confidence != float("-inf"):
             self.player_info.velocity = (best_track.velocity.x, best_track.velocity.y)
@@ -263,7 +267,7 @@ class RadialTracking():
         
     def evaluate_timeout(self):
         ''' Check if the last person received was too old '''
-        return ( rospy.get_rostime().to_sec() - self.player_info.time.to_sec() ) > 3
+        return ( rospy.get_rostime().to_sec() - self.player_info.time.to_sec() ) > self.lost_timeout
         #return False # TEST TRACK ACTIVE
         #return True  # TEST TRACK LOST
 
@@ -274,7 +278,7 @@ class RadialTracking():
             self.is_lost = self.evaluate_timeout()
             self.ctx.evaluate_state(self.is_lost)
             rotation_angle = self.ctx.request(self.player_info, self.tf_listener) # Using last know player info
-            rospy.logerr("Rotate by {}".format(np.rad2deg(-rotation_angle)))
+            #rospy.logerr("Rotate by {}".format(np.rad2deg(-rotation_angle)))
             msg = Float32()
             msg.data = rotation_angle
             self.pub_angle.publish(msg)
@@ -284,5 +288,7 @@ class RadialTracking():
 
 if __name__ == '__main__':
     rospy.init_node('radial_tracker')
-    tracker = RadialTracking()
+    lost_timeout = rospy.get_param('lost_timeout')
+    recovery_timeout = rospy.get_param('recovery_timeout')
+    tracker = RadialTracking(lost_timeout, recovery_timeout)
     tracker.run()

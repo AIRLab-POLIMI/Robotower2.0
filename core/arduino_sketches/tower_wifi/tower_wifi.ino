@@ -1,7 +1,7 @@
 /**
- *	This new tower code is based on the module ESP8266-12F dev board v3.
+ *  This new tower code is based on the module ESP8266-12F dev board v3.
  *  Author: Ewerton Lopes
- *	Date: Jun 18, 2018
+ *  Date: Jun 18, 2018
  **/
 
 #include <ESP8266WiFi.h>
@@ -12,10 +12,12 @@
 #include <game_manager/TiltSensor.h>
 #include <game_manager/ButtonState.h>
 
-#define TOWER_ID 4
+#define TOWER_ID 2
 
 #define DEBOUNCE_DELAY 50
 #define N_CHARGE_LEDS 3
+#define FEEDBACK_COM_THD 2500
+#define UNCONNECTED_THD 250
 
 /***** INPUT PINS *****/
 #define TILT_SENSOR_PIN 13
@@ -28,15 +30,17 @@
 #define CHARGE_LED2     5
 #define CHARGE_LED3     4
 
-int RED_COLOR[] = {1,0,0};
-int GREEN_COLOR[] = {0,1,0};
-int BLUE_COLOR[] = {0,0,1};
-int BLANK_COLOR[] = {0,0,0};
+bool RED_COLOR[] = {1,0};
+bool GREEN_COLOR[] = {0,1};
+bool BLANK_COLOR[] = {0,0};
+bool INITIAL_CHARGING_STATE[] = {0,0,0};
 
 /***** CONFIG VARIABLES *****/
 int led_array[] = {CHARGE_LED1, CHARGE_LED2, CHARGE_LED3, RED_LED, GREEN_LED}; // All LEDs
 int charge_LEDs[] = {CHARGE_LED1, CHARGE_LED2, CHARGE_LED3};                            // All charge LEDs.
 int STATUS_LED[] = {RED_LED,GREEN_LED};
+bool led_status[] = {0,0,0};
+bool status_color[] = {0,0};
 
 
 ///////////////////////
@@ -47,6 +51,14 @@ int last_button_state;              // the previous reading from the input pin
 unsigned long last_debounce_time;   // the last time the output pin was toggled. Remember that time variables 
                                     // are unsigned longs because the time, measured in  milliseconds, will quickly 
                                     // become a bigger number than can be stored in an int.
+
+
+//////////////////////
+//   Feedback COM   //
+//////////////////////
+unsigned long feedback_com_msg_timer;
+unsigned long feedback_unconnect_timer;
+bool blink_leds;
 
 
 //////////////////////
@@ -100,9 +112,10 @@ class WiFiHardware {
   }
 };
 
-void updateChargeLEDs(const bool led_state[]){
+void updateChargeLEDs(const bool new_led_status[]){
   for(int i=0;i<N_CHARGE_LEDS;i++){
-    digitalWrite(charge_LEDs[i],led_state[i]);
+    led_status[i] = new_led_status[i];
+    digitalWrite(charge_LEDs[i],new_led_status[i]);
   }
 }
 
@@ -121,9 +134,12 @@ void resetCallback(const std_msgs::Bool& reset_msg){
 
 game_manager::ButtonState bt_msg;
 game_manager::TiltSensor tilt_msg;
+game_manager::ChangeLEDs feed_msg;
 
 ros::Publisher bt_pub("tower/button_state", &bt_msg);
 ros::Publisher tilt_pub("tower/tilt_sensor", &tilt_msg);
+ros::Publisher feedback_pub("tower/feedback_com", &feed_msg);
+
 
 ros::Subscriber <game_manager::ChangeLEDs> sub("game_manager/towers/ChangeLEDs", &ledCallback); 
 ros::NodeHandle_<WiFiHardware> nh;
@@ -134,10 +150,10 @@ void setupWiFi(){
 
   Serial.print("\nConnecting to "); Serial.println(ssid);
   uint8_t i = 0;
-  while (WiFi.status() != WL_CONNECTED && i++ < 20) delay(500);
-  if(i == 21){
+  while (WiFi.status() != WL_CONNECTED){
     Serial.print("Could not connect to "); Serial.println(ssid);
-    while(1) delay(500);
+    Serial.print("Retrying after half a second...");
+    comunicateIsUnconnected();
   }
   Serial.print("Ready! Use ");
   Serial.print(WiFi.localIP());
@@ -146,6 +162,7 @@ void setupWiFi(){
 
 void changeStatusLED(const bool color[]){
   for (int i=0; i<2; i++){
+    status_color[i] = color[i];
     digitalWrite(STATUS_LED[i],color[i]);
   }
 }
@@ -154,8 +171,13 @@ void resetVariables(){
   button_state = LOW;
   last_button_state = LOW;
   last_debounce_time = 0;
+  feedback_com_msg_timer = 0;
+  feedback_unconnect_timer = 0;
   charge_blink_timer = 0;
   blink_state = false;
+  blink_leds = 0;
+  copy_vector(feed_msg.charge_leds, led_status, 3);
+  copy_vector(feed_msg.status_led_color, BLANK_COLOR, 2);
 }
 
 /*
@@ -203,14 +225,19 @@ int hasFallen(){
 
 void setAllON(){
   for (int i=0; i < 5;i++){       // set all LEDS pins to OUTPUT mode
-      digitalWrite(led_array[i], OUTPUT);
+      digitalWrite(led_array[i], HIGH);
+  }
+}
+
+
+void setAllOFF(){
+  for (int i=0; i < 5;i++){
+      digitalWrite(led_array[i], LOW);
   }
 }
 
 void setup() {
   Serial.begin(115200);
-  setupWiFi();
-  delay(2000);
   
   pinMode(INPUT_PIN, INPUT);              
   pinMode(TILT_SENSOR_PIN, INPUT);
@@ -218,18 +245,52 @@ void setup() {
   for (int i=0; i < 5;i++){       // set all LEDS pins to OUTPUT mode
       pinMode(led_array[i], OUTPUT);
   }
+  
+  setAllON();
+  changeStatusLED(RED_COLOR);
+  delay(1000);
+    
+  setupWiFi();
+  delay(2000);
 
   nh.initNode();
   nh.subscribe(sub);
   nh.advertise(bt_pub);
   nh.advertise(tilt_pub);
+  nh.advertise(feedback_pub);
 
   resetVariables();
   setAllON();
 }
 
+void comunicateIsUnconnected(){
+  if ((feedback_unconnect_timer - millis()) > UNCONNECTED_THD){
+    feedback_unconnect_timer = millis();
+    blink_leds = !blink_leds;
+    if (blink_leds){
+      setAllON();
+      changeStatusLED(RED_COLOR);
+    }else{
+      setAllOFF();
+    }
+  }
+  delay(250);
+}
+
+void copy_vector(bool src[], bool dest[], int size_vect){
+  for (int i=0; i<size_vect; i++){
+    dest[i] = src[i];
+  }
+}
+
 void loop() {
 
+  if (WiFi.status() != WL_CONNECTED){
+    setupWiFi();
+    delay(2000);
+  }
+
+  //Serial.println("Looping...");
   // Checks whether button was pressed
   if (isNewButtonState()){
     bt_msg.header.stamp = nh.now();
@@ -246,8 +307,23 @@ void loop() {
     tilt_pub.publish(&tilt_msg);
   }
 
-  
-  
+  // after FEEDBACK_COM_THD seconds publish status to game_manager node.
+  // this is supposed to maintain a periodic check and time/operation sync with the
+  // rest of the system. Should avoid making the module losing sync with the rosserial tcp.
+  if ((feedback_com_msg_timer - millis()) > FEEDBACK_COM_THD){
+    //Serial.println("Publishing..");
+    feed_msg.header.stamp = nh.now();
+    feed_msg.id = TOWER_ID;
+    // copying arrays
+    copy_vector(feed_msg.charge_leds, led_status, 3);
+    copy_vector(feed_msg.status_led_color, status_color, 2);
+    feedback_pub.publish(&feed_msg);
+    feedback_com_msg_timer = millis();
+    Serial.println("Published new msg..");
+  }
+
+  delay(1);
   nh.spinOnce();  // has to be always present otherwise we run into sync problems with ros.
-  delay(5);
+  
 }
+

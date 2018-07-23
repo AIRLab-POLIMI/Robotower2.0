@@ -15,7 +15,6 @@
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
 	
 	<!-- Data logger -->
-	<!--<include file="$(find data_collection)/launch/slippage_data_recorder.launch"/> -->
 	<include file="$(find data_collection)/launch/game_data_recorder.launch"/>
 	
 </launch> 

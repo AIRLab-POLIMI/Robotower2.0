@@ -14,10 +14,18 @@ button_topic_name: tower/button_state
 behavior_service_name: change_behavior
 
 # XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):
-tower_1: [2.02451276779, -3.36508965492]
-tower_2: [2.88112926483, -0.500505328178]
-tower_3: [0.494375228882, 0.16442990303]
-tower_4: [-0.135583043098, -2.78914022446]
+
+# for sala riunioni
+tower_1: [-0.079, -2.469] 
+tower_2: [0.799, -0.035]
+tower_3: [4.531, -1.266]
+tower_4: [3.676, -3.765]
+
+# for AIRlab
+#tower_1: [2.12, -1.66] 
+#tower_2: [2.91, 0.49]
+#tower_3: [0.06, 1.57]
+#tower_4: [-0.74, -0.64]
 
 ##########################################################################
 ##                         DIFFICULTY SETTINGS                          ##

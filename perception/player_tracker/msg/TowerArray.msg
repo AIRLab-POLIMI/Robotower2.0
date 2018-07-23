@@ -1,2 +1,3 @@
 # Pose of a tower
-geometry_msgs/Point[] towers
+std_msgs/Header header
+Tower[] towers

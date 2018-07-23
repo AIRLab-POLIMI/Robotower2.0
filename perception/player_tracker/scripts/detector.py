@@ -837,11 +837,7 @@ class KalmanTracker:
                         # publish message containing angle of robot wrt center map for orientation puropses
                         angle_msg = Float32()
                         angle_msg.data = math.atan2(player_pose_wrt_robot[1],player_pose_wrt_robot[0])
-                        self.pub_angle_center.publish(angle_msg)                        
-                        
-
-
-                        
+                        self.pub_angle_center.publish(angle_msg)                   
 
         # Clear previously published people markers
         for m_id in xrange(marker_id, self.prev_person_marker_id):

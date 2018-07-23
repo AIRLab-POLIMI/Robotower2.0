@@ -31,6 +31,7 @@
     
     <!-- Player Tracking  -->
     <include file="$(find player_tracker)/launch/experiments/run.launch"/> 
+    <!--<include file="$(find radial_tracking)/launch/run.launch"/> -->
 
     <!-- Player Particle Filter 
     <node pkg="radial_tracking" type="node.py" name="radial_tracking" output="screen" respawn="true"/>

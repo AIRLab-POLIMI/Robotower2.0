@@ -4,14 +4,14 @@ import tf
 import math
 import copy
 import numpy as np
-import itertools
+import itertools 
 
 from scipy import spatial
 
 # Custom messages
-from player_tracker.msg import Person, PersonArray, Leg, LegArray, PersonEvidence, PersonEvidenceArray, TowerArray
+from player_tracker.msg import Person, PersonArray, Leg, LegArray, PersonEvidence, PersonEvidenceArray, TowerArray, Tower
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import PolygonStamped, Point32, PointStamped, Point
+from geometry_msgs.msg import PolygonStamped, Point32, PointStamped, Point, Pose
 
 from munkres import Munkres, print_matrix # For the minimum matching assignment problem. To install: https://pypi.python.org/pypi/munkres 
 from scipy.stats import beta
@@ -270,11 +270,12 @@ class LegDistance:
 
     '''Calculates the distance between LEG clusters and saves to file.''' 
     
-    def __init__(self, p1, p2, p3, p4, logfile=''):
+    def __init__(self, logfile=''):
 
         # TODO: change this path to be acquire from parameter!
         self.leg_context = LegContextProcessor('/home/airlab/catkin_ws/src/phd_robogame/perception/player_tracker/model/leg_distance-gmm.pkl')
 
+        self.tower_triangle_areas = []
         self.tf_listener = tf.TransformListener()
         self.pub_tower_markers = rospy.Publisher('tower_rectangle', PolygonStamped, queue_size=1)
         self.marker_pub = rospy.Publisher('detected_legs_in_bounding_box', Marker, queue_size=300)
@@ -288,15 +289,7 @@ class LegDistance:
             self.f = open(logfile, "w")
         
 
-        # accepted area
-        self.p1 = p1
-        self.p2 = p2
-        self.p3 = p3
-        self.p4 = p4
-
         self.bound_box_points = []
-        for p in [self.p1, self.p2, self.p3, self.p4]:
-            self.bound_box_points.append((p.x,p.y))
 
         # ROS subscribers         
         self.detected_clusters_sub = rospy.Subscriber('detected_leg_clusters', LegArray, self.detected_clusters_callback)      
@@ -306,7 +299,7 @@ class LegDistance:
 
         self.tower_positions, _ = self.get_tower_distances()
         self.tower_target_distances = set([])
-        self.tower_triangle_areas = []
+        
         for perm in itertools.permutations(self.tower_positions, r=3):
             dist1_2 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[1].x, perm[1].y]))
             dist1_3 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[2].x, perm[2].y]))
@@ -355,8 +348,11 @@ class LegDistance:
         polygon = PolygonStamped()
         polygon.header.stamp = rospy.get_rostime()
         polygon.header.frame_id = 'map'
-        polygon.polygon.points = pts
+        polygon.polygon.points = self.sort_vertices([p.position for p in pts])
+        #polygon.polygon.points = [p.position for p in pts]
+        self.bound_box_points = polygon.polygon.points
         self.pub_tower_markers.publish(polygon)
+        #self.publish()
 
     def get_tower_distances(self, num_towers=4):
         """Calculate tower distances from each other in the robot frame"""
@@ -381,12 +377,33 @@ class LegDistance:
         polygon = PolygonStamped()
         polygon.header.stamp = rospy.get_rostime()
         polygon.header.frame_id = 'map'
-        polygon.polygon.points.append(p1)
-        polygon.polygon.points.append(p2)
-        polygon.polygon.points.append(p3)
-        polygon.polygon.points.append(p4)
-
+        polygon.polygon.points = self.bound_box_points#self.sort_vertices()
         self.pub.publish(polygon)
+
+    def sort_vertices(self, pts):
+        # Sorts vertices of polygon to get a rectangle
+        if(len(pts) == 0):
+            return []   
+        if(len(self.bound_box_points) == 0):
+            self.bound_box_points = [None] * 4
+                 
+        pts.sort(self.point_x_comparator)
+        #rospy.loginfo(pts)
+        self.bound_box_points[0] = pts[0]
+        self.bound_box_points[1] = pts[2]
+        self.bound_box_points[2] = pts[3]
+        self.bound_box_points[3] = pts[1]
+
+        return self.bound_box_points
+
+
+    def point_x_comparator(self, p1, p2):
+        # Comparator to sort points wrt x-axis
+        if(p1.x > p2.x):
+            return 1
+        else:
+            return -1
+
 
 
     def inside_polygon(self, x, y):
@@ -400,9 +417,10 @@ class LegDistance:
 
         n = len(points)
         inside = False
-        p1x, p1y = points[0]
+        p1x = points[0].x
+        p1y = points[0].y
         for i in range(1, n + 1):
-            p2x, p2y = points[i % n]
+            p2x, p2y = points[i % n].x, points[i % n].y
             if y > min(p1y, p2y):
                 if y <= max(p1y, p2y):
                     if x <= max(p1x, p2x):
@@ -431,10 +449,14 @@ class LegDistance:
 
         for i,cluster in enumerate(detected_clusters_msg.legs):         
            
-            in_bounding_box =  True #self.inside_polygon(cluster.position.x, cluster.position.y)
+            if(len(self.bound_box_points) == 0):
+                in_bounding_box = True
+            else:
+                in_bounding_box = self.inside_polygon(cluster.position.x, cluster.position.y)
             
             
             if in_bounding_box:
+                
                 marker = Marker()
                 marker.header.frame_id = self.fixed_frame
                 marker.header.stamp = now
@@ -477,21 +499,24 @@ class LegDistance:
                 
                 # save cluster
                 accepted_clusters.append(cluster)
-
+        
+        
         if len(accepted_clusters) <= 1:
             return
         #z = np.array([[complex(c.position.x, c.position.y) for c in accepted_clusters]]) # notice the [[ ... ]])
         
-        tree = spatial.KDTree(np.array([[c.position.x, c.position.y] for c in accepted_clusters]))
-
-        pos_dis_distances = [ Point(c.position.x, c.position.y, 0) for c in accepted_clusters]
         
+        tree = spatial.KDTree(np.array([[c.position.x, c.position.y] for c in accepted_clusters]))
+        self.search_bounding_box(detected_clusters_msg)
+        '''
         tower_array_msg = TowerArray()
-        if len(pos_dis_distances) > 3:
-            for perm in itertools.permutations(pos_dis_distances, r=3):
-                dist1_2 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[1].x, perm[1].y]))
-                dist1_3 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[2].x, perm[2].y]))
-                dist2_3 = spatial.distance.euclidean(np.array([perm[1].x, perm[1].y]),np.array([perm[2].x, perm[2].y]))
+        tower_array_msg.header = detected_clusters_msg.header
+        if len(accepted_clusters) > 3:
+            #rospy.logerr("Checking every possible triangle")
+            for perm in itertools.permutations(accepted_clusters, r=3):
+                dist1_2 = spatial.distance.euclidean(np.array([perm[0].position.x, perm[0].position.y]),np.array([perm[1].position.x, perm[1].position.y]))
+                dist1_3 = spatial.distance.euclidean(np.array([perm[0].position.x, perm[0].position.y]),np.array([perm[2].position.x, perm[2].position.y]))
+                dist2_3 = spatial.distance.euclidean(np.array([perm[1].position.x, perm[1].position.y]),np.array([perm[2].position.x, perm[2].position.y]))
                 triangle_distances = [dist1_2, dist1_3, dist2_3]
                 p = (dist1_2 + dist1_3 + dist2_3) / 2.0     # perimeter
                 
@@ -507,12 +532,16 @@ class LegDistance:
                                 break
 
                         if to_pub:
-                            tower_array_msg.towers = perm
-                            self.publish_poligon(perm)
+                            tower_array_msg.towers = [Tower(p.position, p.points, p.point_indexes) for p in perm]
+                            missing_vertex = self.get_missing_vertex(tower_array_msg.towers)
+                            tower_array_msg.towers.append(Tower(missing_vertex.position, [], [])) 
+                            vertices = list(perm)
+                            vertices.append(missing_vertex)
+                            self.publish_poligon(vertices)
 
         if len(tower_array_msg.towers) != 0:
             self.pub_towers.publish(tower_array_msg)
-
+        '''
 
         for j, pts in enumerate(tree.data):
             nearest_point = tree.query(pts, k=2)
@@ -560,23 +589,127 @@ class LegDistance:
         
         self.evidence_pub.publish(evidences)
 
+    def search_bounding_box(self, detected_clusters_msg):
+        tower_array_msg = TowerArray()
+        tower_array_msg.header = detected_clusters_msg.header
+        if len(detected_clusters_msg.legs) > 3:
+            #rospy.logerr("Checking every possible triangle")
+            for perm in itertools.permutations(detected_clusters_msg.legs, r=3):
+                dist1_2 = spatial.distance.euclidean(np.array([perm[0].position.x, perm[0].position.y]),np.array([perm[1].position.x, perm[1].position.y]))
+                dist1_3 = spatial.distance.euclidean(np.array([perm[0].position.x, perm[0].position.y]),np.array([perm[2].position.x, perm[2].position.y]))
+                dist2_3 = spatial.distance.euclidean(np.array([perm[1].position.x, perm[1].position.y]),np.array([perm[2].position.x, perm[2].position.y]))
+                triangle_distances = [dist1_2, dist1_3, dist2_3]
+                p = (dist1_2 + dist1_3 + dist2_3) / 2.0     # perimeter
+                
+                area = np.sqrt(p*(p-dist1_2)*(p-dist1_3)*(p-dist2_3))
+                
+                for a in self.tower_triangle_areas:
+                    if self.is_close_enough(a, area, tol=0.1):
+                        to_pub = True
+
+                        for side in triangle_distances:
+                            if not self.is_compatible_with_playground(side):
+                                to_pub = False
+                                break
+
+                        if to_pub:
+                            tower_array_msg.towers = [Tower(p.position, p.points, p.point_indexes) for p in perm]
+                            missing_vertex = self.get_missing_vertex(tower_array_msg.towers)
+                            tower_array_msg.towers.append(Tower(missing_vertex.position, [], [])) 
+                            vertices = list(perm)
+                            vertices.append(missing_vertex)
+                            self.publish_poligon(vertices)
+                            
+        if len(tower_array_msg.towers) != 0:
+            self.pub_towers.publish(tower_array_msg)
+
+
+
+
+    def get_missing_vertex(self, towers):
+        sides = []#list(itertools.permutations(towers, r=2)) # Contains list of permutations of towers taken by couples. It represents the sides of the triangle
+        sides.append( (towers[0], towers[1]))
+        sides.append( (towers[1], towers[2]))
+        sides.append( (towers[2], towers[0]))
+
+        sides.sort(self.my_comparator, reverse=True) # Sort sides from longest (hypotenuse) to shortest (catethus min)
+
+        vertex_to_extend = sides[0][0] # Take one vertex of the hypotenuse
+
+        if(self.contains_vertex(sides[1], vertex_to_extend)): #Identify which is the opposite cathetus wrt the selected vertex
+            opposite_cathetus = 2
+        else:
+            opposite_cathetus = 1
+
+        for i in range( len(sides[opposite_cathetus]) ):
+            if( self.contains_vertex(sides[0], sides[opposite_cathetus][i]) == False ):
+                #Identify the vertex where the catheti join, the one with the rect angle             
+                rect_vertex_index = i 
+            else:
+                not_rect_vertex_index = i
+
+        
+        # Calculate the orientation of the opposite cathetus centered in the vertex where the two catheti join
+        extension_angle = np.arctan2(sides[opposite_cathetus][rect_vertex_index].position.y - sides[opposite_cathetus][not_rect_vertex_index].position.y,
+            sides[opposite_cathetus][rect_vertex_index].position.x - sides[opposite_cathetus][not_rect_vertex_index].position.x)
+
+        # Calculate the lenght of the opposite cathetus
+        extension_magnitude = ( (sides[opposite_cathetus][0].position.x - sides[opposite_cathetus][1].position.x)**2 + 
+            (sides[opposite_cathetus][0].position.y - sides[opposite_cathetus][1].position.y)**2 )**0.5
+
+        # Calculate the cartesian projections of the opposite cathetus
+        extension_x = extension_magnitude * np.cos(extension_angle + np.pi)
+        extension_y = extension_magnitude * np.sin(extension_angle + np.pi)
+
+        
+        # Reconstruct missing vertex by extending the chosen one from the hypotenuse
+        missing_vertex = Pose()
+        missing_vertex.position.x = vertex_to_extend.position.x + extension_x
+        missing_vertex.position.y = vertex_to_extend.position.y + extension_y
+        missing_vertex.position.z = 0
+
+        return missing_vertex
+
+
+    def my_comparator(self, side_a, side_b):
+        # Returns the longest side
+        length_a = (side_a[0].position.x - side_a[1].position.x)**2 + (side_a[0].position.y - side_a[1].position.y)**2
+        length_b = (side_b[0].position.x - side_b[1].position.x)**2 + (side_b[0].position.y - side_b[1].position.y)**2
+
+        if(length_a > length_b):
+            return 1
+        return -1
+
+    def are_pose_equal(self, pose_1, pose_2, thd = 0.1):
+        if( abs(pose_1.position.x - pose_2.position.x) < thd and abs(pose_1.position.y - pose_2.position.y) < thd) :
+            return True
+        return False
+
+    def contains_vertex(self, side, vertex):
+        if(self.are_pose_equal(side[0], vertex) or self.are_pose_equal(side[1], vertex)):
+            return True
+        #if(side[0] == vertex or side[1] == vertex):
+            #return True
+        return False
+
+    def match_cluster(self, vertex, accepted_clusters, acceptance_thd = 0.1):
+        """ Trying to match the given vertex with one of the accepted_clusters """
+        for cluster in accepted_clusters:
+            centroid = cluster.position
+            if( abs(vertex.position.x - centroid.x) < acceptance_thd and abs(vertex.position.y - centroid.y) < acceptance_thd ):
+                return cluster
+        return None
+
 
 if __name__ == '__main__':
     rospy.init_node('leg_distance_node', anonymous=True)
     rospy.logwarn('THE BOUDING BOX PARAMETERS SHOULD BE THE SAME AS THE ONES IN "extract_positive*.launch" file!')
     #ldistance = LegDistance(x_min=-2.76, x_max=2.47, y_min=-2.37, y_max=1.49)# logfile='/home/airlab/Desktop/newFile.txt')
     
-    # TODO move the definition of bounding box to a proper class
-    p1 = Point32(2.02451276779, -3.36508965492, 0)
-    p2 = Point32(2.88112926483, -0.500505328178, 0)
-    p3 = Point32(0.494375228882, 0.16442990303, 0)
-    p4 = Point32(-0.135583043098, -2.78914022446, 0)
-
     
-    ldistance = LegDistance(p1, p2, p3, p4)
+    ldistance = LegDistance()
 
     r = rospy.Rate(10) # 10hz
 
     while not rospy.is_shutdown():
-        ldistance.publish()
         r.sleep() 
