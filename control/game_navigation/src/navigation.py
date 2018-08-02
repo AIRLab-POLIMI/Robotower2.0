@@ -4,13 +4,13 @@ from player_tracker.msg import TowerArray
 from geometry_msgs.msg import Twist, PointStamped
 from sensor_msgs.msg import LaserScan
 from avoidance import FuzzyAvoider
+from SafetyEvaluator import SafetyEvaluator
 from KFfiltering import EKF
 import numpy as np
 import rospy
 import copy
 import tf
 import itertools
-
 
 class Navigation:
 
@@ -61,6 +61,9 @@ class Navigation:
         self.U_bar = np.array([[0.],[0.],[0.]])
         self.is_safe = True
         self.last_cmd_vel = Twist()         #last cmd_vel given
+
+        self.safety_evaluator = SafetyEvaluator(self.DONTCARE)
+        self.lock_rotation = False
 
 
     def set_max_speed(self,value):
@@ -124,6 +127,8 @@ class Navigation:
                 may refer to it also as "bar_u3" or "bar_u3R" for consistency reasons but in fact we are 
                 always considering the output value of this function. 
         """
+        if(self.lock_rotation):
+            return 0
         # Dead zone (Jerk-smother) used in order to eliminate angular
         # jerking while tracking
         if abs(self.current_angle_diff) < self.ANGLE_DEADZONE:
@@ -233,12 +238,13 @@ class Navigation:
             xd = (self.robot_estimated_pose[0][0], self.TOWERS[self.current_goal][0])
             yd = (self.robot_estimated_pose[1][0], self.TOWERS[self.current_goal][1])
         else:
-
-
-
             # define initial e final point when the robot receive the id of the targeted tower
             xd = (self.robot_estimated_pose[0][0], self.TOWERS[self.current_goal][0])
             yd = (self.robot_estimated_pose[1][0], self.TOWERS[self.current_goal][1])
+
+        # DEBUG set tower 1 as goal
+        # xd = (self.robot_estimated_pose[0][0], self.TOWERS[0][0])
+        # yd = (self.robot_estimated_pose[1][0], self.TOWERS[0][1])
 
         # define the robot deviation from the required trajectory
         delta_x = xd[1] - xd[0]
@@ -311,6 +317,7 @@ class Navigation:
             @ rear_left 
         """
 
+
         # check if an obstacle is detected below the proximity threeshold
         proximity = False
         for values in self.current_scan.ranges:
@@ -327,7 +334,7 @@ class Navigation:
         # dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
 
         #dontcare_condition = self.dontcare_condition_evaluation()
-        dontcare_condition = self.dontcare()
+        #dontcare_condition = self.dontcare()
         
 
         '''
@@ -337,10 +344,17 @@ class Navigation:
         else:
             self.is_safe = True
         '''
-        if dontcare_condition: # I don't care of what I see as it's a tower
-            self.is_safe = True
-        else:
-            self.is_safe = False
+        # if dontcare_condition: # I don't care of what I see as it's a tower
+        #     self.is_safe = True
+        # else:
+        #     self.is_safe = False
+
+
+        filtered_scan = self.filter_scan(self.current_scan.ranges)
+       
+        self.set_evaluator_mode()
+        self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan)
+        # rospy.loginfo("Safety condition: {}".format(self.is_safe))
 
         # Generate sensing areas: rear right, right, front right, front left, left, rear left
         rear_right_sec  = self.current_scan.ranges[0:149]
@@ -358,22 +372,7 @@ class Navigation:
         min_left        = min(left_sec)
         min_rear_left   = min(rear_left_sec)
 
-        # Checking if we broke the partition into sectors around the robot
-        # rospy.loginfo("Minimum obstacle rear_right: {}".format(min_rear_right))
-        # rospy.loginfo("Minimum obstacle right: {}".format(min_right))
-        # rospy.loginfo("Minimum obstacle front_right: {}".format(min_front_right))
-        # rospy.loginfo("Minimum obstacle front_left: {}".format(min_front_left))
-        # rospy.loginfo("Minimum obstacle left: {}".format(min_left))
-        # rospy.loginfo("Minimum obstacle rear_left: {}".format(min_rear_left))
-
-        # Publish the index of the sector were closest obstacle is to collect with bag
-        # minimums = [min_rear_right, min_right, min_front_right, min_front_left, min_left, min_rear_left]
-        
-        # msg = Int16( np.argmin(minimums))
-        # self.pub_debug_rosbag.publish(msg)
-
-
-
+       
         # Get the index of the minimum for each area
         min_rear_right_index  = rear_right_sec.index(min_rear_right)
         min_right_index       = right_sec.index(min_right)
@@ -393,36 +392,58 @@ class Navigation:
         rear_left   = (min_rear_left, min_rear_left_index)
 
         return rear_right, right, front_right, front_left, left, rear_left
+
+    
+    def filter_scan(self, scan):
+        filtered_values = []
+        self.danger = False
+        self.search = False
+        for value in self.current_scan.ranges:
+            if value < 0.8:
+                self.search = True
+                if value < self.DONTCARE:
+                    self.danger = True
+                filtered_values.append(value)
+            else:
+                filtered_values.append(0)
         
-    def dontcare(self):
-        # NOTE: Setting tower 4 to debug dontcare condition
+        return filtered_values
+
+    def set_evaluator_mode(self):
+        # self.safety_evaluator.set_mode(SafetyEvaluator.APPROACHING_TOWER)
+        # return
+        if(self.is_near_goal()):
+            self.lock_rotation = True
+            if(self.danger):
+                self.safety_evaluator.set_mode(SafetyEvaluator.APPROACHING_TOWER)
+            elif(self.search): # Needed to avoid to pass an empty filtered scan 
+                self.safety_evaluator.set_mode(SafetyEvaluator.SEARCHING_TOWER)
+            else:
+                self.safety_evaluator.set_mode(SafetyEvaluator.DEFAULT)
+        else:
+            self.lock_rotation = False
+            self.safety_evaluator.set_mode(SafetyEvaluator.DEFAULT)
+            
+                
+    def is_near_goal(self):
+        # define initial e final point when the robot receive the id of the targeted tower
         xd = (self.robot_estimated_pose[0][0], self.TOWERS[self.current_goal][0])
         yd = (self.robot_estimated_pose[1][0], self.TOWERS[self.current_goal][1])
-        # xd = (self.robot_estimated_pose[0][0], self.TOWERS[3][0])
-        # yd = (self.robot_estimated_pose[1][0], self.TOWERS[3][1])
 
-        delta_x = xd[1] - xd[0] # x_robot - x_tower
-        delta_y = yd[1] - yd[0] # y_robot - y_tower
+        # DEBUG GO TO TOWER 1 #
+        # xd = (self.robot_estimated_pose[0][0], self.TOWERS[0][0])
+        # yd = (self.robot_estimated_pose[1][0], self.TOWERS[0][1])
+
+        # define the robot deviation from the required trajectory
+        delta_x = xd[1] - xd[0]
+        delta_y = yd[1] - yd[0]
 
         goal_distance = (delta_x**2 + delta_y**2)**0.5
+
+        if goal_distance < 0.8:
+            return True
+        return False
         
-        dontcare_cond = []
-        for scan in self.current_scan.ranges:
-            if( scan < self.DONTCARE):
-                # Something is too close
-                if (self.check_distances_are_similar(goal_distance, scan)):
-                    # The distance is compatible with the tower position -> hit it
-                    dontcare_cond.append(False)
-                else:
-                    # It's something else, whatch out!
-                    dontcare_cond.append(True)
-
-        condition = True
-        for cond in dontcare_cond:
-            if(cond == True):
-                return False
-        return True
-
     def check_distances_are_similar(self, d1, d2, acceptance_thd=0.1):       
         delta = abs(d1 - d2)
         if( delta < acceptance_thd ):
@@ -495,7 +516,6 @@ class Navigation:
         ps.point.x = point.x
         ps.point.y = point.y
 
-
         converted = self.tf_listener.transformPoint('map', ps)
         return converted.point
 
@@ -505,8 +525,8 @@ class Navigation:
             self.TOWERS[index][0] = vertex.x
             self.TOWERS[index][1] = vertex.y
         
-        for i,tower in enumerate(self.TOWERS):
-            rospy.loginfo("Tower {} is at x:{}, y:{}".format(i+1, tower[0], tower[1]))
+        # for i,tower in enumerate(self.TOWERS):
+        #     rospy.loginfo("Tower {} is at x:{}, y:{}".format(i+1, tower[0], tower[1]))
 
     def match_tower_index(self, vertex):
         # Match the closest tower with the point given

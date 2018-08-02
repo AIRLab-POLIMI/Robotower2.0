@@ -65,7 +65,7 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 		// let /unsafe/cmd_vel be published on /cmd_vel
 
 		ros::Time now = ros::Time::now();
-		ros::Duration time_diff = unsafe_cmd_vel_time - now;
+		ros::Duration time_diff = now - unsafe_cmd_vel_time;
 		if (time_diff.toSec() < 0.5){
 			twistMsg = lastUnsafeTwistMsg_;
 			twistPub.publish(twistMsg);

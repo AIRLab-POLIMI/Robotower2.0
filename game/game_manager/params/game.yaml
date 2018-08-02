@@ -15,17 +15,11 @@ behavior_service_name: change_behavior
 
 # XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):
 
-# for sala riunioni
-tower_1: [-0.079, -2.469] 
-tower_2: [0.799, -0.035]
-tower_3: [4.531, -1.266]
-tower_4: [3.676, -3.765]
-
 # for AIRlab
-#tower_1: [2.12, -1.66] 
-#tower_2: [2.91, 0.49]
-#tower_3: [0.06, 1.57]
-#tower_4: [-0.74, -0.64]
+tower_1: [-0.36975479126, -1.17492127419] 
+tower_2: [-0.0447092056274, 2.1688606739]
+tower_3: [3.48380422592, 1.92684721947]
+tower_4: [3.04869556427, -1.49611186981]
 
 ##########################################################################
 ##                         DIFFICULTY SETTINGS                          ##
@@ -52,7 +46,7 @@ difficulties: {
                        
                 hard: {max_speed: 1.,
                        min_speed: 0.7,
-                       max_acc: 0.5,
+                       max_acc: 0.1,
                        ks: 50., 
                        bf_exponent: 1}
                }

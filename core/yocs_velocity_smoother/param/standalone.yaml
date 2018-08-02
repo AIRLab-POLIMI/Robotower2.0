@@ -1,0 +1,25 @@
+# Example configuration:
+# - velocity limits are around a 10% above the physical limits
+# - acceleration limits are just low enough to avoid jerking
+
+# Mandatory parameters
+speed_lim_vx: 3.0
+accel_lim_vx: 3.0
+
+speed_lim_vy: 2.0
+accel_lim_vy: 2.0
+
+speed_lim_w: 5.0
+accel_lim_w: 5.0
+
+# Optional parameters
+frequency: 20.0
+decel_factor_x: 2.2
+decel_factor_y: 1.0
+decel_factor_w: 1.0
+
+# Robot velocity feedback type:
+#  0 - none
+#  1 - odometry
+#  2 - end robot commands
+robot_feedback: 1

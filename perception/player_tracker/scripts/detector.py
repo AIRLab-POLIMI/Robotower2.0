@@ -4,7 +4,6 @@ import rospy
 
 # Custom messages
 from player_tracker.msg import Person, PersonArray, Leg, LegArray , PersonEvidenceArray
-from kinect_tracker.msg import PlayerInfo
 from std_msgs.msg import Float32
 from human_marker import createHuman
 # ROS messages
@@ -186,7 +185,7 @@ class KalmanTracker:
         self.use_scan_header_stamp_for_tfs = rospy.get_param("use_scan_header_stamp_for_tfs", False)
         self.publish_detected_people = rospy.get_param("display_detected_people", False)        
         self.dist_travelled_together_to_initiate_leg_pair = rospy.get_param("dist_travelled_together_to_initiate_leg_pair", 0.3)
-        scan_topic = rospy.get_param("scan_topic", "scan");
+        scan_topic = rospy.get_param("scan_topic", "scan")
         self.scan_frequency = rospy.get_param("scan_frequency", 7.5)
         self.in_free_space_threshold = rospy.get_param("in_free_space_threshold", 0.06)
         self.confidence_percentile = rospy.get_param("confidence_percentile", 0.95)
@@ -200,10 +199,11 @@ class KalmanTracker:
         self.people_tracked_pub = rospy.Publisher('people_tracked', PersonArray, queue_size=30)
         self.marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=300)
         self.non_leg_clusters_pub = rospy.Publisher('non_leg_clusters', LegArray, queue_size=300)
-        self.pub_player_info = rospy.Publisher("kinect2/player_filtered_info", PlayerInfo,  queue_size=10)
+        #self.pub_player_info = rospy.Publisher("kinect2/player_filtered_info", PlayerInfo,  queue_size=10)
         self.pub_angle_center = rospy.Publisher("playground_center", Float32, queue_size=10)
 
-        # ROS subscribers         
+        # ROS subscribers
+        #self.detected_legs = rospy.Subscriber('detected_leg_clusters', LegArray, self.leg_array_callback)     
         self.detected_evidences = rospy.Subscriber('evidence_of_player', PersonEvidenceArray, self.person_evidence_callback)      
         self.local_map_sub = rospy.Subscriber('local_map', OccupancyGrid, self.local_map_callback)
 
@@ -242,7 +242,7 @@ class KalmanTracker:
         # Take the average of the local map's values centred at (map_x, map_y), with a kernel size of <kernel_size>
         # If called repeatedly on the same local_map, this could be sped up with a sum-table
         sum = 0
-        kernel_size = 2;
+        kernel_size = 2
         for i in xrange(map_x-kernel_size, map_x+kernel_size):
             for j in xrange(map_y-kernel_size, map_y+kernel_size):
                 if i + j*self.local_map.info.height < len(self.local_map.data):
@@ -299,25 +299,126 @@ class KalmanTracker:
 
         return matched_tracks
 
-      
-    def person_evidence_callback(self, detected_evidences_msg):    
+
+    def person_evidence_callback(self, detected_evidences_msg):
+        now = detected_evidences_msg.header.stamp
+       
+        detected_clusters = []
+        for evidence in detected_evidences_msg.evidences:
+
+            if evidence.confidence > 0.5:
+                new_detected_cluster = DetectedCluster(
+                    evidence.pose.position.x, 
+                    evidence.pose.position.y, 
+                    evidence.confidence, 
+                    in_free_space=True)      
+                new_detected_cluster.in_free_space_bool = True
+                detected_clusters.append(new_detected_cluster)
+       
+        # Match detected objects to existing tracks
+        matched_tracks = self.match_detections_to_tracks_GNN(self.objects_tracked, detected_clusters) 
+
+        # Update all tracks with new observations 
+        tracks_to_delete = set()   
+        for idx, track in enumerate(self.objects_tracked):
+            if track in matched_tracks:
+                obs = matched_tracks[track]  
+                observations = np.array([obs.pos_x, obs.pos_y])
+                track.confidence = 0.95*track.confidence + 0.05*obs.confidence                                       
+                track.times_seen += 1
+                track.last_seen = now
+                track.seen_in_current_scan = True
+                # Input observations to Kalman filter
+                track.update(observations)
+            else:
+                # propogated_track not matched to a detection
+                # don't provide a measurement update for Kalman filter 
+                # so send it a masked_array for its observations
+                observations = np.ma.masked_array(np.array([0, 0]), mask=[1,1]) 
+                track.seen_in_current_scan = False
+                        
+            # Input observations to Kalman filter
+            track.update(observations)
+
+            # Check track for deletion           
+            if  track.confidence < self.confidence_threshold_to_maintain_track:
+                tracks_to_delete.add(track)
+                #rospy.loginfo("deleting due to low confidence")
+            else:
+                # Check track for deletion because covariance is too large
+                cov = track.filtered_state_covariances[0][0] + track.var_obs # cov_xx == cov_yy == cov
+                if cov > self.max_cov:
+                    tracks_to_delete.add(track)
+                    #rospy.loginfo("deleting because variance it too high")
+
+        # Delete tracks that have been set for deletion
+        for track in tracks_to_delete:         
+            self.objects_tracked.remove(track)
+            
+        # If detections were not matched, create a new track  
+        for detect in detected_clusters:      
+            if not detect in matched_tracks.values():
+                self.objects_tracked.append(ObjectTracked(detect.pos_x, detect.pos_y, now, detect.confidence, 
+                                            is_person=True, in_free_space=detect.in_free_space))
+
+        # Publish to rviz and /people_tracked topic.
+        self.publish_tracked_people(now)
+    
+    def leg_array_callback(self, detected_evidences_msg):
+        now = detected_evidences_msg.header.stamp
+       
+        detected_clusters = []
+        for evidence in detected_evidences_msg.legs:
+
+            new_detected_cluster = DetectedCluster(
+                evidence.position.x, 
+                evidence.position.y, 
+                evidence.confidence, 
+                in_free_space=True
+            )      
+            
+            new_detected_cluster.in_free_space_bool = True
+            detected_clusters.append(new_detected_cluster)
+       
+        # Match detected objects to existing tracks
+        matched_tracks = self.match_detections_to_tracks_GNN(self.objects_tracked, detected_clusters) 
+
+         # Update all tracks with new observations 
+        for idx, track in enumerate(self.objects_tracked):
+            if track in matched_tracks:
+                obs = matched_tracks[track]  
+                observations = np.array([obs.pos_x, obs.pos_y])
+                track.confidence = 0.25*track.confidence                                       
+                track.times_seen += 1
+                track.last_seen = now
+                track.seen_in_current_scan = True
+                # Input observations to Kalman filter
+                track.update(observations)
+
+        # Publish to rviz and /people_tracked topic.
+        self.publish_tracked_people(now)
+        
+
+    def person_evidence_callbackII(self, detected_evidences_msg):    
         """
-        Callback for every time detect_leg_clusters publishes new sets of detected clusters. 
-        It will try to match the newly detected clusters with tracked clusters from previous frames.
+        Callback for every time detect_leg_clusters publishes new sets of PersonEvidenceArray. 
+        It will try to match the newly detected evidences with tracked clusters from previous frames.
+        Parameters:
+            detected_evidences_msg: PersonEvidenceArray msg containing evidences
         """
 
 
         # Waiting for the local map to be published before proceeding. This is ONLY needed so the benchmarks are consistent every iteration
         # Should be removed under regular operation
-        if self.use_scan_header_stamp_for_tfs: # Assume <self.use_scan_header_stamp_for_tfs> means we're running the timing benchmark
-            wait_iters = 0
-            while self.new_local_map_received == False and wait_iters < 10:
-                rospy.sleep(0.1)
-                wait_iters += 1
-            if wait_iters >= 10:
-                rospy.loginfo("no new local_map received. Continuing anyways")
-            else:
-                self.new_local_map_received = False
+        # if self.use_scan_header_stamp_for_tfs: # Assume <self.use_scan_header_stamp_for_tfs> means we're running the timing benchmark
+        #     wait_iters = 0
+        #     while self.new_local_map_received == False and wait_iters < 10:
+        #         rospy.sleep(0.1)
+        #         wait_iters += 1
+        #     if wait_iters >= 10:
+        #         rospy.loginfo("no new local_map received. Continuing anyways")
+        #     else:
+        #         self.new_local_map_received = False
 
         now = detected_evidences_msg.header.stamp
        
@@ -334,6 +435,7 @@ class KalmanTracker:
                 new_detected_cluster.in_free_space_bool = True
             else:
                 new_detected_cluster.in_free_space_bool = False
+            
             detected_clusters.append(new_detected_cluster)
             detected_clusters_set.add(new_detected_cluster)  
       
@@ -464,7 +566,7 @@ class KalmanTracker:
                 or track_1.deleted or track_2.deleted
                 or (track_1.is_person and track_2.is_person) 
                 or track_1.confidence < self.confidence_threshold_to_maintain_track 
-                or track_2.confidence < self.confidence_threshold_to_maintain_track
+                or track_2.confidence < self.confiself, detected_evidences_msgdence_threshold_to_maintain_track
                 ):
                 leg_pairs_to_delete.add((track_1, track_2))
                 continue
@@ -489,7 +591,7 @@ class KalmanTracker:
                                 (track_1.confidence+track_2.confidence)/2., 
                                 is_person=True, 
                                 in_free_space=0.)
-                            )                
+                            )
                         track_1.deleted = True
                         track_2.deleted = True
                         self.objects_tracked.remove(track_1)
@@ -637,7 +739,7 @@ class KalmanTracker:
 
     def getRobotPose(self):
         """
-        Gets robot global position. That is, performs a TF transformation from /base_link to /map and returns
+        Gets robot global position. Thatvel_y is, performs a TF transformation from /base_link to /map and returns
         x,y and theta.
         OUTPUTS:
         @ a 3D-numpy array defined as: [x, y, theta] w.r.t /map.
@@ -679,165 +781,151 @@ class KalmanTracker:
         if not transform_available:
             rospy.loginfo("Person tracker: tf not avaiable. Not publishing people")
         else:
+
+            person_to_pub = None
             for person in self.objects_tracked:
-                if person.is_person == True:
-                    if person.seen_in_current_scan or self.publish_occluded: # Only publish people who have been seen in current scan, unless we want to publish occluded people
-                        # Get position in the <self.publish_people_frame> frame 
-                        ps = PointStamped()
-                        ps.header.frame_id = self.fixed_frame
-                        ps.header.stamp = tf_time
-                        ps.point.x = person.pos_x
-                        ps.point.y = person.pos_y
+                if person_to_pub is None:
+                    person_to_pub = person
+                elif person.confidence > person_to_pub.confidence:
+                    person_to_pub = person
+            
+            if person_to_pub is None:
+                return
+            else: # Only publish people who have been seen in current scan, unless we want to publish occluded people
+                # Get position in the <self.publish_people_frame> frame 
+                ps = PointStamped()
+                ps.header.frame_id = self.fixed_frame
+                ps.header.stamp = tf_time
+                ps.point.x = person.pos_x
+                ps.point.y = person.pos_y
 
-                        try:
-                            ps = self.listener.transformPoint(self.publish_people_frame, ps)
-                        except:
-                            rospy.logerr("Not publishing people due to no transform from fixed_frame-->publish_people_frame")                                                
-                            continue
-                        
-                        # publish to people_tracked topic
-                        new_person = Person() 
-                        new_person.pose.position.x = ps.point.x 
-                        new_person.pose.position.y = ps.point.y 
-                        yaw = math.atan2(person.vel_y, person.vel_x)
-                        quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
-                        new_person.pose.orientation.x = quaternion[0]
-                        new_person.pose.orientation.y = quaternion[1]
-                        new_person.pose.orientation.z = quaternion[2]
-                        new_person.pose.orientation.w = quaternion[3] 
-                        new_person.id = person.id_num
-                        new_person.confidence = person.confidence
-                        new_person.velocity = Point(person.vel_x, person.vel_y, 0)
-                        people_tracked_msg.people.append(new_person)
+                try:
+                    ps = self.listener.transformPoint(self.publish_people_frame, ps)
+                except:
+                    rospy.logerr("Not publishing people due to no transform from fixed_frame-->publish_people_frame")                                                
+                    return
+                
+                # publish to people_tracked topic
+                new_person = Person() 
+                new_person.pose.position.x = ps.point.x 
+                new_person.pose.position.y = ps.point.y 
+                yaw = math.atan2(person.vel_y, person.vel_x)
+                quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
+                new_person.pose.orientation.x = quaternion[0]
+                new_person.pose.orientation.y = quaternion[1]
+                new_person.pose.orientation.z = quaternion[2]
+                new_person.pose.orientation.w = quaternion[3] 
+                new_person.id = person.id_num
+                new_person.confidence = person.confidence
+                new_person.velocity = Point(person.vel_x, person.vel_y, 0)
+                people_tracked_msg.people.append(new_person)
 
-                        # publish rviz markers       
-                        # Cylinder for body 
-                        marker = Marker()
-                        marker.header.frame_id = self.publish_people_frame
-                        marker.header.stamp = now
-                        marker.ns = "People_tracked"
-                        marker.color.r = person.colour[0]
-                        marker.color.g = person.colour[1]
-                        marker.color.b = person.colour[2]          
-                        marker.color.a = (rospy.Duration(3) - (rospy.get_rostime() - person.last_seen)).to_sec()/rospy.Duration(3).to_sec() + 0.1
-                        marker.pose.position.x = ps.point.x 
-                        marker.pose.position.y = ps.point.y
-                        marker.id = marker_id 
-                        marker_id += 1
-                        marker.type = Marker.CYLINDER
-                        marker.scale.x = 0.2
-                        marker.scale.y = 0.2
-                        marker.scale.z = 1.2
-                        marker.pose.position.z = 0.8
-                        self.marker_pub.publish(marker)  
+                # publish rviz markers       
+                # Cylinder for body 
+                marker = Marker()
+                marker.header.frame_id = self.publish_people_frame
+                marker.header.stamp = now
+                marker.ns = "People_tracked"
+                marker.color.r = person.colour[0]
+                marker.color.g = person.colour[1]
+                marker.color.b = person.colour[2]          
+                marker.color.a = (rospy.Duration(3) - (rospy.get_rostime() - person.last_seen)).to_sec()/rospy.Duration(3).to_sec() + 0.1
+                marker.pose.position.x = ps.point.x 
+                marker.pose.position.y = ps.point.y
+                marker.id = marker_id 
+                marker_id += 1
+                marker.type = Marker.CYLINDER
+                marker.scale.x = 0.2
+                marker.scale.y = 0.2
+                marker.scale.z = 1.2
+                marker.pose.position.z = 0.8
+                self.marker_pub.publish(marker)  
 
-                        # Sphere for head shape                        
-                        marker.type = Marker.SPHERE
-                        marker.scale.x = 0.2
-                        marker.scale.y = 0.2
-                        marker.scale.z = 0.2                
-                        marker.pose.position.z = 1.5
-                        marker.id = marker_id 
-                        marker_id += 1                        
-                        self.marker_pub.publish(marker)
+                # Sphere for head shape                        
+                marker.type = Marker.SPHERE
+                marker.scale.x = 0.2
+                marker.scale.y = 0.2
+                marker.scale.z = 0.2                
+                marker.pose.position.z = 1.5
+                marker.id = marker_id 
+                marker_id += 1                        
+                self.marker_pub.publish(marker)
 
-                        # new_pose = Pose()
-                        # new_pose.position.x = ps.point.x
-                        # new_pose.position.y =  ps.point.y
-                        # human_parts = createHuman(marker_id, new_pose, self.publish_people_frame)
-                        # for part in human_parts:
-                        #     self.marker_pub.publish(part)
+                # Text showing person's ID number 
+                marker.color.r = 1.0
+                marker.color.g = 1.0
+                marker.color.b = 1.0
+                marker.color.a = 1.0
+                marker.id = marker_id
+                marker_id += 1
+                marker.type = Marker.TEXT_VIEW_FACING
+                marker.text = "Player"
+                marker.scale.z = 0.2         
+                marker.pose.position.z = 2
+                self.marker_pub.publish(marker)
 
-                        # Text showing person's ID number 
-                        marker.color.r = 1.0
-                        marker.color.g = 1.0
-                        marker.color.b = 1.0
-                        marker.color.a = 1.0
-                        marker.id = marker_id
-                        marker_id += 1
-                        marker.type = Marker.TEXT_VIEW_FACING
-                        marker.text = str(person.id_num)
-                        marker.scale.z = 0.2         
-                        marker.pose.position.z = 2
-                        self.marker_pub.publish(marker)
+                # Arrow pointing in direction they're facing with magnitude proportional to speed
+                marker.color.r = person.colour[0]
+                marker.color.g = person.colour[1]
+                marker.color.b = person.colour[2]          
+                marker.color.a = (rospy.Duration(3) - (rospy.get_rostime() - person.last_seen)).to_sec()/rospy.Duration(3).to_sec() + 0.1                        
+                start_point = Point()
+                end_point = Point()
+                start_point.x = marker.pose.position.x 
+                start_point.y = marker.pose.position.y 
+                end_point.x = start_point.x + 0.5*person.vel_x
+                end_point.y = start_point.y + 0.5*person.vel_y
+                marker.pose.position.x = 0.
+                marker.pose.position.y = 0.
+                marker.pose.position.z = 0.1
+                marker.id = marker_id
+                marker_id += 1
+                marker.type = Marker.ARROW
+                marker.points.append(start_point)
+                marker.points.append(end_point)
+                marker.scale.x = 0.05
+                marker.scale.y = 0.1
+                marker.scale.z = 2.5
+                    
+                self.marker_pub.publish(marker)                           
 
-                        # Arrow pointing in direction they're facing with magnitude proportional to speed
-                        marker.color.r = person.colour[0]
-                        marker.color.g = person.colour[1]
-                        marker.color.b = person.colour[2]          
-                        marker.color.a = (rospy.Duration(3) - (rospy.get_rostime() - person.last_seen)).to_sec()/rospy.Duration(3).to_sec() + 0.1                        
-                        start_point = Point()
-                        end_point = Point()
-                        start_point.x = marker.pose.position.x 
-                        start_point.y = marker.pose.position.y 
-                        end_point.x = start_point.x + 0.5*person.vel_x
-                        end_point.y = start_point.y + 0.5*person.vel_y
-                        marker.pose.position.x = 0.
-                        marker.pose.position.y = 0.
-                        marker.pose.position.z = 0.1
-                        marker.id = marker_id
-                        marker_id += 1
-                        marker.type = Marker.ARROW
-                        marker.points.append(start_point)
-                        marker.points.append(end_point)
-                        marker.scale.x = 0.05
-                        marker.scale.y = 0.1
-                        marker.scale.z = 2.5
-                            
-                        self.marker_pub.publish(marker)                           
-
-                        # <self.confidence_percentile>% confidence bounds of person's position as an ellipse:
-                        cov = person.filtered_state_covariances[0][0] + person.var_obs # cov_xx == cov_yy == cov
-                        std = cov**(1./2.)
-                        gate_dist_euclid = scipy.stats.norm.ppf(1.0 - (1.0-self.confidence_percentile)/2., 0, std)
-                        marker.pose.position.x = ps.point.x 
-                        marker.pose.position.y = ps.point.y                    
-                        marker.type = Marker.SPHERE
-                        marker.scale.x = 2*gate_dist_euclid
-                        marker.scale.y = 2*gate_dist_euclid
-                        marker.scale.z = 0.01   
-                        marker.color.r = person.colour[0]
-                        marker.color.g = person.colour[1]
-                        marker.color.b = person.colour[2]            
-                        marker.color.a = 0.1
-                        marker.pose.position.z = 0.0
-                        marker.id = marker_id 
-                        marker_id += 1                    
-                        self.marker_pub.publish(marker)
-
-
-                        self.br.sendTransform((ps.point.x, ps.point.y, 0), 
-                                                tf.transformations.quaternion_from_euler(0, 0, 0),
-                                                rospy.Time.now(), "/player_link_wrt_map", "/map")
+                # <self.confidence_percentile>% confidence bounds of person's position as an ellipse:
+                cov = person.filtered_state_covariances[0][0] + person.var_obs # cov_xx == cov_yy == cov
+                std = cov**(1./2.)
+                gate_dist_euclid = scipy.stats.norm.ppf(1.0 - (1.0-self.confidence_percentile)/2., 0, std)
+                marker.pose.position.x = ps.point.x 
+                marker.pose.position.y = ps.point.y                    
+                marker.type = Marker.SPHERE
+                marker.scale.x = 2*gate_dist_euclid
+                marker.scale.y = 2*gate_dist_euclid
+                marker.scale.z = 0.01   
+                marker.color.r = person.colour[0]
+                marker.color.g = person.colour[1]
+                marker.color.b = person.colour[2]            
+                marker.color.a = 0.1
+                marker.pose.position.z = 0.0
+                marker.id = marker_id 
+                marker_id += 1                    
+                self.marker_pub.publish(marker)
 
 
-                        player_pose_wrt_robot = self.get_player_pose_wrt_robot()
-                        robot_pose_wrt_map = self.getRobotPose()
-
-                        # Publishing player position wrt robot for planner
-                        self.br.sendTransform((player_pose_wrt_robot[0], player_pose_wrt_robot[1], 0), 
-                                                player_pose_wrt_robot[2],
-                                                rospy.Time.now(), "/player_filtered_link", "/base_link")
-
-                        # Publishing center map wrt robot for orientation purposes
-                        # x_map_center =0.758 
-                        # y_map_center =-0.261
-                        # delta_x = robot_pose_wrt_map[0] - x_map_center
-                        # delta_y = robot_pose_wrt_map[1] - y_map_center
-                        # theta = math.atan2(delta_y, delta_x)
-
-                        # publish player_info for emulating kinect_tracker behavior. This is necessary for the game_navigation node.
-                        player_info_msg = PlayerInfo()
-                        player_info_msg.header.stamp = rospy.Time.now()
-                        player_info_msg.angle = math.atan2(player_pose_wrt_robot[1],player_pose_wrt_robot[0])
-                        player_info_msg.distance = np.sqrt((player_pose_wrt_robot[0])**2 + (player_pose_wrt_robot[1]**2))#(player_pose_wrt_robot[0])**2 + (player_pose_wrt_robot[1])**2)
-                        self.pub_player_info.publish(player_info_msg)
+                self.br.sendTransform((ps.point.x, ps.point.y, 0), 
+                                        tf.transformations.quaternion_from_euler(0, 0, 0),
+                                        rospy.Time.now(), "/player_link_wrt_map", "/map")
 
 
-                        # publish message containing angle of robot wrt center map for orientation puropses
-                        angle_msg = Float32()
-                        angle_msg.data = math.atan2(player_pose_wrt_robot[1],player_pose_wrt_robot[0])
-                        self.pub_angle_center.publish(angle_msg)                   
+                player_pose_wrt_robot = self.get_player_pose_wrt_robot()
+                robot_pose_wrt_map = self.getRobotPose()
+
+                # Publishing player position wrt robot for planner
+                self.br.sendTransform((player_pose_wrt_robot[0], player_pose_wrt_robot[1], 0), 
+                                        player_pose_wrt_robot[2],
+                                        rospy.Time.now(), "/player_filtered_link", "/base_link")
+
+                # publish message containing angle of robot wrt center map for orientation puropses
+                angle_msg = Float32()
+                angle_msg.data = math.atan2(player_pose_wrt_robot[1],player_pose_wrt_robot[0])
+                self.pub_angle_center.publish(angle_msg)                   
 
         # Clear previously published people markers
         for m_id in xrange(marker_id, self.prev_person_marker_id):

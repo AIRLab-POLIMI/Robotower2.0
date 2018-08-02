@@ -273,7 +273,9 @@ class LegDistance:
     def __init__(self, logfile=''):
 
         # TODO: change this path to be acquire from parameter!
-        self.leg_context = LegContextProcessor('/home/airlab/catkin_ws/src/phd_robogame/perception/player_tracker/model/leg_distance-gmm.pkl')
+        
+        leg_model_name = rospy.get_param('leg_model')
+        self.leg_context = LegContextProcessor(leg_model_name)
 
         self.tower_triangle_areas = []
         self.tf_listener = tf.TransformListener()
@@ -396,15 +398,12 @@ class LegDistance:
 
         return self.bound_box_points
 
-
     def point_x_comparator(self, p1, p2):
         # Comparator to sort points wrt x-axis
         if(p1.x > p2.x):
             return 1
         else:
             return -1
-
-
 
     def inside_polygon(self, x, y):
         """
@@ -447,66 +446,54 @@ class LegDistance:
         evidences = PersonEvidenceArray()
         evidences.header = detected_clusters_msg.header
 
-        for i,cluster in enumerate(detected_clusters_msg.legs):         
+        # for i,cluster in enumerate(detected_clusters_msg.legs):         
            
-            if(len(self.bound_box_points) == 0):
-                in_bounding_box = True
-            else:
-                in_bounding_box = self.inside_polygon(cluster.position.x, cluster.position.y)
+            # if(len(self.bound_box_points) == 0):
+            #     in_bounding_box = True
+            # else:
+            #     in_bounding_box = self.inside_polygon(cluster.position.x, cluster.position.y)
             
+            # marker = Marker()
+            # marker.header.frame_id = self.fixed_frame
+            # marker.header.stamp = now
+            # marker.id = i
+            # # Text showing person's ID number 
+            # marker.color.r = 1.0
+            # marker.color.g = 1.0
+            # marker.color.b = 1.0
+            # marker.color.a = 1.0
+            # marker.type = Marker.TEXT_VIEW_FACING
+            # marker.text = "{}\n({:.2f},{:.2f})".format(self.fixed_frame,cluster.position.x, cluster.position.y)
+            # marker.scale.z = 0.1         
+            # marker.pose.position.x = cluster.position.x
+            # marker.pose.position.y = cluster.position.y        
+            # marker.pose.position.z = 0.5 
+            # marker.lifetime = rospy.Duration(0.1)
+            # self.marker_pub.publish(marker)
+
+            # publish rviz markers       
+            # marker = Marker()
+            # marker.header.frame_id = self.fixed_frame
+            # marker.header.stamp = now
+            # marker.id = i+100
+            # marker.ns = "detected_legs"                       
+            # marker.type = Marker.CYLINDER
+            # marker.scale.x = 0.2
+            # marker.scale.y = 0.2
+            # marker.scale.z = 0.01
+            # marker.color.r = 0
+            # marker.color.g = 1
+            # marker.color.b = 0
+            # marker.color.a = 1
+            # marker.pose.position.x = cluster.position.x
+            # marker.pose.position.y = cluster.position.y        
+            # marker.pose.position.z = 0.01                        
+            # marker.lifetime = rospy.Duration(0.1)
+
+            # Publish to rviz and /people_tracked topic.
+            # self.marker_pub.publish(marker)        
             
-            if in_bounding_box:
-                
-                marker = Marker()
-                marker.header.frame_id = self.fixed_frame
-                marker.header.stamp = now
-                marker.id = i
-                # Text showing person's ID number 
-                marker.color.r = 1.0
-                marker.color.g = 1.0
-                marker.color.b = 1.0
-                marker.color.a = 1.0
-                marker.type = Marker.TEXT_VIEW_FACING
-                marker.text = "{}\n({:.2f},{:.2f})".format(self.fixed_frame,cluster.position.x, cluster.position.y)
-                marker.scale.z = 0.1         
-                marker.pose.position.x = cluster.position.x
-                marker.pose.position.y = cluster.position.y        
-                marker.pose.position.z = 0.5 
-                marker.lifetime = rospy.Duration(0.1)
-                self.marker_pub.publish(marker)
-
-                # publish rviz markers       
-                marker = Marker()
-                marker.header.frame_id = self.fixed_frame
-                marker.header.stamp = now
-                marker.id = i+100
-                marker.ns = "detected_legs"                       
-                marker.type = Marker.CYLINDER
-                marker.scale.x = 0.2
-                marker.scale.y = 0.2
-                marker.scale.z = 0.01
-                marker.color.r = 0
-                marker.color.g = 1
-                marker.color.b = 0
-                marker.color.a = 1
-                marker.pose.position.x = cluster.position.x
-                marker.pose.position.y = cluster.position.y        
-                marker.pose.position.z = 0.01                        
-                marker.lifetime = rospy.Duration(0.1)
-
-                # Publish to rviz and /people_tracked topic.
-                self.marker_pub.publish(marker)
-                
-                # save cluster
-                accepted_clusters.append(cluster)
-        
-        
-        if len(accepted_clusters) <= 1:
-            return
-        #z = np.array([[complex(c.position.x, c.position.y) for c in accepted_clusters]]) # notice the [[ ... ]])
-        
-        
-        tree = spatial.KDTree(np.array([[c.position.x, c.position.y] for c in accepted_clusters]))
+        tree = spatial.KDTree(np.array([[c.position.x, c.position.y] for c in detected_clusters_msg.legs]))
         self.search_bounding_box(detected_clusters_msg)
         '''
         tower_array_msg = TowerArray()
@@ -560,15 +547,15 @@ class LegDistance:
                 marker.header.frame_id = self.fixed_frame
                 marker.header.stamp = now
                 marker.id = j + i * 10
-                marker.ns = "person"                       
-                marker.type = Marker.SPHERE
-                marker.scale.x = 0.2
-                marker.scale.y = 0.2
-                marker.scale.z = 0.2
+                marker.ns = "person"
+                marker.type = Marker.CYLINDER
+                marker.scale.x = 0.13
+                marker.scale.y = 0.13
+                marker.scale.z = 0.01
                 conf = self.leg_context.getProbability(distance)
                 marker.color.r = conf
                 marker.color.g = 0
-                marker.color.b = 0
+                marker.color.b = 1
                 marker.color.a = 1
                 marker.pose.position.x = pt[0]
                 marker.pose.position.y = pt[1]   

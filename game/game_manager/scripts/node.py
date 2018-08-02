@@ -170,11 +170,11 @@ class GameManagerNode(object):
 
         self.behavior_service = rospy.get_param("behavior_service_name")
 
-        #rospy.loginfo("DIFFICULTY CONTROL: Waiting '%s' service to come up..." % self.behavior_service)
-        #rospy.wait_for_service(self.behavior_service)
-        #rospy.loginfo("DIFFICULTY CONTROL: making connection")
-        #self.srv_handler = rospy.ServiceProxy(self.behavior_service, BehaviorParams)
-        #rospy.loginfo("DIFFICULTY CONTROL: connection with '%s' established!" % self.behavior_service)
+        rospy.loginfo("DIFFICULTY CONTROL: Waiting '%s' service to come up..." % self.behavior_service)
+        rospy.wait_for_service(self.behavior_service)
+        rospy.loginfo("DIFFICULTY CONTROL: making connection")
+        self.srv_handler = rospy.ServiceProxy(self.behavior_service, BehaviorParams)
+        rospy.loginfo("DIFFICULTY CONTROL: connection with '%s' established!" % self.behavior_service)
 
 
     def talk_to_service(self, max_sp, min_sp, bf_exp):

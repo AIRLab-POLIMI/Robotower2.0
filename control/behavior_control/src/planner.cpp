@@ -286,6 +286,7 @@ void Behavior::Planner::updateDecisionVariables(){
             float bad_value = -utility;
             actions_[i]->setGoalChange(goals_[j]->getName(), bad_value); // algorithm minimizes Goal Value, 
             ROS_DEBUG_STREAM("Action: " << actions_[i]->getName() << "\tGoal: " << goals_[j]->getName()<< "\tUtility: " << utility);
+            ROS_INFO("Player is %f away from tower %d", tower_player_distances_[i], (i+1));
         }
     }
 
@@ -316,7 +317,9 @@ float Behavior::Planner::calculateBlockingFactor(tf::StampedTransform player_tra
 
 void Behavior::Planner::CancelCurrentGoal(){
     if (has_goal_){
-        mb_action_client_->cancelGoal();
+        if(nav_mode_ == MOVE_BASE){
+            mb_action_client_->cancelGoal();
+        }
         has_goal_ = false;
     }
 }
@@ -327,8 +330,9 @@ void Behavior::Planner::publishDecision(){
 
     if (!has_goal_){
         ROS_DEBUG("Sending goal...");
-        
+        ROS_INFO("Publishing Decision");
         if (nav_mode_ == MOVE_BASE){                        // send new move base goal using action lib (move base)
+            ROS_INFO("Publishing Goal for MOVE BASE");
             std::string t_name = decision->getName();
             current_mb_goal_.target_pose.header.frame_id = t_name.substr(1,t_name.size());
             current_mb_goal_.target_pose.header.stamp = ros::Time::now();
@@ -337,6 +341,7 @@ void Behavior::Planner::publishDecision(){
             ROS_DEBUG("Goal sent to %s", MOVE_BASE);
 
         }else{                                               // sends the goal using custom message
+            ROS_INFO("Publishing Goal");
             behavior_control::Goal goal;
             goal.header.frame_id = decision->getName();
             goal.header.stamp = ros::Time::now();
@@ -381,9 +386,8 @@ bool Behavior::Planner::isCancelGoal(int new_goal_ID){
     if (previous_decision_ != new_goal_ID){
         ROS_WARN("Goal changed!");
         previous_decision_ = new_goal_ID;
-        if (nav_mode_ == MOVE_BASE){
-            CancelCurrentGoal();
-        }
+        CancelCurrentGoal();
+        
         num_blocks_ += checkBlockTimeout();     //if no block timeout add one to the count.
         return true;
     }

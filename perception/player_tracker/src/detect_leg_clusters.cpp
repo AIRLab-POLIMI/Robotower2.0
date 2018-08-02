@@ -254,23 +254,23 @@ private:
       clusters_published_counter++;
 
       // Publish marker to rviz
-      visualization_msgs::Marker m;
-      m.header.stamp = scan->header.stamp;
-      m.header.frame_id = fixed_frame_;
-      m.ns = "LEGS";
-      m.id = id_num++;
-      m.type = m.SPHERE;
-      m.pose.position.x = leg.position.x ;
-      m.pose.position.y = leg.position.y;
-      m.pose.position.z = 0.2;
-      m.scale.x = 0.13;
-      m.scale.y = 0.13;
-      m.scale.z = 0.13;
-      m.color.a = 1;
-      m.color.r = 0;
-      m.color.g = leg.confidence;
-      m.color.b = leg.confidence;
-      markers_pub_.publish(m);
+      // visualization_msgs::Marker m;
+      // m.header.stamp = scan->header.stamp;
+      // m.header.frame_id = fixed_frame_;
+      // m.ns = "LEGS";
+      // m.id = id_num++;
+      // m.type = m.SPHERE;
+      // m.pose.position.x = leg.position.x ;
+      // m.pose.position.y = leg.position.y;
+      // m.pose.position.z = 0.2;
+      // m.scale.x = 0.13;
+      // m.scale.y = 0.13;
+      // m.scale.z = 0.13;
+      // m.color.a = 1;
+      // m.color.r = 0;
+      // m.color.g = leg.confidence;
+      // m.color.b = leg.confidence;
+      // markers_pub_.publish(m);
 
       // Comparison using '==' and not '>=' is important, as it allows <max_detected_clusters_>=-1 
       // to publish infinite markers

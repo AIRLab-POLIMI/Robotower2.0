@@ -1,7 +1,7 @@
 <launch>
 	
-	<!-- Robogame teleop nodes -->
-	<include file="$(find joystick)/launch/joystick.launch"/>
+	<!-- Robogame teleop nodes 
+	<include file="$(find joystick)/launch/joystick.launch"/-->
 	
 	<!-- rosserial launch file for arduino -->
 	<include file="$(find rosserial_core)/launch/serial_node.launch">
@@ -13,6 +13,9 @@
 
 	<!-- Launch heartbeat-->
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
+
+	<!-- Launch heartbeat-->
+	<node pkg="player_tracker" type="random_sample_consensus" name="random_sample_consensus" respawn="true"/>
 	
 	<!-- Data logger -->
 	<include file="$(find data_collection)/launch/game_data_recorder.launch"/>

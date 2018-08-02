@@ -35,6 +35,7 @@ def main():
 
         MAX_VEL = difficulties[rospy.get_param('/current_difficulty')]['max_speed']
         MAX_ACC = difficulties[rospy.get_param('/current_difficulty')]['max_acc']
+        
         T_MAX = difficulties[rospy.get_param('/current_difficulty')]['ks']
 
         TOWER1 = rospy.get_param("/tower_1")
@@ -65,7 +66,7 @@ def main():
     #player_info_sub = rospy.Subscriber('/playground_center', Float32, navigation.angleCallback)
     game_goal_sub   = rospy.Subscriber('/game/goal', Goal, navigation.goalCallback)
     vel_sub         = rospy.Subscriber('/vel', Twist, navigation.velCallback)
-    laser_sub       = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)
+    laser_sub       = rospy.Subscriber('/scan_obstacles', LaserScan, navigation.scanCallback)
     laser_tower_sub = rospy.Subscriber('/estimated_tower_positions', TowerArray, navigation.tpos_callback)
     tower_rectangle_sub = rospy.Subscriber('/tower_rectangle', PolygonStamped, navigation.tower_rectangle_callback)
 

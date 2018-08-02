@@ -296,6 +296,21 @@ target_link_libraries(
   ${catkin_LIBRARIES}
 )
 
+##########################
+# ramsac
+##########################
+add_executable (
+  random_sample_consensus
+  src/random_sample_consensus.cpp
+)
+
+target_link_libraries (
+  random_sample_consensus
+  ${PCL_LIBRARIES}
+  ${catkin_LIBRARIES}
+  ${Eigen3_LIBRARIES}
+)
+
 add_dependencies(test_local_occupancy_grid_mapping ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(local_occupancy_grid_mapping ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(local_occupancy_grid_mapping ${PROJECT_NAME}_gencfg)
