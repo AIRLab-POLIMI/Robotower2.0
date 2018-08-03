@@ -46,6 +46,7 @@ class Navigation:
         self.current_tower_positions = TowerArray()
         self.time_stamp = 0
         self.current_scan = LaserScan()
+        self.current_scan_obstacles = LaserScan()
         
         self.br = tf.TransformBroadcaster()
         self.tf_listener = tf.TransformListener()
@@ -86,6 +87,9 @@ class Navigation:
         Updates current goal (target tower).
         """
         self.current_goal = msg.tower_number - 1  # we interpret this as an index for TOWERS list. Hence, the subtraction.
+
+    def scan_obstacle_callback(self, msg):
+        self.current_scan_obstacles = copy.deepcopy(msg) #msg.ranges
 
     def scanCallback(self,msg):
         """
@@ -295,6 +299,34 @@ class Navigation:
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             rospy.logerr("Navigation node: " + str(e))
 
+
+    def evaluateColision(self):
+        """Set is_safe variable"""
+
+        # check if an obstacle is detected below the proximity threeshold
+        proximity = False
+        for values in self.current_scan_obstacles.ranges:
+            if values < self.PROXIMITY_THREESHOLD:
+                proximity = True
+                break
+
+        # NOTE:  Why do we have proximity and dontcare as well thersholds? I think Davide meant to use 'proximity'
+        # as a way to start reducing the efect of inertia in case we have to suddenly stop because of a 'dontcare'
+        # condition.  Thus, 'proximity' is use just to start reducing the robot action and preparing it to a possible
+        # obstacle avoidance.
+
+        # perform a safety check (NOTE: Does not care for direction of movement)
+        # dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
+
+        #dontcare_condition = self.dontcare_condition_evaluation()
+        #dontcare_condition = self.dontcare()
+
+        filtered_scan = self.filter_scan(self.current_scan_obstacles.ranges)
+       
+        self.set_evaluator_mode()
+        self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan)
+        # rospy.loginfo("Safety condition: {}".format(self.is_safe))
+
     
     def laserScanManager(self):
         """
@@ -316,45 +348,6 @@ class Navigation:
             @ left
             @ rear_left 
         """
-
-
-        # check if an obstacle is detected below the proximity threeshold
-        proximity = False
-        for values in self.current_scan.ranges:
-            if values < self.PROXIMITY_THREESHOLD:
-                proximity = True
-                break
-
-        # NOTE:  Why do we have proximity and dontcare as well thersholds? I think Davide meant to use 'proximity'
-        # as a way to start reducing the efect of inertia in case we have to suddenly stop because of a 'dontcare'
-        # condition.  Thus, 'proximity' is use just to start reducing the robot action and preparing it to a possible
-        # obstacle avoidance.
-
-        # perform a safety check (NOTE: Does not care for direction of movement)
-        # dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
-
-        #dontcare_condition = self.dontcare_condition_evaluation()
-        #dontcare_condition = self.dontcare()
-        
-
-        '''
-        if proximity and dontcare_condition:#(all(dontcare_condition) == False):# and (len(dontcare_condition) != 0):
-            # we are in proximity and have at least one sensor measure below self.DONTCARE.
-            self.is_safe = False
-        else:
-            self.is_safe = True
-        '''
-        # if dontcare_condition: # I don't care of what I see as it's a tower
-        #     self.is_safe = True
-        # else:
-        #     self.is_safe = False
-
-
-        filtered_scan = self.filter_scan(self.current_scan.ranges)
-       
-        self.set_evaluator_mode()
-        self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan)
-        # rospy.loginfo("Safety condition: {}".format(self.is_safe))
 
         # Generate sensing areas: rear right, right, front right, front left, left, rear left
         rear_right_sec  = self.current_scan.ranges[0:149]
@@ -489,11 +482,12 @@ class Navigation:
         # updates is_safe and process /scan information
         rear_right, right, front_right, front_left, left, rear_left = (None,None,None,None,None,None)
         
-        if len(self.current_scan.ranges) != 0:
-            rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
+        if len(self.current_scan_obstacles.ranges) != 0:
+            self.evaluateColision()
 
         # Fuzzy
         if not self.is_safe:
+            rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
             smoothed_cmd_vel = self.fuzzy_avoider.avoidObstacle(rear_right, right, front_right, front_left, left, rear_left, is_near_goal)
 
         unsafe_msg = Twist()

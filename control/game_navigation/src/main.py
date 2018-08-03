@@ -66,7 +66,8 @@ def main():
     #player_info_sub = rospy.Subscriber('/playground_center', Float32, navigation.angleCallback)
     game_goal_sub   = rospy.Subscriber('/game/goal', Goal, navigation.goalCallback)
     vel_sub         = rospy.Subscriber('/vel', Twist, navigation.velCallback)
-    laser_sub       = rospy.Subscriber('/scan_obstacles', LaserScan, navigation.scanCallback)
+    laser_obstc_sub = rospy.Subscriber('/scan_obstacles', LaserScan, navigation.scan_obstacle_callback)
+    laser_sub       = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)
     laser_tower_sub = rospy.Subscriber('/estimated_tower_positions', TowerArray, navigation.tpos_callback)
     tower_rectangle_sub = rospy.Subscriber('/tower_rectangle', PolygonStamped, navigation.tower_rectangle_callback)
 

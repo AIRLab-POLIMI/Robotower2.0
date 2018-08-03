@@ -495,45 +495,14 @@ class LegDistance:
             
         tree = spatial.KDTree(np.array([[c.position.x, c.position.y] for c in detected_clusters_msg.legs]))
         self.search_bounding_box(detected_clusters_msg)
-        '''
-        tower_array_msg = TowerArray()
-        tower_array_msg.header = detected_clusters_msg.header
-        if len(accepted_clusters) > 3:
-            #rospy.logerr("Checking every possible triangle")
-            for perm in itertools.permutations(accepted_clusters, r=3):
-                dist1_2 = spatial.distance.euclidean(np.array([perm[0].position.x, perm[0].position.y]),np.array([perm[1].position.x, perm[1].position.y]))
-                dist1_3 = spatial.distance.euclidean(np.array([perm[0].position.x, perm[0].position.y]),np.array([perm[2].position.x, perm[2].position.y]))
-                dist2_3 = spatial.distance.euclidean(np.array([perm[1].position.x, perm[1].position.y]),np.array([perm[2].position.x, perm[2].position.y]))
-                triangle_distances = [dist1_2, dist1_3, dist2_3]
-                p = (dist1_2 + dist1_3 + dist2_3) / 2.0     # perimeter
-                
-                area = np.sqrt(p*(p-dist1_2)*(p-dist1_3)*(p-dist2_3))
-                
-                for a in self.tower_triangle_areas:
-                    if self.is_close_enough(a, area, tol=0.1):
-                        to_pub = True
-
-                        for side in triangle_distances:
-                            if not self.is_compatible_with_playground(side):
-                                to_pub = False
-                                break
-
-                        if to_pub:
-                            tower_array_msg.towers = [Tower(p.position, p.points, p.point_indexes) for p in perm]
-                            missing_vertex = self.get_missing_vertex(tower_array_msg.towers)
-                            tower_array_msg.towers.append(Tower(missing_vertex.position, [], [])) 
-                            vertices = list(perm)
-                            vertices.append(missing_vertex)
-                            self.publish_poligon(vertices)
-
-        if len(tower_array_msg.towers) != 0:
-            self.pub_towers.publish(tower_array_msg)
-        '''
 
         for j, pts in enumerate(tree.data):
             nearest_point = tree.query(pts, k=2)
             distance = nearest_point[0][1]
             
+            if distance == float('inf'):
+                return
+
             # Save to file1.323
             if self.isSaveToFile:   
                 self.f.write(str(distance) +'\n')
