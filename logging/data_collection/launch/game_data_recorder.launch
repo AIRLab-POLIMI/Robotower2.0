@@ -6,7 +6,7 @@
     
     <arg name="path_save"   default="/home/airlab/Documents/bags/game"/>
 	<arg name="topic"  	default="/enc /tf /vel /amcl_pose /map_odom_amcl /map /unsafe/cmd_vel
- /cmd_vel /scan /scan_filtered /player_global_position /tower_1 /tower_2 /tower_3 /tower_4 /tower_button_press_entropy
+ /cmd_vel /scan /scan_obstacles /scan_walls /player_global_position /tower_1 /tower_2 /tower_3 /tower_4 /tower_button_press_entropy
  /tower_button_press_mean /tower_button_press_var /robogame/goal /robogame/player_global_position
  /robogame/player_local_position /robogame/player_relative_angle /player/tower_button_info /player_act_prediction /game_manager/towers/State
  /proximity /joy /game/goal /detected_leg_clusters /detected_legs_in_bounding_box

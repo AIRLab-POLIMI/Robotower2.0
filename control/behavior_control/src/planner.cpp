@@ -281,7 +281,7 @@ void Behavior::Planner::updateDecisionVariables(){
             if (player_transform_available){
                 utility = -tower_player_distances_[i] * pow(blocking_factor_[i], bf_exponent_) - (leds_on_[i]*1000); //1000 is a larger weight associated with the number of leds.
             }else{
-                utility = -tower_player_distances_[i] - (leds_on_[i]*1000); //1000 is a larger weight associated with the number of leds.
+                utility = -tower_player_distances_[i] - (leds_on_[i]*1000); // 1000 is a larger weight associated with the number of leds.
             }
             float bad_value = -utility;
             actions_[i]->setGoalChange(goals_[j]->getName(), bad_value); // algorithm minimizes Goal Value, 

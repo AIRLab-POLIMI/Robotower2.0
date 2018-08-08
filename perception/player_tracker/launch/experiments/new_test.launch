@@ -4,7 +4,8 @@
   <param name="forest_file" value="$(find player_tracker)/config/trained_leg_detector_res=0.33.yaml" />
   <param name="scan_topic" value="/scan" />
   <param name="fixed_frame" value="/map"/>
-  <param name="scan_frequency" value="10"/>  
+  <param name="scan_frequency" value="10"/> 
+  <param name="leg_model" value="$(find player_tracker)/model/leg_distance-gmm.pkl" />
   
   <!-- run detect_leg_clusters -->  
   <node pkg="player_tracker" type="detect_leg_clusters" name="detect_leg_clusters" output="screen"/>
@@ -27,7 +28,8 @@
     --clock 
     --rate=1.0
     -s 0
-    /home/airlab/Documents/bags/game/_2018-06-22-19-03-03.bag"/>
+    /home/airlab/Documents/bags/game/_2018-08-08-15-19-02-no-tracking.bag
+    "/>
   <param name="use_sim_time" value="true" />
     
 </launch>

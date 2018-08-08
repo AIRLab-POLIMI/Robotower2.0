@@ -256,7 +256,7 @@ void LaserscanMerger::pointcloud_to_laserscan(Eigen::MatrixXf points, pcl::PCLPo
 /*
 		if (output->ranges[index] * output->ranges[index] > range_sq)
 		*/
-		//Ignore if the detected range is largere than the max_range
+		//Ignore if the detected range is larger than the max_range
 		if(output->range_max * output->range_max > range_sq){
 			output->ranges[index] = sqrt(range_sq);
 		}
