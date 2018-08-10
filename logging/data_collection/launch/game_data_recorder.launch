@@ -21,6 +21,8 @@
  /game_manager/isGameON
  /game_manager/towers/ChangeLEDs
  /game_manager/towers/State
+ /game_navigation/estimated_tower
+ /game_navigation/danger_zone
 
 " />
 	<arg name="file_name"  	default=""/>

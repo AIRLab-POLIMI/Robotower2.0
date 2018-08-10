@@ -7,6 +7,8 @@
   <param name="scan_frequency" value="10"/> 
   <param name="leg_model" value="$(find player_tracker)/model/leg_distance-gmm.pkl" />
   
+  <node pkg="player_tracker" type="random_sample_consensus" name="random_sample_consensus" respawn="true"/>
+  
   <!-- run detect_leg_clusters -->  
   <node pkg="player_tracker" type="detect_leg_clusters" name="detect_leg_clusters" output="screen"/>
 
@@ -28,7 +30,7 @@
     --clock 
     --rate=1.0
     -s 0
-    /home/airlab/Documents/bags/game/_2018-08-08-15-19-02-no-tracking.bag
+    /home/airlab/Documents/bags/game/_2018-08-09-12-26-30.bag
     "/>
   <param name="use_sim_time" value="true" />
     

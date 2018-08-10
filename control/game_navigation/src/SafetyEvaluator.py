@@ -1,5 +1,8 @@
 import numpy as np
 import rospy
+from visualization_msgs.msg import Marker
+from sensor_msgs.msg import LaserScan
+import copy
 
 class SafetyEvaluator:
     ''' Helper class to implement different kind of safety checks in different situations '''
@@ -32,11 +35,13 @@ class SafetyEvaluator:
         # Set of indexes we consider as obstructing the tower
         self.danger_zone_indexes = []
         self.unsafe_counter = 0
+
+        self.estimated_tower_pub = rospy.Publisher('estimated_tower', LaserScan, queue_size=3)
+        self.danger_zone_pub = rospy.Publisher('danger_zone', LaserScan, queue_size=3)
         
 
     def set_mode(self, new_mode):
         if(self.mode == SafetyEvaluator.AVOIDING):
-            print "TRYING TO CHANGE AVOIDING MODE"
             # We can exit the AVOIDING mode only if we're going to DEFAULT -> all obstacles are clear
             if(new_mode == SafetyEvaluator.DEFAULT):
                 self.mode = new_mode
@@ -285,7 +290,7 @@ class SafetyEvaluator:
         self.mode = SafetyEvaluator.AVOIDING
 
 
-    def evaluate_safety(self, filtered_scan):
+    def evaluate_safety(self, filtered_scan, complete_msg):
         ''' Given the current filtered scan and the current mode, 
         returns wether the situation is safe (no obstacle to react) or not 
         @filtered_scan: array containing the distance of an obstacle if it's below dontcare treshold '''
@@ -302,12 +307,14 @@ class SafetyEvaluator:
             self.check_consistency(force_update=True)
             self.estimate_index_window()
             adjust_successful = self.adjust_tower_window()
+            self.publish_tower_scans(complete_msg)
             if(not self.check_tower_estimation_window()):
                 rospy.logerr("THE PLAYER IS BLOCKING THE TOWERRRR")
                 self.print_tower_contour()
                 self.reset()
                 return False
             self.estimate_danger_indexes()
+            self.publish_danger_scans(complete_msg)
             for danger_index in self.danger_zone_indexes:
                 if( self.filtered_scan[danger_index] != 0):
                     if(not self.check_contour(danger_index)):
@@ -342,7 +349,7 @@ class SafetyEvaluator:
     def print_tower_contour(self):
         window = 20
         rospy.loginfo("The unextended tower indexes are from {} to {}".format(self.tower_first_index, self.tower_last_index))
-        rospy.loginfo("The unextended tower chunck is {}".format(self.extract_tower_chunk))
+        rospy.loginfo("The unextended tower chunck is {}".format(self.extract_tower_chunk()))
         rospy.loginfo("Danger Indexes: {}".format(self.danger_zone_indexes))
 
     def print_danger_scan(self):
@@ -355,3 +362,34 @@ class SafetyEvaluator:
         end_danger = self.danger_zone_indexes[-1]
 
         # rospy.loginfo("Left danger zone: {}".format(self.filtered_scan[end_tower:end_danger]))
+
+    def publish_tower_scans(self, complete_msg):
+        ''' Publishing the estimated tower position to Rviz '''
+        msg = copy.deepcopy(complete_msg)
+        msg.ranges = [0] * self.SCAN_LENGHT
+
+        if self.tower_first_index > self.tower_last_index:
+            # We're approaching from behind
+            for i in range(self.tower_first_index, self.SCAN_LENGHT):
+                msg.ranges[i] = self.filtered_scan[i]
+            for i in range(self.tower_last_index):
+                msg.ranges[i] = self.filtered_scan[i]
+        else:
+            for i in range(self.tower_first_index, self.tower_last_index + 1):
+                msg.ranges[i] = self.filtered_scan[i]
+        
+        self.estimated_tower_pub.publish(msg)
+
+    def publish_danger_scans(self, complete_msg):
+        msg = copy.deepcopy(complete_msg)
+        msg.ranges = [0] * self.SCAN_LENGHT
+
+        for index in self.danger_zone_indexes:
+            msg.ranges[index] = self.filtered_scan[index]
+
+        self.danger_zone_pub.publish(msg)
+
+        
+
+
+

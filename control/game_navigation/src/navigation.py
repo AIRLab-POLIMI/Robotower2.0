@@ -324,7 +324,7 @@ class Navigation:
         filtered_scan = self.filter_scan(self.current_scan_obstacles.ranges)
        
         self.set_evaluator_mode()
-        self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan)
+        self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan, self.current_scan_obstacles)
         # rospy.loginfo("Safety condition: {}".format(self.is_safe))
 
     
@@ -403,12 +403,11 @@ class Navigation:
         return filtered_values
 
     def set_evaluator_mode(self):
-        # self.safety_evaluator.set_mode(SafetyEvaluator.APPROACHING_TOWER)
-        # return
         if(self.is_near_goal()):
             self.lock_rotation = True
             if(self.danger):
                 self.safety_evaluator.set_mode(SafetyEvaluator.APPROACHING_TOWER)
+                print "APPROACHING TOWER"
             elif(self.search): # Needed to avoid to pass an empty filtered scan 
                 self.safety_evaluator.set_mode(SafetyEvaluator.SEARCHING_TOWER)
             else:

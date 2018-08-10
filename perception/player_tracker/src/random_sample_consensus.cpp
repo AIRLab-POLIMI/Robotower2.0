@@ -84,7 +84,7 @@ void PlayerTracking::Ransac::laserCallback(const sensor_msgs::LaserScan::ConstPt
     sensor_msgs::PointCloud output_cloud = laserMsgAsPointCloud(msg);
     sensor_msgs::PointCloud wall_cloud(output_cloud);
     
-    for (int i=0; i < 4; i++){
+    for (int i=0; i < 6; i++){
 
         //cloud_pub_.publish(cloud);
 

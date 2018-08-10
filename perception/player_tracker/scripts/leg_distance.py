@@ -280,7 +280,7 @@ class LegDistance:
         self.tower_triangle_areas = []
         self.tf_listener = tf.TransformListener()
         self.pub_tower_markers = rospy.Publisher('tower_rectangle', PolygonStamped, queue_size=1)
-        self.marker_pub = rospy.Publisher('detected_legs_in_bounding_box', Marker, queue_size=300)
+        self.marker_pub = rospy.Publisher('detected_legs_in_bounding_box', Marker, queue_size=3)
         self.evidence_pub = rospy.Publisher('evidence_of_player', PersonEvidenceArray, queue_size=3)
         self.pub_towers = rospy.Publisher('estimated_tower_positions', TowerArray, queue_size=5)
 
@@ -560,7 +560,7 @@ class LegDistance:
                 area = np.sqrt(p*(p-dist1_2)*(p-dist1_3)*(p-dist2_3))
                 
                 for a in self.tower_triangle_areas:
-                    if self.is_close_enough(a, area, tol=0.1):
+                    if self.is_close_enough(a, area, tol=0.05):
                         to_pub = True
 
                         for side in triangle_distances:
