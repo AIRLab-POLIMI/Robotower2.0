@@ -1,5 +1,8 @@
 #include "player_tracker/random_sample_consensus.h"
 #include <limits>
+#include <geometry_msgs/Point32.h> 
+
+#define WALL_MIN_SIZE 50
 
 PlayerTracking::Ransac::Ransac(ros::NodeHandle nh, std::string base_frame): nh_(nh), base_frame_(base_frame){
     initRosComunication();
@@ -82,9 +85,17 @@ void PlayerTracking::Ransac::laserCallback(const sensor_msgs::LaserScan::ConstPt
 
     // convert laser scan into cloud
     sensor_msgs::PointCloud output_cloud = laserMsgAsPointCloud(msg);
-    sensor_msgs::PointCloud wall_cloud(output_cloud);
+   
+    sensor_msgs::PointCloud wall_cloud;
+
+    geometry_msgs::Point32 inf_pt;
+
+    inf_pt.x = std::numeric_limits<double>::infinity();
+    inf_pt.y = std::numeric_limits<double>::infinity();
+
+    wall_cloud.points = std::vector<geometry_msgs::Point32>(output_cloud.points.size(), inf_pt);
     
-    for (int i=0; i < 6; i++){
+    for (int i=0; i < 5; i++){
 
         //cloud_pub_.publish(cloud);
 
@@ -104,8 +115,8 @@ void PlayerTracking::Ransac::laserCallback(const sensor_msgs::LaserScan::ConstPt
             //////
 
             std::vector<int> inliers = runRansac(cloud_converted);
-            
-            for (int j=0; j < inliers.size(); j++){
+            ROS_DEBUG("INLIERS LENGHT %ul", inliers.size());
+            for (int j=0; j < inliers.size() && inliers.size() > WALL_MIN_SIZE; j++){
                 // saving walls
                 wall_cloud.points[inliers[j]].x = output_cloud.points[inliers[j]].x;
                 wall_cloud.points[inliers[j]].y = output_cloud.points[inliers[j]].y;

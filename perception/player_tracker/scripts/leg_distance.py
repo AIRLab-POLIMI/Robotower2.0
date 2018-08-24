@@ -571,7 +571,13 @@ class LegDistance:
                         if to_pub:
                             tower_array_msg.towers = [Tower(p.position, p.points, p.point_indexes) for p in perm]
                             missing_vertex = self.get_missing_vertex(tower_array_msg.towers)
+                            # missing_cluster = self.get_missing_cluster(missing_vertex, detected_clusters_msg)
+                            # if(missing_cluster == None):
                             tower_array_msg.towers.append(Tower(missing_vertex.position, [], [])) 
+                            # else:
+                                # print "Found missing Cluster"
+                                # rospy.loginfo("Cluster position: {}".format(missing_cluster.position))
+                                # tower_array_msg.towers.append(Tower(missing_cluster.position, missing_cluster.points, missing_cluster.point_indexes)) 
                             vertices = list(perm)
                             vertices.append(missing_vertex)
                             self.publish_poligon(vertices)
@@ -583,7 +589,7 @@ class LegDistance:
 
 
     def get_missing_vertex(self, towers):
-        sides = []#list(itertools.permutations(towers, r=2)) # Contains list of permutations of towers taken by couples. It represents the sides of the triangle
+        sides = []
         sides.append( (towers[0], towers[1]))
         sides.append( (towers[1], towers[2]))
         sides.append( (towers[2], towers[0]))
@@ -625,6 +631,25 @@ class LegDistance:
         missing_vertex.position.z = 0
 
         return missing_vertex
+
+    def get_missing_cluster(self, missing_vertex, detected_clusters_msg):
+        ''' Returns the closest cluster to the estimated missing vertex'''
+        # Convert missing vertex from map frame to robot frame 
+        point_to_transform = PointStamped()
+        point_to_transform.header.stamp = rospy.Time()
+        point_to_transform.header.frame_id = "/map"
+
+        point_transformed = self.tf_listener.transformPoint(point_to_transform)
+        
+        for cluster in detected_clusters_msg.legs:
+            centroid = cluster.position
+            if self.is_close_enough(missing_vertex.position.x, centroid.x) and self.is_close_enough(missing_vertex.position.y, centroid.y):
+                return cluster
+
+        return None
+
+
+
 
 
     def my_comparator(self, side_a, side_b):

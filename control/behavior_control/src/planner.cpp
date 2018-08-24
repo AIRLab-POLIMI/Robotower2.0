@@ -286,7 +286,7 @@ void Behavior::Planner::updateDecisionVariables(){
             float bad_value = -utility;
             actions_[i]->setGoalChange(goals_[j]->getName(), bad_value); // algorithm minimizes Goal Value, 
             ROS_DEBUG_STREAM("Action: " << actions_[i]->getName() << "\tGoal: " << goals_[j]->getName()<< "\tUtility: " << utility);
-            ROS_INFO("Player is %f away from tower %d", tower_player_distances_[i], (i+1));
+            ROS_DEBUG("Player is %f away from tower %d", tower_player_distances_[i], (i+1));
         }
     }
 
@@ -330,9 +330,9 @@ void Behavior::Planner::publishDecision(){
 
     if (!has_goal_){
         ROS_DEBUG("Sending goal...");
-        ROS_INFO("Publishing Decision");
+        ROS_DEBUG("Publishing Decision");
         if (nav_mode_ == MOVE_BASE){                        // send new move base goal using action lib (move base)
-            ROS_INFO("Publishing Goal for MOVE BASE");
+            ROS_DEBUG("Publishing Goal for MOVE BASE");
             std::string t_name = decision->getName();
             current_mb_goal_.target_pose.header.frame_id = t_name.substr(1,t_name.size());
             current_mb_goal_.target_pose.header.stamp = ros::Time::now();
@@ -341,7 +341,7 @@ void Behavior::Planner::publishDecision(){
             ROS_DEBUG("Goal sent to %s", MOVE_BASE);
 
         }else{                                               // sends the goal using custom message
-            ROS_INFO("Publishing Goal");
+            ROS_DEBUG("Publishing Goal");
             behavior_control::Goal goal;
             goal.header.frame_id = decision->getName();
             goal.header.stamp = ros::Time::now();

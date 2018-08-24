@@ -38,6 +38,7 @@ class SafetyEvaluator:
 
         self.estimated_tower_pub = rospy.Publisher('estimated_tower', LaserScan, queue_size=3)
         self.danger_zone_pub = rospy.Publisher('danger_zone', LaserScan, queue_size=3)
+        self.closest_point_pub = rospy.Publisher('closest_point', LaserScan, queue_size=3)
         
 
     def set_mode(self, new_mode):
@@ -49,11 +50,15 @@ class SafetyEvaluator:
             return
         self.mode = new_mode
 
+    def set_searching_angle(self, angle):
+        self.searching_angle = angle
+        self.searching_angle_index = (angle / (2*np.pi) ) * self.SCAN_LENGHT
+
     def estimate_index_window(self):
         ''' Estimates the length of the window that will be occupied by the tower.
             To do so we take the smallest scan value inside the PREVIOUS window (i.e. during the last cycle). We assume that the tower won't move,
             meaning it will occupy more or less the same window. Given this value, we can approximate the window lenght by trigonometric calculations,
-            knowing the tower radius'''
+            knowing the tower radius '''
         
         # Returns the indexes of the estimated chunck occupied by the tower
         min_dist = self.filtered_scan[self.closest_point_index]
@@ -164,6 +169,9 @@ class SafetyEvaluator:
         if(self.tower_first_index == -1):
             # We went to the other side of the scan
             self.tower_first_index = self.SCAN_LENGHT - 1
+        if( self.tower_last_index == -1):
+            # We went to the other side of the scan
+            self.tower_last_index = self.SCAN_LENGHT - 1
 
     def rotate_left(self):
         # Rotate the field of view where the tower is supposed to be from right to left one position, mantaining its lenght
@@ -171,7 +179,11 @@ class SafetyEvaluator:
         self.tower_last_index += 1
 
         if(self.tower_last_index == self.SCAN_LENGHT):
+            # We went to the other side of the scan
             self.tower_last_index = 0
+        if self.tower_first_index == self.SCAN_LENGHT:
+            # We went to the other side of the scan
+            self.tower_first_index == 0
 
     def center_window(self):
 
@@ -213,8 +225,60 @@ class SafetyEvaluator:
                 padding_right -= 1
 
     def extend_window(self, extension_tolerance=10):
-        self.tower_first_index -= extension_tolerance
-        self.tower_last_index +=  extension_tolerance
+        for i in range(extension_tolerance):
+            self.extend_left()
+            self.extend_right
+
+    def search_tower(self):
+        # If we haven't done anything yet, check inside a contour of the estimated index
+        rospy.loginfo("Searching tower at index: {}".format(self.searching_angle_index))
+        if self.tower_first_index == 0 and self.tower_last_index == 0:
+            if(self.filtered_scan[self.searching_angle_index] != 0):
+                self.tower_first_index = self.searching_angle_index
+                self.tower_last_index = self.searching_angle_index
+                # Start extending the window keeping in mind that the contigous scans cannot differ too much
+                self.extend_left()
+                while self.filtered_scan[self.tower_first_index] != 0:
+                    precedent_value = self.filtered_scan[(self.tower_first_index + 1) % self.SCAN_LENGHT]
+                    diff = abs(precedent_value - self.filtered_scan[self.tower_first_index])
+                    if(diff > 0.05):
+                        break
+                    self.extend_left()
+
+                self.extend_right()
+                while self.filtered_scan[self.tower_first_index] != 0:
+                    precedent_value = self.filtered_scan[(self.tower_last_index - 1) % self.SCAN_LENGHT]
+                    diff = abs(precedent_value - self.filtered_scan[self.tower_last_index])
+                    if(diff > 0.05):
+                        break
+                    self.extend_right()
+
+            self.closest_point_index = self.get_middle_index() # After estimate set the center of tower as the center of window
+
+    def get_middle_index(self):
+        if(self.tower_first_index > self.tower_last_index):
+            indexes_left = self.SCAN_LENGHT - self.tower_first_index
+            indexes_right = self.tower_last_index
+
+            total_indexes = indexes_left + indexes_right
+
+            if(indexes_left > indexes_right):
+                return self.tower_first_index + total_indexes / 2
+            else:
+                return self.tower_last_index - total_indexes / 2
+
+        return (self.tower_first_index + self.tower_last_index) / 2        
+        
+
+    def extend_right(self):
+        self.tower_last_index += 1
+        if(self.tower_last_index == self.SCAN_LENGHT):
+            self.tower_last_index = 0
+
+    def extend_left(self):
+        self.tower_first_index -= 1
+        if(self.tower_first_index < 0):
+            self.tower_first_index = self.SCAN_LENGHT - 1 
 
     
     def check_tower_estimation_window(self):
@@ -257,7 +321,7 @@ class SafetyEvaluator:
 
         tower_chunk = self.extract_tower_chunk()
         
-        masked_tower_chunk = np.ma.masked_equal(tower_chunk, 0.0) # Mask indexes not representing a danger
+        masked_tower_chunk = np.ma.masked_equal(tower_chunk, 0.0)   # Mask indexes not representing a danger
         min_index = masked_tower_chunk.argmin() + starting_index    # Calculates closest point in tower chunk and calculates the corresponding index wrt filtered_scan
         if(min_index >= self.SCAN_LENGHT):
             error = min_index - self.SCAN_LENGHT
@@ -298,8 +362,10 @@ class SafetyEvaluator:
 
         if(self.mode == SafetyEvaluator.SEARCHING_TOWER):
             # We're not yet in a danger situation, we start identifing which indexes are the tower
-            self.check_consistency(force_update=True)
+            # self.check_consistency(force_update=True)
+            self.search_tower()
             self.estimate_index_window()
+            self.publish_center_index(complete_msg)
             return True # No danger TODO think if should do default check or we assume the player can't interpose between searching and approaching
 
         elif(self.mode == SafetyEvaluator.APPROACHING_TOWER):
@@ -365,6 +431,7 @@ class SafetyEvaluator:
 
     def publish_tower_scans(self, complete_msg):
         ''' Publishing the estimated tower position to Rviz '''
+        self.publish_center_index(complete_msg)
         msg = copy.deepcopy(complete_msg)
         msg.ranges = [0] * self.SCAN_LENGHT
 
@@ -388,6 +455,14 @@ class SafetyEvaluator:
             msg.ranges[index] = self.filtered_scan[index]
 
         self.danger_zone_pub.publish(msg)
+
+    def publish_center_index(self, complete_msg):
+        msg = copy.deepcopy(complete_msg)
+        msg.ranges = [0] * self.SCAN_LENGHT
+
+        msg.ranges[self.closest_point_index] = self.filtered_scan[self.closest_point_index]
+
+        self.closest_point_pub.publish(msg)
 
         
 

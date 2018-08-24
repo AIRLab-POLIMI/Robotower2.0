@@ -1,0 +1,27 @@
+#logitech c270 HD
+
+width_fov: 1.04719755      # 60*M_PI/180
+height_fov: 1.0471975512      # 60.0*M_PI/180
+cam_width: 640
+cam_height: 480
+camera_namespace: "/onboard_camera"
+show_frame: true
+image_topic_name: "color_image"
+color_frame: "/color_image"
+seg_threshold: 300                    # in mm
+
+# Tower color
+# h_min: 26
+# s_min: 123
+# v_min: 80
+# h_max: 93
+# s_max: 256
+# v_max: 256
+
+# Player robe
+h_min: 137
+s_min: 150
+v_min: 87
+h_max: 160
+s_max: 256
+v_max: 256

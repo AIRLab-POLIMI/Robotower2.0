@@ -391,7 +391,7 @@ class Navigation:
         filtered_values = []
         self.danger = False
         self.search = False
-        for value in self.current_scan.ranges:
+        for value in self.current_scan_obstacles.ranges:
             if value < 0.8:
                 self.search = True
                 if value < self.DONTCARE:
@@ -409,7 +409,10 @@ class Navigation:
                 self.safety_evaluator.set_mode(SafetyEvaluator.APPROACHING_TOWER)
                 print "APPROACHING TOWER"
             elif(self.search): # Needed to avoid to pass an empty filtered scan 
+                print "SEARCHING TOWER"
                 self.safety_evaluator.set_mode(SafetyEvaluator.SEARCHING_TOWER)
+                # TODO IMPROVEMENT
+                self.safety_evaluator.set_searching_angle(self.estimate_tower_angle())
             else:
                 self.safety_evaluator.set_mode(SafetyEvaluator.DEFAULT)
         else:
@@ -441,8 +444,31 @@ class Navigation:
         if( delta < acceptance_thd ):
             return True
         return False
-    
-            
+
+    def estimate_tower_angle(self):
+        ''' Estimates the angle of the target tower wrt the robot '''
+        pose = self.getRobotPose()
+        rot_to_map = pose[2]
+        rospy.logwarn("Rotation to Map: {}".format(rot_to_map))
+
+        rot_to_target = np.arctan2(pose[1] - self.TOWERS[self.current_goal][1], pose[0] - self.TOWERS[self.current_goal][0])
+        
+
+
+        # DEBUG 
+        # rot_to_target = np.arctan2(pose[1] - self.TOWERS[0][1], pose[0] - self.TOWERS[0][0])
+        rospy.logwarn("Rotation to Target: {}".format(rot_to_target))
+
+        adjusting_factor = np.pi # Angle 0 for the laser scan is behind the robot
+
+        angle = rot_to_map + rot_to_target + adjusting_factor
+        rospy.logwarn("Total angle rad: {}".format(angle))
+        rospy.logwarn("Total angle deg: {}".format(np.rad2deg(angle)))
+        
+        if angle > 2*np.pi:
+            return angle - 2*np.pi
+
+        return angle
 
     def navigate(self):
         """

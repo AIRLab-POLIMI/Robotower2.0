@@ -15,7 +15,7 @@
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
 
 	<!-- Launch heartbeat-->
-	<node pkg="player_tracker" type="random_sample_consensus" name="random_sample_consensus" respawn="true"/>
+	<node pkg="player_tracker" type="random_sample_consensus" name="random_sample_consensus" respawn="true" output="screen"/>
 	
 	<!-- Data logger -->
 	<include file="$(find data_collection)/launch/game_data_recorder.launch"/>

@@ -1,0 +1,17 @@
+<!-- This launch file calls the setBlob_node for enabling 
+	 adjusting the HSV parameters for blob (player) detection.
+	 
+	 After you adjust the sliders, write down the values they 
+	 take and insert them in the run.launch. After that the kinect_tacker
+	 is going to react to the color you set up.
+-->
+
+<launch>
+
+  <group ns= "/onboard_camera">
+	  <rosparam command="load" file="$(find onboard_camera)/config/params.yaml"/>
+    <node pkg="onboard_camera" type="onboard_camera_reader_node" name="onboard_camera_reader" output="screen" respawn="true" />
+    <node pkg="onboard_camera" type="onboard_camera_set_blob_parameters_node" name="onboard_camera_set_blob_parameters_node" output="screen" respawn="true" />
+  </group>
+
+</launch>
