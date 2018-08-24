@@ -90,7 +90,7 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
         // details here: https://en.wikipedia.org/wiki/Spherical_coordinate_system
 
         float phi = (0.5 - blob_center.x / cam_width) * width_fov;                // yaw
-        ROS_INFO_STREAM("Yaw: " << phi);
+        ROS_DEBUG_STREAM("Yaw: " << phi);
 
 
         pts.push_front(phi);
@@ -105,7 +105,8 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
 
         if (abs(mean) > 10){
 
-            ROS_INFO_STREAM("Angle mismatch: " << mean);
+            ROS_DEBUG_STREAM("Angle mismatch: " << mean);
+            ROS_DEBUG_STREAM("Angle mismatch: %f", mean);
             std_msgs::Int16 angle_msg = std_msgs::Int16();
             angle_msg.data = mean;
             pub_servo_angle.publish(angle_msg);
@@ -144,16 +145,10 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
         br.sendTransform(tf::StampedTransform(framePlayerTransform, now, "/onboard_link", "/cam_target_link"));
 
         
-    }else{
+    }
+    else{
 
-        // float mean = 0;
-        // for(int i=0; i < pts.size() ; i++){
-        //     mean += pts[i] / pts.size();
-        // }
-        
-
-        // mean = mean * (180/M_PI);
-        ROS_INFO_STREAM("Blob not found, rotating with a constant of " << angle_when_lost_player << "degs..");
+        ROS_DEBUG_STREAM("Blob not found, rotating with a constant of " << angle_when_lost_player << "degs..");
         std_msgs::Int16 angle_msg = std_msgs::Int16();
         
         if (current_servo_angle == 0){
@@ -205,13 +200,6 @@ void OnboardCamera::connectCallback(image_transport::SubscriberFilter &sub_col,
 
 }
 
-// Replacement SIGINT handler
-void onShutdown(int sig){
-    ROS_INFO_STREAM("Exiting...");
-    is_exit = true;
-}
-
-
 /** DEPRECATED
  * Calculates de angle offset based on the direction of the robot's velocity vector.
  */
@@ -221,16 +209,16 @@ void OnboardCamera::velCallback(const geometry_msgs::TwistPtr &msg){
         if (vel_angle > 0 && vel_angle < M_PI){
             std_msgs::Int16 new_servo_angle;
             new_servo_angle.data = vel_angle  * (180/M_PI);
-            ROS_INFO_STREAM("vel_angle: " << vel_angle * (180/M_PI));
-            ROS_INFO_STREAM("new angle: " << new_servo_angle.data);
+            ROS_DEBUG_STREAM("vel_angle: " << vel_angle * (180/M_PI));
+            ROS_DEBUG_STREAM("new angle: " << new_servo_angle.data);
             pub_servo_angle.publish(new_servo_angle);
         }
    }
 }
 
 void OnboardCamera::servoAngleCallback(const std_msgs::Int16Ptr &msg){
-   ROS_WARN_STREAM("Current servo angle: " << msg->data);
    current_servo_angle = msg->data;
+   ROS_DEBUG_STREAM("Current servo angle: " << msg->data);
 }
 
 OnboardCamera::OnboardCamera(): it(nh), pts(QUEUE_SIZE), angle_when_lost_player(15){
@@ -273,8 +261,6 @@ OnboardCamera::OnboardCamera(): it(nh), pts(QUEUE_SIZE), angle_when_lost_player(
 
     ROS_INFO_STREAM("Color image topic: " << topic_color_image);
 	ROS_INFO_STREAM("Show frames: " << (show_frame ? "True" : "False"));
-
-    //pub = nh.advertise<kinect_tracker::PlayerInfo>("kinect2/player_info",1);
 
   	tfListener = new tf::TransformListener();
 
@@ -403,12 +389,6 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "onboard_camera_node");
 
     OnboardCamera onboard_camera;
-    
-    // Override the default ros sigint handler.
-    // This must be set after the first NodeHandle is created.
-    //signal(SIGINT, onShutdown);
-
-
 
     ros::Rate rate(30);
     

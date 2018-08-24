@@ -203,7 +203,7 @@ class KalmanTracker:
         self.pub_angle_center = rospy.Publisher("playground_center", Float32, queue_size=10)
 
         # ROS subscribers
-        #self.detected_legs = rospy.Subscriber('detected_leg_clusters', LegArray, self.leg_array_callback)     
+        self.detected_legs = rospy.Subscriber('detected_leg_clusters', LegArray, self.leg_array_callback)     
         self.detected_evidences = rospy.Subscriber('evidence_of_player', PersonEvidenceArray, self.person_evidence_callback)      
         self.local_map_sub = rospy.Subscriber('local_map', OccupancyGrid, self.local_map_callback)
 
