@@ -51,16 +51,112 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
+/* Eigen */
+#include <eigen3/Eigen/Dense>
+
 /* Local includes */
 #include "utils.h"
 #include "OnboardCamera.h"
-
 
 #define QUEUE_SIZE 5
 #define RATE 30
 
 bool is_exit = false;
 bool is_shutdown = false;
+
+OnboardCamera::OnboardCamera(): it(nh), pts(QUEUE_SIZE), angle_when_lost_player(15){
+
+    is_exit = false;
+    is_shutdown = false;
+    show_frame = false;
+
+    vel_angle = 90; /* Deprecated*/
+
+    float delta_t = (1./RATE);
+    float delta_t2 = pow(delta_t,2)/2;
+
+    // Kalman filter matrices
+    x << 0.0, 0.0;
+    
+    u << 0.0, 0.0;
+    
+    // Measurement Function 2 states - 1 observed (angle)
+    H << 1.0, 0.0;
+
+    // Identity Matrix
+    I << 1.0, 0.0,                
+         0.0, 1.0;     
+
+    // Measurement Uncertainty
+    R << 0.1;
+
+    // Initial Uncertainty
+    P << 1.0, 0.0,            
+         0.0, 1.0;
+         
+    // Transition Matrix
+    F << 1.0,delta_t,                       // angle
+         0.0,delta_t;                       // angular speed
+
+    // Process Noise Matrix
+    Q << 0.1, 0.0,                   
+         0.0, 0.1;
+
+    nh.getParam("camera_namespace", cam_ns);
+    nh.getParam("show_frame", show_frame);
+    nh.getParam("color_frame", color_frame_name);
+    nh.getParam("cam_width", cam_width);
+    nh.getParam("cam_height", cam_height);
+    nh.getParam("width_fov", width_fov);
+    nh.getParam("height_fov", height_fov);
+    nh.getParam("seg_threshold", seg_threshold);
+    nh.getParam("h_min", hMin);
+    nh.getParam("s_min", sMin);
+    nh.getParam("v_min", vMin);
+    nh.getParam("h_max", hMax);
+    nh.getParam("s_max", sMax);
+    nh.getParam("v_max", vMax);
+
+    
+    topic_color_image = cam_ns + color_frame_name;
+
+    sub = it.subscribe(topic_color_image.c_str(), 
+                       1,
+                       &OnboardCamera::imageCallback, this);
+
+
+    sub_servo_angle = nh.subscribe("/arduino/current_servo_angle", 
+                             1,
+                             &OnboardCamera::servoAngleCallback, this);
+
+    pub_servo_angle = nh.advertise<std_msgs::Int16>("/onboard_cam/rotate",1);
+
+    ROS_INFO_STREAM("Color image topic: " << topic_color_image);
+	ROS_INFO_STREAM("Show frames: " << (show_frame ? "True" : "False"));
+
+  	tfListener = new tf::TransformListener();
+
+}
+
+
+void OnboardCamera::publishKalman(){
+    ROS_INFO_STREAM(x(0,0));
+}
+
+void OnboardCamera::kalmanPredict(){
+    x = F * x + u;
+    P = F*P*F.transpose() + Q;
+}
+
+void OnboardCamera::kalmanUpdate(float angle){
+    Eigen::Matrix<float, 1, 1> Z;
+    Z << angle;
+    auto Y =  Z.transpose() - (H*x);
+    auto S = ((H*P) * H.transpose()) + R;
+    auto K = (P * H.transpose()) * S.inverse();
+    x = x + (K * Y);
+    P = (I - (K*H)) * P;
+}
 
 void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
 
@@ -90,6 +186,7 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
         // details here: https://en.wikipedia.org/wiki/Spherical_coordinate_system
 
         float phi = (0.5 - blob_center.x / cam_width) * width_fov;                // yaw
+        phi_target = phi;
         ROS_DEBUG_STREAM("Yaw: " << phi);
 
 
@@ -103,12 +200,15 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
 
         mean = mean * (180/M_PI);
 
-        if (abs(mean) > 10){
+        if (abs(mean) > 1){
 
-            ROS_DEBUG_STREAM("Angle mismatch: " << mean);
-            ROS_DEBUG_STREAM("Angle mismatch: %f", mean);
+            kalmanUpdate(mean);
+            kalmanPredict(); // Perform Kalman prediction
+
+            ROS_INFO_STREAM("Angle mismatch: " << mean);
+            ROS_WARN_STREAM("Angle mismatch (KALMAN): " << x(0,0));
             std_msgs::Int16 angle_msg = std_msgs::Int16();
-            angle_msg.data = mean;
+            angle_msg.data = x(0,0)/2;
             pub_servo_angle.publish(angle_msg);
 
             float theta = M_PI / 2 - (0.5 - blob_center.y / cam_height) * height_fov;   // pitch
@@ -161,6 +261,9 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
         pub_servo_angle.publish(angle_msg);
 
     }
+
+    
+    //publishKalman(); // publish Kalman filtered player tf.
         
 	if (show_frame){
 		cv::imshow("view", rgbmat);
@@ -175,7 +278,7 @@ void OnboardCamera::publishCameraTF(){
 
     float rho = 0.003;
     float theta = M_PI/4; // 45degs
-    float phi = (M_PI/180) * current_servo_angle - M_PI/2;
+    float phi = (M_PI/180) * current_servo_angle - M_PI/2 + phi_target;
     float x = rho * sin(theta) * cos(phi);
     float y = rho * sin(theta) * sin(phi);
     float z = 1.20;
@@ -221,51 +324,6 @@ void OnboardCamera::servoAngleCallback(const std_msgs::Int16Ptr &msg){
    ROS_DEBUG_STREAM("Current servo angle: " << msg->data);
 }
 
-OnboardCamera::OnboardCamera(): it(nh), pts(QUEUE_SIZE), angle_when_lost_player(15){
-   
-
-    is_exit = false;
-    is_shutdown = false;
-    show_frame = false;
-
-    vel_angle = 90; /* Deprecated*/
-
-    nh.getParam("camera_namespace", cam_ns);
-    nh.getParam("show_frame", show_frame);
-    nh.getParam("color_frame", color_frame_name);
-    nh.getParam("cam_width", cam_width);
-    nh.getParam("cam_height", cam_height);
-    nh.getParam("width_fov", width_fov);
-    nh.getParam("height_fov", height_fov);
-    nh.getParam("seg_threshold", seg_threshold);
-    nh.getParam("h_min", hMin);
-    nh.getParam("s_min", sMin);
-    nh.getParam("v_min", vMin);
-    nh.getParam("h_max", hMax);
-    nh.getParam("s_max", sMax);
-    nh.getParam("v_max", vMax);
-
-    
-    topic_color_image = cam_ns + color_frame_name;
-
-    sub = it.subscribe(topic_color_image.c_str(), 
-                       1,
-                       &OnboardCamera::imageCallback, this);
-
-
-    sub_servo_angle = nh.subscribe("/arduino/current_servo_angle", 
-                             1,
-                             &OnboardCamera::servoAngleCallback, this);
-
-    pub_servo_angle = nh.advertise<std_msgs::Int16>("/onboard_cam/rotate",1);
-
-    ROS_INFO_STREAM("Color image topic: " << topic_color_image);
-	ROS_INFO_STREAM("Show frames: " << (show_frame ? "True" : "False"));
-
-  	tfListener = new tf::TransformListener();
-
-    
-}
 
 /* Locate largest color blob on a RGB image. */
 int OnboardCamera::findColorBlob(cv::Mat& srcFrame,  cv::Point2f &blob_center){

@@ -38,7 +38,17 @@
 class OnboardCamera{
 private:
 
-    ros::Publisher pub;
+    Eigen::Matrix<float, 2, 1> x;  // initial state (location and velocity)
+    Eigen::Matrix<float, 2, 1> u;  // external motion (NO CONTROL INPUT ASSUMED) 
+    Eigen::Matrix<float, 1, 2> H;  // measurement function 6 states - 2 observed (angle and distance)
+    Eigen::Matrix<float, 2, 2> I;  // identity matrix
+    Eigen::Matrix<float, 1, 1> R;  // measurement uncertainty (2 uncorrelated measures with uncertainty)
+    Eigen::Matrix<float, 2, 2> P;  // initial uncertainty
+    Eigen::Matrix<float, 2, 2> F;  // Transition Matrix
+    Eigen::Matrix<float, 2, 2> Q;  // process noise matrix
+
+    ros::Publisher pub_angle_offset;
+    ros::Publisher pub_angle_offset_kalman;
     image_transport::Publisher pub_result_image;
 
     std::string cam_ns;
@@ -51,6 +61,8 @@ private:
     int hMax;
     int sMax;
     int vMax;
+
+    float phi_target;
 
     int cam_width;
     int cam_height;
@@ -100,16 +112,24 @@ public:
     tf::Vector3 cam_pos;
 
     OnboardCamera();
-    void publishCameraTF();
-    void velCallback(const geometry_msgs::TwistPtr &msg);
-    void servoAngleCallback(const std_msgs::Int16Ptr &msg);
+    
+    void kalmanPredict();
+    void kalmanUpdate(float angle);
+    
     int findColorBlob(cv::Mat& srcFrame,  cv::Point2f &blob_center);
     void resize(cv::Mat& sourceFrame,cv::Mat& resultingFrame,int width=512, int height=-1);
+    
+    
+    void servoAngleCallback(const std_msgs::Int16Ptr &msg);
+    void velCallback(const geometry_msgs::TwistPtr &msg);
     void imageCallback(const sensor_msgs::ImageConstPtr &image);
     // Connection callback that unsubscribes from the tracker if no one is subscribed.
     void connectCallback(image_transport::SubscriberFilter &sub_col,
                          image_transport::SubscriberFilter &sub_dep,
                          image_transport::ImageTransport &it);
+    
+    void publishKalman();
+    void publishCameraTF();
 
 };
 

@@ -13,6 +13,7 @@
 #define SERVO_ACTUATION_TIME 100
 #define SERVO_PIN  9
 #define BUZZER_PIN  6
+#define MAGNET_SENSOR_PIN 2
 #define ROSBAG_LED 8
 #define BATTERY_PIN A0
 #define OFF 0
@@ -22,6 +23,14 @@
 #define LOW_BATTERY_VOLTAGE 22
 #define VOLTAGE_TRH 1.947   // A voltage less then 1.77 correspond to battery 
                             // level at 20V, 1.947 correspond to battery level at 22V.
+                            
+// Rotation directions
+#define STOP 0
+#define CLOCKWISE 1
+#define COUNTERCLOCKWISE 2
+// Rotation speed
+#define ANGULAR_SPEED_COUNTERCLOCKWISE 150.0
+#define ANGULAR_SPEED_CLOCKWISE 150.0
 
 unsigned long last_battery_check_time;
 unsigned long last_battery_beep_time;
@@ -49,15 +58,6 @@ ros::Subscriber<std_msgs::Int16> sub("/onboard_cam/rotate", &angleCallback);
 bool rosbag_active = false;
 bool listening = true;
 float servo_current_angle = 90.0;
-
-const int MAGNET_SENSOR_PIN = 2;
-
-const int STOP = 0;
-const int CLOCKWISE = 1;
-const int COUNTERCLOCKWISE = 2;
-
-const float ANGULAR_SPEED_COUNTERCLOCKWISE = 150.0; // Experienced speed of servo in deg/s
-const float ANGULAR_SPEED_CLOCKWISE = 150.0;
 
 unsigned long starting_time;
 unsigned long now;
@@ -99,12 +99,14 @@ void loop(){
 
     digitalWrite(ROSBAG_LED, rosbag_active);
 
-    if (millis() - angle_publish_time > ANGLE_PUBLISH_INTERVAL){
-      current_angle_msg.data = servo_current_angle;
-      angle_pub.publish(&current_angle_msg);
-      angle_publish_time = millis();
-    }
-    
+//    if (millis() - angle_publish_time > ANGLE_PUBLISH_INTERVAL){
+//      float diff = evaluate_angle(last_rotating_direction);
+//      update_current_angle(diff);
+//      current_angle_msg.data = servo_current_angle;
+//      angle_pub.publish(&current_angle_msg);
+//      angle_publish_time = millis();
+//    }
+  
     nh.spinOnce();
     delay(3);
 }
@@ -139,26 +141,6 @@ float checkBatteryLevel(){
   return voltage;
 }
 
-//void angleCallback( const std_msgs::Int16 &angle_msg){
-//  if (listening){
-//    last_angle_time = millis();
-//    float offset = angle_msg.data;
-//    int new_angle_servo = servo_current_angle + offset;
-//    if (new_angle_servo < 0){
-//      new_angle_servo = 0;
-//    }else if (new_angle_servo > 180){
-//      new_angle_servo = 180;
-//    }
-//    myservo.write(new_angle_servo);
-//    servo_current_angle = new_angle_servo;
-//    listening = !listening;
-//  }else{
-//    if ((millis() - last_angle_time) > SERVO_ACTUATION_TIME){
-//      listening = !listening;
-//    }
-//  }
-//}
-
 void rosbagCallback( const std_msgs::Bool &msg){
   rosbag_active = msg.data;
 }
@@ -167,57 +149,64 @@ void beep(unsigned char delayms){
   analogWrite(BUZZER_PIN, delayms);      // Almost any value can be used except 0 and 255
 }
 
-//void setup() {
-//  // put your setup code here, to run once:
-//  myservo.attach(SERVO_PIN);  // attaches the servo on pin 9 to the servo object
-//  myservo.write(90);
-//  starting_time = millis();
-//  last_rotating_direction = STOP;
-//  current_angle = STARTING_ANGLE;
-//  Serial.begin(9600);
-//  attachInterrupt(digitalPinToInterrupt(MAGNET_SENSOR_PIN), sensor_callback, FALLING);
-//}
-
 void rotate(int direction){
+  // Sets the speed of the servo according to the motion direction
   if(direction == CLOCKWISE){
-    myservo.write(77);
+    myservo.write(75);
   } else if (direction == COUNTERCLOCKWISE){
     myservo.write(100);
   } else if(direction == STOP){
     myservo.write(90);
+    // Add a small delay to actually make the servo stop
+    // TODO Check if needed, maybe the deadband is large enough to stop in time
+    delay(15);
   }
   return;
 }
 
-int decode_rotating_direction(float offset){
-  // DEADBAND [-5, +5]
-  if(offset > 10.0f){
-    return CLOCKWISE;
-  } else if(offset < -10.0f){
-   return COUNTERCLOCKWISE;
+  
+// Function to evaluate the direction of motion
+int decode_rotating_direction(int offset){
+  if(offset > 8){
+  	// If the offset is positive, rotate COUNTERCLOCKWISE
+    return COUNTERCLOCKWISE;
+  } else if(offset < -8){
+  	// If the offset is negative, rotate CLOCKWISE
+   	return CLOCKWISE;
   } else {
+  	// If the offset is inside the deadband [-8, +8] stop the rotation
     return STOP;
   }
 }
 
+
+// Callback for rotation command
+// Receives a message containing the offset of target wrt center of fov
 void angleCallback(const std_msgs::Int16 &angle_msg){
-  float offset = angle_msg.data;
+  int offset = angle_msg.data;
+  
+  // Decodes the rotation direction by evaluating the offset of the target wrt current position
   int current_rotating_direction = decode_rotating_direction(offset);
 
   if(last_rotating_direction != current_rotating_direction){
-    // WE'VE CHANGED OUR MOTION
+    // If we changed our motion, evaluate how much did we travel
     float angle = evaluate_angle(last_rotating_direction);
     update_current_angle(angle);
-    Serial.println(current_angle);
-    starting_time = millis();
+    current_angle_msg.data = servo_current_angle;
+    angle_pub.publish(&current_angle_msg);
+    
     last_rotating_direction = current_rotating_direction;
+    // Start rotating in the new direction
     rotate(current_rotating_direction);
     }
    else{
-    rotate(last_rotating_direction);
+   	// Continue rotating in the previous direction
+   	// TODO can be avoided writing same command, try
+    //rotate(last_rotating_direction);
    }
 }
 
+// Evaluates the travelled angle from last change of motion
 float evaluate_angle(int last_rotating_direction){
   float speed = 0.0;
   if(last_rotating_direction == CLOCKWISE){
@@ -232,19 +221,23 @@ float evaluate_angle(int last_rotating_direction){
   unsigned long elapsed_time = millis() - starting_time;
   float travelled_degrees = (elapsed_time/1000.0) * speed;
 
+  starting_time = millis();
   return travelled_degrees;
 }
 
+// Updates the current angle respecting angle limitations to [0, 360]
 void update_current_angle(float offset){
   servo_current_angle += offset;
-  if(servo_current_angle < 0.0f){
+  if(servo_current_angle < 0.0){
     servo_current_angle = 360.0 + current_angle;
   }
-  else if(servo_current_angle > 360.0f){
+  else if(servo_current_angle > 360.0){
     servo_current_angle = servo_current_angle - 360.0;
   }
 }
 
+// Callback function triggered any time the magnet activates the sensor
+// Updates the current position of the servo and starts counting from there
 void sensor_callback(){
   // When passing next to the sensor we know the camera is rotated to 0 degrees
   servo_current_angle = 0.0;
