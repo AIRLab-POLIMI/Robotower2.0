@@ -110,6 +110,7 @@ public:
     int queue_size;
 
     tf::Vector3 cam_pos;
+    tf::Vector3 target_pos;
 
     OnboardCamera();
     
@@ -128,7 +129,6 @@ public:
                          image_transport::SubscriberFilter &sub_dep,
                          image_transport::ImageTransport &it);
     
-    void publishKalman();
     void publishCameraTF();
 
 };

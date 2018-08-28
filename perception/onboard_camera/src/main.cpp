@@ -61,6 +61,10 @@
 #define QUEUE_SIZE 5
 #define RATE 30
 
+#define SERVO_ARM_LENGHT 0.085 // 8.5 cm from servo train
+#define CAM_DISPLACEMENT 0.015 // 1.5 cm from center
+#define ANGULAR_DISPLACEMENT -6 // servo is rotated 15 degs more than 90 at begin
+
 bool is_exit = false;
 bool is_shutdown = false;
 
@@ -139,10 +143,6 @@ OnboardCamera::OnboardCamera(): it(nh), pts(QUEUE_SIZE), angle_when_lost_player(
 }
 
 
-void OnboardCamera::publishKalman(){
-    ROS_INFO_STREAM(x(0,0));
-}
-
 void OnboardCamera::kalmanPredict(){
     x = F * x + u;
     P = F*P*F.transpose() + Q;
@@ -173,7 +173,7 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
     cv::Mat rgbmat = cv_rgb_ptr->image;
     
     int found_blob = findColorBlob(rgbmat, blob_center);
-
+    
     /* THIS LOOP COMPUTES A REGION OF INTEREST (A CIRCLE) BASED ON THE mainCenter VARIABLE COMPUTED BY
     THE findColorBlob METHOD. THE IDEA IS THEN TO ASSESS THE MEAN DISTANCE (PIXEL VALUES)
     DEFINED IN THIS AREA AND THUS OBTAIN THE DISTANCE FEATURE. THE SAME LOOP ALSO CALL THE
@@ -187,79 +187,85 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
 
         float phi = (0.5 - blob_center.x / cam_width) * width_fov;                // yaw
         phi_target = phi;
+
+
         ROS_DEBUG_STREAM("Yaw: " << phi);
 
 
         pts.push_front(phi);
         
-        float mean = 0;
+        float mean_phi = 0;
         for(int i=0; i < pts.size() ; i++){
-            mean += pts[i] / pts.size();
+            mean_phi += pts[i] / pts.size();
         }
+
+        kalmanUpdate(mean_phi);
+        kalmanPredict(); // Perform Kalman prediction
         
+        if (abs(mean_phi * (180/M_PI)) > 3){
 
-        mean = mean * (180/M_PI);
-
-        if (abs(mean) > 1){
-
-            kalmanUpdate(mean);
-            kalmanPredict(); // Perform Kalman prediction
-
-            ROS_INFO_STREAM("Angle mismatch: " << mean);
+            ROS_INFO_STREAM("Angle mismatch: " << mean_phi);
             ROS_WARN_STREAM("Angle mismatch (KALMAN): " << x(0,0));
             std_msgs::Int16 angle_msg = std_msgs::Int16();
-            angle_msg.data = x(0,0)/2;
+            angle_msg.data = x(0,0) * (180/M_PI);
             pub_servo_angle.publish(angle_msg);
 
             float theta = M_PI / 2 - (0.5 - blob_center.y / cam_height) * height_fov;   // pitch
 
-            float rho = 1;
+            float rho = 2;
+            float target_x_displacement_wrt_cam = rho * cos(phi_target);
+            float target_y_displacement_wrt_cam = rho * sin(phi_target);
 
-            float x = rho * sin(theta) * cos(phi);
-            float y = rho * sin(theta) * sin(phi);
+            // float x = rho * sin(theta) * cos(mean_phi);
+            // float y = rho * sin(theta) * sin(mean_phi);
             float z = rho * cos(theta);
             
-            cam_pos.setX(x);
-            cam_pos.setY(y);
-            cam_pos.setZ(z);
+            // cam_pos.setX(x);
+            // cam_pos.setY(y);
+            // cam_pos.setZ(z);
+
+            target_pos.setX(target_x_displacement_wrt_cam);
+            target_pos.setY(target_y_displacement_wrt_cam);
+            target_pos.setZ(z);
+
+            ROS_INFO_STREAM("X-displacement: " << target_x_displacement_wrt_cam);
+            ROS_INFO_STREAM("Y-displacement: " << target_y_displacement_wrt_cam);
             
-            ROS_DEBUG_STREAM("Blob is at (" << phi << ", " << theta << ") deg(s) from the camera.");
 
+            
+            ROS_DEBUG_STREAM("Blob is at (" << mean_phi << ", " << theta << ") deg(s) from the camera.");
 
-            angle_when_lost_player *= mean/mean;
+            angle_when_lost_player *= mean_phi/mean_phi;
 
             // ROS_DEBUG("rho:\t%.2f\tphi:\t%.2f°\ttheta:\t%.2f°", rho, phi*180/M_PI, theta*180/M_PI);
             // ROS_DEBUG("x:\t%.2f\ty:\t%.2f\tz:\t%.2f", pixel_sph_coord(0,0), pixel_sph_coord(1,0), pixel_sph_coord(2,0));
         }
-        
-        // // TF-Broadcaster
+
+        // TF-Broadcaster
         static tf::TransformBroadcaster br;
         tf::StampedTransform playerTransform;
         
         tf::Transform framePlayerTransform;
-        framePlayerTransform.setOrigin(cam_pos);
+        framePlayerTransform.setOrigin(target_pos);
         tf::Quaternion q;
         q.setRPY(0, 0, 0);
         framePlayerTransform.setRotation(q);
         ros::Time now = ros::Time::now();
         br.sendTransform(tf::StampedTransform(framePlayerTransform, now, "/onboard_link", "/cam_target_link"));
-
-        
     }
     else{
 
         ROS_DEBUG_STREAM("Blob not found, rotating with a constant of " << angle_when_lost_player << "degs..");
         std_msgs::Int16 angle_msg = std_msgs::Int16();
         
-        if (current_servo_angle == 0){
+        if (current_servo_angle == 0 + ANGULAR_DISPLACEMENT){
             angle_when_lost_player = +15;
-        }else if (current_servo_angle == 180) {
+        }else if (current_servo_angle == 180 + ANGULAR_DISPLACEMENT) {
             angle_when_lost_player = -15;
         }
-
+        
         angle_msg.data = angle_when_lost_player;
         pub_servo_angle.publish(angle_msg);
-
     }
 
     
@@ -276,17 +282,47 @@ void OnboardCamera::publishCameraTF(){
     static tf::TransformBroadcaster br;
     tf::StampedTransform playerTransform;
 
-    float rho = 0.003;
+    float current_servo_angle_radians = (M_PI/180) * current_servo_angle - M_PI/2;
+    //float rho = 0.003;
+    float rho = SERVO_ARM_LENGHT;
+
+    float x_p = rho * cos(current_servo_angle_radians); // x-coord of center arm
+    float y_p = rho * sin(current_servo_angle_radians); // y-coord of center arm
+
+    float x_displacement = CAM_DISPLACEMENT * cos(current_servo_angle_radians - M_PI/180/2); // x displacement of camera wrt center of servo arm
+    float y_displacement = CAM_DISPLACEMENT * sin(current_servo_angle_radians - M_PI/180/2); // y displacement of camera wrt center of servo arm
+
+    // NOT CONSIDERING CAMERA HORIZONTAL DISPLACEMENT
+    float x_cam = x_p + 0.07;
+    float y_cam = y_p;
+    float z_cam = 1.20;
+
+    // CONSIDERING HORIZONTAL DISPLACEMENT
+    // float x_cam = x_p + x_displacement;
+    // float y_cam = y_p + y_displacement;
+    // float z_cam = 1.20;
+
+    // float x_cam = x_p + x_displacement + 0.07;
+    // float y_cam = y_p + y_displacement;
+    // float z_cam = 1.20;
+
+    cam_pos.setX(x_cam);
+    cam_pos.setY(y_cam);
+    cam_pos.setZ(z_cam);
+
     float theta = M_PI/4; // 45degs
     float phi = (M_PI/180) * current_servo_angle - M_PI/2 + phi_target;
     float x = rho * sin(theta) * cos(phi);
     float y = rho * sin(theta) * sin(phi);
     float z = 1.20;
+
+
     
     tf::Transform framePlayerTransform;
-    framePlayerTransform.setOrigin(tf::Vector3(0, 0, z));
+    //framePlayerTransform.setOrigin(tf::Vector3(0, 0, z));
+    framePlayerTransform.setOrigin(cam_pos);
     tf::Quaternion q;
-    q.setRPY(0, theta, phi);
+    q.setRPY(0, theta, current_servo_angle_radians);
     framePlayerTransform.setRotation(q);
     ros::Time now = ros::Time::now();
     br.sendTransform(tf::StampedTransform(framePlayerTransform, now, "/base_link", "/onboard_link"));
@@ -320,7 +356,7 @@ void OnboardCamera::velCallback(const geometry_msgs::TwistPtr &msg){
 }
 
 void OnboardCamera::servoAngleCallback(const std_msgs::Int16Ptr &msg){
-   current_servo_angle = msg->data;
+   current_servo_angle = msg->data + ANGULAR_DISPLACEMENT; //* (msg->data / 180.0);
    ROS_DEBUG_STREAM("Current servo angle: " << msg->data);
 }
 
@@ -393,6 +429,7 @@ int OnboardCamera::findColorBlob(cv::Mat& srcFrame,  cv::Point2f &blob_center){
 			cv::circle(frame, cv::Point(int(temp_center.x), int(temp_center.y)), int(blob_radius), cv::Scalar(0, 255, 255), 2);
 			cv::circle(frame, center, 5, cv::Scalar(0, 0, 255), -1);
             blob_center = center;            // save the center of the detected circle.
+            cv::circle(frame, cv::Point(320, int(temp_center.y)), 5, cv::Scalar(255, 0, 0), -1);
 		}
 
 		//pts.push_front(center);		// update the points queue
