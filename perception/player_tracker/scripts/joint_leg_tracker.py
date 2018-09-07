@@ -535,7 +535,7 @@ class KalmanMultiTracker:
                 leg_clusters.add(detect)
         non_leg_clusters = detected_clusters_set.difference(leg_clusters)
         for detect in non_leg_clusters:
-            non_leg = Leg(Point(detect.pos_x, detect.pos_y, 0), 1)
+            non_leg = Leg(Point(detect.pos_x, detect.pos_y, 0), 1, [])
             non_legs_msg.legs.append(non_leg)              
         self.non_leg_clusters_pub.publish(non_legs_msg)  
 
@@ -962,8 +962,3 @@ class KalmanMultiTracker:
 if __name__ == '__main__':
     rospy.init_node('multi_person_tracker', anonymous=True)
     kmt = KalmanMultiTracker()
-
-
-
-
-

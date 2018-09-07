@@ -14,7 +14,7 @@
 #include <visualization_msgs/Marker.h>
 #include <tf/LinearMath/Vector3.h>
 
-#include "player_tracker/laser_processor.h"
+#include "player_tracker/player_tracker/laser_processor.h"
 
 #include <boost/geometry/algorithms/centroid.hpp> 
 #include <boost/geometry.hpp>

@@ -5,6 +5,3 @@ Changelog for package leg_tracker
 0.0.1 (2015-01-25)
 ------------------
 * initial release
-
-(2018-6-7)
-new

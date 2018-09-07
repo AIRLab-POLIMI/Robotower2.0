@@ -3,70 +3,100 @@
 import rospy
 
 # Custom messages
-from player_tracker.msg import Person, PersonArray, Leg, LegArray , PersonEvidenceArray
-from std_msgs.msg import Float32
-from human_marker import createHuman
+from player_tracker.msg import Person, PersonArray, Leg, LegArray, PersonEvidenceArray
+
 # ROS messages
 from visualization_msgs.msg import Marker
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import OccupancyGrid
-from geometry_msgs.msg import Pose
 
 # Standard python modules
 import numpy as np
 import random
 import math
 import scipy.stats
-import scipy.spatial
+from scipy import spatial
 import tf
 import copy
 import timeit
 import message_filters
 import sys
 import tf
-import copy
+import cv2
+
+from itertools import groupby
+from operator import itemgetter
 
 from geometry_msgs.msg import PointStamped, Point
+from sensor_msgs.msg import PointCloud2
+
+from perception_grid_match import PerceptionGridProjector
+from sensor_msgs import point_cloud2
+from laser_geometry import LaserProjection
 
 # External modules
 from munkres import Munkres # For the minimum matching assignment problem. To install: https://pypi.python.org/pypi/munkres 
 from pykalman import KalmanFilter # To install: http://pykalman.github.io/#installation
 from auxiliar import KinectEvidence, PolarGrid
 
-class DetectedCluster:
-    """
-    A detected scan cluster. Not yet associated to an existing track.
-    """
+class Position(object):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    
+    def __str__(self):
+        return "({:.2f},{:.2f})".format(self.x, self.y)
+
+    def euclideanDistance(self,other):
+        return np.sqrt((other.x - self.x)**2 + (other.y - self.y)**2)
+    
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(self, other.__class__):
+            return self.x == other.x and self.y == other.y
+        return False
+
+    def __ne__(self, other):
+        """Overrides the default implementation (unnecessary in Python 3)"""
+        return not self.__eq__(other)
+    
+    def __add__(self, other):
+        return Position(self.x + other.x, self.y + other.y)
+
+    def to_list(self):
+        return [self.x,self.y]
+
+class Observation(object):
+    '''A person evidence. Not yet associated to an existing track.'''
     def __init__(self, pos_x, pos_y, confidence, in_free_space):
-        """
-        Constructor
-        """
-        self.pos_x = pos_x
-        self.pos_y = pos_y
+        self.position = Position(pos_x, pos_y)
         self.confidence = confidence
         self.in_free_space = in_free_space
         self.in_free_space_bool = None
 
-
 class ObjectTracked:
     """
-    A tracked object. Could be a person leg, entire person or any arbitrary object in the laser scan.
+    Used for maintaining object.
     """
-    new_leg_id_num = 1
+    id = 0
 
-    def __init__(self, x, y, now, confidence, is_person, in_free_space): 
-        """
-        Constructor
-        """        
-        self.id_num = ObjectTracked.new_leg_id_num
-        ObjectTracked.new_leg_id_num += 1
-        self.colour = (random.random(), random.random(), random.random())
+    @staticmethod
+    def getId():
+        '''Return new Id'''
+        ObjectTracked.id +=1
+        return ObjectTracked.id
+
+    def __init__(self, x, y, now, confidence, is_player, in_free_space):  
+        self.id_num = ObjectTracked.getId()
+        self.is_player = is_player
+        self.colour = (0,0,0)
+        self.setIsPlayer(is_player)
         self.last_seen = now
         self.seen_in_current_scan = True
+        self.isPlayer = is_player
         self.times_seen = 1
         self.confidence = confidence
         self.dist_travelled = 0.
-        self.is_person = is_person
         self.deleted = False
         self.in_free_space = in_free_space
 
@@ -85,12 +115,15 @@ class ObjectTracked:
             std_process_noise = 0.03333
         else:
             print "Scan frequency needs to be either 7.5, 10 or 15 or the standard deviation of the process noise needs to be tuned to your scanner frequency"
+        
         std_pos = std_process_noise
         std_vel = std_process_noise
         std_obs = 0.1
         var_pos = std_pos**2
         var_vel = std_vel**2
-        # The observation noise is assumed to be different when updating the Kalman filter than when doing data association
+        
+        # The observation noise is assumed to be different when updating the Kalman filter 
+        # than when doing data association
         var_obs_local = std_obs**2 
         self.var_obs = (std_obs + 0.4)**2
 
@@ -108,7 +141,7 @@ class ObjectTracked:
                                       [0, 0,       1,        0],
                                       [0, 0,       0,        1]])
 
-        # Oberservation model. Can observe pos_x and pos_y (unless person is occluded). 
+        # Observation model. Can observe pos_x and pos_y (unless person is occluded). 
         observation_matrix = np.array([[1, 0, 0, 0],
                                        [0, 1, 0, 0]])
 
@@ -151,19 +184,27 @@ class ObjectTracked:
         self.pos_y = self.filtered_state_means[1]
         self.vel_x = self.filtered_state_means[2]
         self.vel_y = self.filtered_state_means[3]
-    
+
+    def getPosition(self):
+        '''Return the object x,y position from Kalman'''
+        return Position(self.pos_x,self.pos_y)
+
+    def setIsPlayer(self, is_player):
+        self.is_player = is_player
+        if self.is_player:
+            self.colour = (0.9,0.05,0.05)
+        else:
+            self.colour = (0.2,0.2,0.2)
 
 
-class KalmanTracker:    
+class Tracker:    
     """
     Tracker for tracking all the people and objects
     """
-    max_cost = 9999999
+    max_cost = float('inf')
 
-    def __init__(self):      
-        """
-        Constructor
-        """
+    def __init__(self):
+        self.player_trak = [] 
         self.objects_tracked = []
         self.potential_leg_pairs = set()
         self.potential_leg_pair_initial_dist_travelled = {}
@@ -174,47 +215,53 @@ class KalmanTracker:
         self.listener = tf.TransformListener()
         self.local_map = None
         self.new_local_map_received = True
+
+        self.lda_blob = 0.5
+        self.lda_player = 0.5
+        self.player_position = None
+
         random.seed(1) 
 
         # Get ROS params
         self.fixed_frame = rospy.get_param("fixed_frame", "odom")
         self.max_leg_pairing_dist = rospy.get_param("max_leg_pairing_dist", 0.8)
-        self.confidence_threshold_to_maintain_track = rospy.get_param("confidence_threshold_to_maintain_track", 0.1)
+        self.confidence_threshold_to_maintain_track = rospy.get_param("confidence_threshold_to_maintain_track", 0.5)
         self.publish_occluded = rospy.get_param("publish_occluded", True)
         self.publish_people_frame = rospy.get_param("publish_people_frame", self.fixed_frame)
         self.use_scan_header_stamp_for_tfs = rospy.get_param("use_scan_header_stamp_for_tfs", False)
         self.publish_detected_people = rospy.get_param("display_detected_people", False)        
-        self.dist_travelled_together_to_initiate_leg_pair = rospy.get_param("dist_travelled_together_to_initiate_leg_pair", 0.3)
+        self.dist_travelled_together_to_initiate_leg_pair = rospy.get_param("dist_travelled_together_to_initiate_leg_pair", 0.5)
         scan_topic = rospy.get_param("scan_topic", "scan")
         self.scan_frequency = rospy.get_param("scan_frequency", 7.5)
         self.in_free_space_threshold = rospy.get_param("in_free_space_threshold", 0.06)
-        self.confidence_percentile = rospy.get_param("confidence_percentile", 0.95)
-        self.max_std = rospy.get_param("max_std", 0.9)
+        self.confidence_percentile = rospy.get_param("confidence_percentile", 0.90)
+        self.max_std = rospy.get_param("max_std", 1)
 
         self.mahalanobis_dist_gate = scipy.stats.norm.ppf(1.0 - (1.0-self.confidence_percentile)/2., 0, 1.0)
         self.max_cov = self.max_std**2
         self.latest_scan_header_stamp_with_tf_available = rospy.get_rostime()
 
     	# ROS publishers
-        self.people_tracked_pub = rospy.Publisher('people_tracked', PersonArray, queue_size=30)
+        self.people_tracked_pub = rospy.Publisher('players_tracked', PersonArray, queue_size=300)
+        self.people_detected_pub = rospy.Publisher('players_detected', PersonArray, queue_size=300)
         self.marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=300)
         self.non_leg_clusters_pub = rospy.Publisher('non_leg_clusters', LegArray, queue_size=300)
-        #self.pub_player_info = rospy.Publisher("kinect2/player_filtered_info", PlayerInfo,  queue_size=10)
-        self.pub_angle_center = rospy.Publisher("playground_center", Float32, queue_size=10)
+        #self.laser_cloud_pub = rospy.Publisher('laser_cloud', PointCloud2, queue_size=1)
 
-        # ROS subscribers
-        self.detected_legs = rospy.Subscriber('detected_leg_clusters', LegArray, self.leg_array_callback)     
-        self.detected_evidences = rospy.Subscriber('evidence_of_player', PersonEvidenceArray, self.person_evidence_callback)      
+        # ROS subscribers         
+        self.detected_clusters_sub = rospy.Subscriber('person_evidence_array', PersonEvidenceArray, self.evidenceCallback)
+        #self.detected_clusters_sub = rospy.Subscriber('detected_leg_clusters', LegArray, self.detected_clusters_callback)      
         self.local_map_sub = rospy.Subscriber('local_map', OccupancyGrid, self.local_map_callback)
-
-        self.tf_listener = tf.TransformListener()
-        self.br = tf.TransformBroadcaster()
+        #self.sub_map = rospy.Subscriber('map', OccupancyGrid, self.map_callback)  # create map subscriber
+        #self.sub_local_grid = rospy.Subscriber('test_local_map', OccupancyGrid, self.local_grid_callback)  # create map subscriber
+        #self.sub_laser = rospy.Subscriber('/scan', LaserScan, self.laser_callback)  # create laser subscriber
 
         # Polar grid
-        #self.polar_grid = PolarGrid()
+        self.polar_grid = PolarGrid()
+
+        self.tf_listener = tf.TransformListener()
 
         rospy.spin() # So the node doesn't immediately shut down
-                    
 
     def local_map_callback(self, map):
         """
@@ -224,13 +271,27 @@ class KalmanTracker:
         self.new_local_map_received = True
 
 
-    def how_much_in_free_space(self, x, y):
+    def how_much_in_free_space(self, evidence):
         """
         Determine the degree to which the position (x,y) is in freespace according to our local map
 
         @rtype:     float
         @return:    degree to which the position (x,y) is in freespace (range: 0.-1.)
         """
+
+        x = None
+        y = None 
+
+        if isinstance(evidence, Observation):
+            x = evidence.position.x
+            y = evidence.position.y
+        elif isinstance(evidence, Position):
+            x = evidence.x
+            y = evidence.y
+        else:
+            x = (evidence.leg1.x + evidence.leg2.x)/2.
+            y = (evidence.leg1.y + evidence.leg2.y)/2.
+
         # If we haven't got the local map yet, assume nothing's in freespace
         if self.local_map == None:
             return self.in_free_space_threshold*2
@@ -254,506 +315,257 @@ class KalmanTracker:
         percent = sum/(((2.*kernel_size + 1)**2.)*100.)
         return percent
 
+    def getPlayerKinectPosition(self):
+        """
+        Gets the player blob position.
+        """
+        try:
+            self.tf_listener.waitForTransform('/player_filtered_link','/base_link', rospy.Time(0), rospy.Duration(0.1))
+            trans, rot = self.tf_listener.lookupTransform('/player_filtered_link','/base_link', rospy.Time(0))
+ 
+            return Position(trans[0], trans[1])
+
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+            rospy.logerr("Detector node: " + str(e))
+
         
-    def match_detections_to_tracks_GNN(self, objects_tracked, objects_detected):
+    def match_detections_to_tracks_GNN(self, updated_tracks, observations):
         """
         Match detected objects to existing object tracks using a global nearest neighbour data association
         """
+        
         matched_tracks = {}
+        blob_distances = {}
 
-        # Populate match_dist matrix of mahalanobis_dist between every detection and every track
-        match_dist = [] # matrix of probability of matching between all people and all detections.   
-        eligable_detections = [] # Only include detections in match_dist matrix if they're in range of at least one track to speed up munkres
-        for detect in objects_detected: 
-            at_least_one_track_in_range = False
-            new_row = []
-            for track in objects_tracked:
-                # Ignore possible matchings between people and detections not in freespace 
-                if track.is_person and not detect.in_free_space_bool:
-                    cost = self.max_cost 
+        blob_position = self.getPlayerKinectPosition()
+
+        for track in updated_tracks:
+            o = '_'
+            mdistance = float('inf')
+            for obs in observations:   
+                dist = obs.position.euclideanDistance(track.getPosition())
+                if (dist < mdistance) and obs.confidence > 0.5:
+                    mdistance = dist
+                    o = obs
+            matched_tracks[track] = o if mdistance < 1.5 else None
+            blob_distances[track] = obs.position.euclideanDistance(blob_position)
+
+        return matched_tracks, blob_distances
+
+    def evidenceCallback(self, evidences):
+
+        now = evidences.header.stamp
+
+        if len(self.objects_tracked) == 0:
+            for evidence in evidences.evidences:
+                p = Position((evidence.leg1.x + evidence.leg2.x)/2.,(evidence.leg1.y + evidence.leg2.y)/2.)
+                new_observation = ObjectTracked((evidence.leg1.x + evidence.leg2.x)/2., 
+                                                (evidence.leg1.y + evidence.leg2.y)/2., 
+                                                now, 
+                                                evidence.probability + self.RBFKernel(p,self.getPlayerKinectPosition(),self.lda_blob),
+                                                False, 
+                                                in_free_space=self.how_much_in_free_space(evidence))
+                self.objects_tracked.append(new_observation)
+
+            blob_pos = self.getPlayerKinectPosition()                ## add blob position as evidence as well.
+            
+            if self.player_position is None:
+                new_observation = ObjectTracked(blob_pos.x,blob_pos.y,
+                                            now,
+                                            1,
+                                            False,
+                                            in_free_space=self.how_much_in_free_space(blob_pos))
+            else:
+                new_observation = ObjectTracked(blob_pos.x,blob_pos.y,
+                                            now,
+                                            self.calcNewConfidence(blob_pos),
+                                            False,
+                                            in_free_space=self.how_much_in_free_space(blob_pos))  
+            self.objects_tracked.append(new_observation)
+            return
+        else:
+            ### define the observations based on their position in free-space ###
+            observations= []
+            for evidence in evidences.evidences:
+                new_observation = Observation((evidence.leg1.x + evidence.leg2.x)/2.,
+                                              (evidence.leg1.y + evidence.leg2.y)/2.,
+                                              evidence.probability,
+                                              in_free_space=self.how_much_in_free_space(evidence))  
+
+                if new_observation.in_free_space < self.in_free_space_threshold:
+                    new_observation.in_free_space_bool = True
                 else:
-                    # Use mahalanobis dist to do matching
+                    new_observation.in_free_space_bool = False
+                observations.append(new_observation)
+
+
+            ### ------------------------------------------------------------- ###
+
+            ### Propogate existing tracks ###
+            updated_tracks = []
+            for propogated_track in self.objects_tracked:
+                propogated_track.update(np.ma.masked_array(np.array([0, 0]), mask=[1,1])) 
+                updated_tracks.append(propogated_track)
+            ### ------------------------- ###
+            
+            # Match detected objects to existing tracks
+            matched_tracks, blob_distances = self.match_detections_to_tracks_GNN(updated_tracks, observations)
+
+            ### Update all tracks with new observations ###
+            tracks_to_delete = set()   
+            for idx, track in enumerate(self.objects_tracked):
+                propagated_track = updated_tracks[idx]          #  Get the corresponding propogated track
+            
+                if matched_tracks[track] is None:
+                    # propogated_track not matched to a detection
+                    # don't provide a measurement update for Kalman filter 
+                    # so send it a masked_array for its observations
+                    obs = np.ma.masked_array(np.array([0, 0]), mask=[1,1]) 
+                    #track.kf.observation_covariance = np.eye(2)
+                    track.seen_in_current_scan = False
+                    # Input observations to Kalman filter
+                    track.update(obs)
+                
+                else:
+                    xy_observation = np.array([matched_tracks[track].position.x,matched_tracks[track].position.y])
+                    track.kf.observation_covariance = np.exp(-matched_tracks[track].confidence) * np.eye(2)
+                    track.in_free_space = 0.8*track.in_free_space + 0.2*matched_tracks[track].in_free_space 
+                    track.confidence = 0.8*track.confidence + 0.2*self.calcNewConfidence(track.getPosition())
+                    track.times_seen += 1
+                    track.last_seen = now
+                    track.isPlayer = False
+                    track.seen_in_current_scan = True
+                                
+                    # Input observations to Kalman filter
+                    track.update(xy_observation)
+
+                # Check track for deletion           
+                if track.confidence < self.confidence_threshold_to_maintain_track:
+                    tracks_to_delete.add(track)
+                    rospy.logdebug("deleting track due to low confidence...")
+                else:
+                    # Check track for deletion because covariance is too large
                     cov = track.filtered_state_covariances[0][0] + track.var_obs # cov_xx == cov_yy == cov
-                    mahalanobis_dist = math.sqrt(((detect.pos_x-track.pos_x)**2 + (detect.pos_y-track.pos_y)**2)/cov) # = scipy.spatial.distance.mahalanobis(u,v,inv_cov)**2
-                    if mahalanobis_dist < self.mahalanobis_dist_gate:
-                        cost = mahalanobis_dist
-                        at_least_one_track_in_range = True
-                    else:
-                        cost = self.max_cost 
-                new_row.append(cost)                    
-            # If the detection is within range of at least one track, add it as an eligable detection in the munkres matching 
-            if at_least_one_track_in_range: 
-                match_dist.append(new_row)
-                eligable_detections.append(detect)
+                    if cov > self.max_cov:
+                        tracks_to_delete.add(track)
+                        rospy.logdebug("deleting track due to large covariance...")
+                        #rospy.loginfo("deleting because unseen for %.2f", (now - track.last_seen).to_sec())
 
-        # Run munkres on match_dist to get the lowest cost assignment
-        if match_dist:
-            munkres = Munkres()
-            # self.pad_matrix(match_dist, pad_value=self.max_cost) # I found no difference when padding it 
-            indexes = munkres.compute(match_dist)
-            for elig_detect_index, track_index in indexes:
-                if match_dist[elig_detect_index][track_index] < self.mahalanobis_dist_gate:
-                    detect = eligable_detections[elig_detect_index]
-                    track = objects_tracked[track_index]
-                    matched_tracks[track] = detect
+            ###  ---------------------- ###
 
-        return matched_tracks
-
-
-    def person_evidence_callback(self, detected_evidences_msg):
-        now = detected_evidences_msg.header.stamp
-       
-        detected_clusters = []
-        for evidence in detected_evidences_msg.evidences:
-
-            if evidence.confidence > 0.5:
-                new_detected_cluster = DetectedCluster(
-                    evidence.pose.position.x, 
-                    evidence.pose.position.y, 
-                    evidence.confidence, 
-                    in_free_space=True)      
-                new_detected_cluster.in_free_space_bool = True
-                detected_clusters.append(new_detected_cluster)
-       
-        # Match detected objects to existing tracks
-        matched_tracks = self.match_detections_to_tracks_GNN(self.objects_tracked, detected_clusters) 
-
-        # Update all tracks with new observations 
-        tracks_to_delete = set()   
-        for idx, track in enumerate(self.objects_tracked):
-            if track in matched_tracks:
-                obs = matched_tracks[track]  
-                observations = np.array([obs.pos_x, obs.pos_y])
-                track.confidence = 0.95*track.confidence + 0.05*obs.confidence                                       
-                track.times_seen += 1
-                track.last_seen = now
-                track.seen_in_current_scan = True
-                # Input observations to Kalman filter
-                track.update(observations)
-            else:
-                # propogated_track not matched to a detection
-                # don't provide a measurement update for Kalman filter 
-                # so send it a masked_array for its observations
-                observations = np.ma.masked_array(np.array([0, 0]), mask=[1,1]) 
-                track.seen_in_current_scan = False
-                        
-            # Input observations to Kalman filter
-            track.update(observations)
-
-            # Check track for deletion           
-            if  track.confidence < self.confidence_threshold_to_maintain_track:
-                tracks_to_delete.add(track)
-                #rospy.loginfo("deleting due to low confidence")
-            else:
-                # Check track for deletion because covariance is too large
-                cov = track.filtered_state_covariances[0][0] + track.var_obs # cov_xx == cov_yy == cov
-                if cov > self.max_cov:
-                    tracks_to_delete.add(track)
-                    #rospy.loginfo("deleting because variance it too high")
-
-        # Delete tracks that have been set for deletion
-        for track in tracks_to_delete:         
-            self.objects_tracked.remove(track)
+            # Delete tracks that have been set for deletion
+            for track in tracks_to_delete:         
+                self.objects_tracked.remove(track)
             
-        # If detections were not matched, create a new track  
-        for detect in detected_clusters:      
-            if not detect in matched_tracks.values():
-                self.objects_tracked.append(ObjectTracked(detect.pos_x, detect.pos_y, now, detect.confidence, 
-                                            is_person=True, in_free_space=detect.in_free_space))
+            for ev in observations:
+                if ev not in matched_tracks.values() and ev.confidence > 0.5: ## because the evidence may been too far away...
+                    self.objects_tracked.append(ObjectTracked((ev.position.x + ev.position.x)/2., (ev.position.y + ev.position.y)/2., 
+                                                                now, self.calcNewConfidence(ev.position), False,
+                                                                in_free_space=self.how_much_in_free_space(ev)))
 
-        # Publish to rviz and /people_tracked topic.
-        self.publish_tracked_people(now)
-    
-    def leg_array_callback(self, detected_evidences_msg):
-        now = detected_evidences_msg.header.stamp
-       
-        detected_clusters = []
-        for evidence in detected_evidences_msg.legs:
-
-            new_detected_cluster = DetectedCluster(
-                evidence.position.x, 
-                evidence.position.y, 
-                evidence.confidence, 
-                in_free_space=True
-            )      
-            
-            new_detected_cluster.in_free_space_bool = True
-            detected_clusters.append(new_detected_cluster)
-       
-        # Match detected objects to existing tracks
-        matched_tracks = self.match_detections_to_tracks_GNN(self.objects_tracked, detected_clusters) 
-
-         # Update all tracks with new observations 
-        for idx, track in enumerate(self.objects_tracked):
-            if track in matched_tracks:
-                obs = matched_tracks[track]  
-                observations = np.array([obs.pos_x, obs.pos_y])
-                track.confidence = 0.25*track.confidence                                       
-                track.times_seen += 1
-                track.last_seen = now
-                track.seen_in_current_scan = True
-                # Input observations to Kalman filter
-                track.update(observations)
-
-        # Publish to rviz and /people_tracked topic.
-        self.publish_tracked_people(now)
         
+        if len(self.objects_tracked) == 0:
+            return
 
-    def person_evidence_callbackII(self, detected_evidences_msg):    
-        """
-        Callback for every time detect_leg_clusters publishes new sets of PersonEvidenceArray. 
-        It will try to match the newly detected evidences with tracked clusters from previous frames.
+        #### Unite similar tracks that are smaller than epsilon ####
+        tree = spatial.KDTree(np.array([[p.x, p.y] for p in [o.getPosition() for o in self.objects_tracked]]))
+        epsilon = 0.5
+
+        struct = {}
+        for n in range(len(tree.data)):
+            struct[n] = None
+
+        for i, pt in enumerate(tree.data):
+            nearest_point = tree.query(pt, k=2)
+            j = nearest_point[1][1]
+            distance = nearest_point[0][1]
+            if distance > epsilon:
+                struct[i] = i
+            elif struct[j] is None and struct[i] is None:
+                struct[i] = i
+                struct[j] = i
+            elif struct[j] is None:
+                struct[j] = struct[i]
+            else:
+                struct[i] = struct[j]
+
+        # getting conected components
+        v = {}
+        for key, value in sorted(struct.iteritems()):
+            v.setdefault(value, []).append(key)
+        struct = v
+        
+        new_object_tracks = []
+
+        player_idx = None
+        max_player_confidence = float('-inf')
+        new = None
+
+        # update tracks
+        for key in struct.keys():
+            pts = []
+            for v in struct[key]:
+                pt = Position(tree.data[v][0], tree.data[v][1])
+                for i, obj in enumerate(self.objects_tracked):
+                    if obj.getPosition() == pt:
+                        pts.append(i)
+
+            if len(pts) == 1:
+                new = copy.deepcopy(self.objects_tracked[pts[0]])
+            else:
+                max_confidence = float('-inf')
+
+                for p in pts:
+                    if self.objects_tracked[p].confidence > max_confidence:
+                        new = copy.deepcopy(self.objects_tracked[p])
+
+            new_object_tracks.append(new)
+            
+            if new.confidence > max_player_confidence:
+                    max_player_confidence = new.confidence
+                    player_idx = new_object_tracks.index(new)
+        
+        if player_idx is not None:
+            if  self.player_position is None:
+                new_object_tracks[player_idx].setIsPlayer(True)
+                self.player_position = copy.deepcopy(new_object_tracks[player_idx])
+            else:
+                if new_object_tracks[player_idx].getPosition().euclideanDistance(self.player_position.getPosition()) < 1: # TODO -< gambiarra
+                    new_object_tracks[player_idx].setIsPlayer(True)
+                    self.player_position = copy.deepcopy(new_object_tracks[player_idx])
+
+        self.objects_tracked = new_object_tracks
+
+        # Publish to rviz and /people_tracked topic.
+        self.publish_tracked_people(now)
+
+
+    def calcNewConfidence(self, position):
+        p_wrt_blob = self.RBFKernel(position,self.getPlayerKinectPosition(), self.lda_blob)
+        p_wrt_current_player = None
+        if self.player_position is None:
+            p_wrt_current_player = self.RBFKernel(position,Position(0.0,0.0), self.lda_player)
+        else:
+            p_wrt_current_player = self.RBFKernel(position,self.player_position.getPosition(), self.lda_player)
+        return p_wrt_blob + p_wrt_current_player - p_wrt_blob * p_wrt_current_player
+
+
+    def RBFKernel(self,x,b,gamma):
+        """Calculate the Radial Basis Function distance between points.
         Parameters:
-            detected_evidences_msg: PersonEvidenceArray msg containing evidences
+            x: a new position to be compared to b
+            b: the position to compare other points to
+            gamma: the kernel variance, defined as 1/2*sigma^2.
+        Returns:
+            The RBF distance.
+
         """
-
-
-        # Waiting for the local map to be published before proceeding. This is ONLY needed so the benchmarks are consistent every iteration
-        # Should be removed under regular operation
-        # if self.use_scan_header_stamp_for_tfs: # Assume <self.use_scan_header_stamp_for_tfs> means we're running the timing benchmark
-        #     wait_iters = 0
-        #     while self.new_local_map_received == False and wait_iters < 10:
-        #         rospy.sleep(0.1)
-        #         wait_iters += 1
-        #     if wait_iters >= 10:
-        #         rospy.loginfo("no new local_map received. Continuing anyways")
-        #     else:
-        #         self.new_local_map_received = False
-
-        now = detected_evidences_msg.header.stamp
-       
-        detected_clusters = []
-        detected_clusters_set = set()
-        for evidence in detected_evidences_msg.evidences:
-            new_detected_cluster = DetectedCluster(
-                evidence.pose.position.x, 
-                evidence.pose.position.y, 
-                evidence.confidence, 
-                in_free_space=self.how_much_in_free_space(evidence.pose.position.x, evidence.pose.position.y)
-            )      
-            if new_detected_cluster.in_free_space < self.in_free_space_threshold:
-                new_detected_cluster.in_free_space_bool = True
-            else:
-                new_detected_cluster.in_free_space_bool = False
-            
-            detected_clusters.append(new_detected_cluster)
-            detected_clusters_set.add(new_detected_cluster)  
-      
-		# Propogate existing tracks
-        to_duplicate = set()
-        propogated = copy.deepcopy(self.objects_tracked)
-        for propogated_track in propogated:
-            propogated_track.update(np.ma.masked_array(np.array([0, 0]), mask=[1,1])) 
-            if propogated_track.is_person:
-                to_duplicate.add(propogated_track)
-       
-        # Duplicate tracks of people so they can be matched twice in the matching
-        duplicates = {}
-        for propogated_track in to_duplicate:
-            propogated.append(copy.deepcopy(propogated_track))
-            duplicates[propogated_track] = propogated[-1]
-
-        # Match detected objects to existing tracks
-        matched_tracks = self.match_detections_to_tracks_GNN(propogated, detected_clusters)  
-  
-        # Publish non-human clusters so the local grid occupancy map knows which scan clusters correspond to people
-        non_legs_msg = LegArray()
-        non_legs_msg.header = detected_evidences_msg.header
-        leg_clusters = set()
-        for track, detect in matched_tracks.items(): 
-            if track.is_person:
-                leg_clusters.add(detect)
-        non_leg_clusters = detected_clusters_set.difference(leg_clusters)
-        for detect in non_leg_clusters:
-            non_leg = Leg(1, Point(detect.pos_x, detect.pos_y, 0), [], [])
-            non_legs_msg.legs.append(non_leg)              
-        self.non_leg_clusters_pub.publish(non_legs_msg)  
-
-        # Update all tracks with new oberservations 
-        tracks_to_delete = set()   
-        for idx, track in enumerate(self.objects_tracked):
-            propogated_track = propogated[idx] # Get the corresponding propogated track
-            if propogated_track.is_person:
-                if propogated_track in matched_tracks and duplicates[propogated_track] in matched_tracks:
-                    # Two matched legs for this person. Create a new detected evidence which is the average of the two
-                    md_1 = matched_tracks[propogated_track]
-                    md_2 = matched_tracks[duplicates[propogated_track]]
-                    matched_detection = DetectedCluster((md_1.pos_x+md_2.pos_x)/2., (md_1.pos_y+md_2.pos_y)/2., (md_1.confidence+md_2.confidence)/2., (md_1.in_free_space+md_2.in_free_space)/2.)
-                elif propogated_track in matched_tracks:
-                    # Only one matched leg for this person
-                    md_1 = matched_tracks[propogated_track]
-                    md_2 = duplicates[propogated_track]
-                    matched_detection = DetectedCluster((md_1.pos_x+md_2.pos_x)/2., (md_1.pos_y+md_2.pos_y)/2., md_1.confidence, md_1.in_free_space)                    
-                elif duplicates[propogated_track] in matched_tracks:
-                    # Only one matched leg for this person 
-                    md_1 = matched_tracks[duplicates[propogated_track]]
-                    md_2 = propogated_track
-                    matched_detection = DetectedCluster((md_1.pos_x+md_2.pos_x)/2., (md_1.pos_y+md_2.pos_y)/2., md_1.confidence, md_1.in_free_space)                                        
-                else:      
-                    # No legs matched for this person 
-                    matched_detection = None  
-            else:
-                if propogated_track in matched_tracks:
-                    # Found a match for this non-person track
-                    matched_detection = matched_tracks[propogated_track]
-                else:
-                    matched_detection = None  
-
-            if matched_detection:
-                observations = np.array([matched_detection.pos_x, 
-                                         matched_detection.pos_y])
-                track.in_free_space = 0.8*track.in_free_space + 0.2*matched_detection.in_free_space 
-                track.confidence = 0.95*track.confidence + 0.05*matched_detection.confidence                                       
-                track.times_seen += 1
-                track.last_seen = now
-                track.seen_in_current_scan = True
-            else: # propogated_track not matched to a detection
-                # don't provide a measurement update for Kalman filter 
-                # so send it a masked_array for its observations
-                observations = np.ma.masked_array(np.array([0, 0]), mask=[1,1]) 
-                track.seen_in_current_scan = False
-                        
-            # Input observations to Kalman filter
-            track.update(observations)
-
-            # Check track for deletion           
-            if  track.is_person and track.confidence < self.confidence_threshold_to_maintain_track:
-                tracks_to_delete.add(track)
-                # rospy.loginfo("deleting due to low confidence")
-            else:
-                # Check track for deletion because covariance is too large
-                cov = track.filtered_state_covariances[0][0] + track.var_obs # cov_xx == cov_yy == cov
-                if cov > self.max_cov:
-                    tracks_to_delete.add(track)
-                    # rospy.loginfo("deleting because unseen for %.2f", (now - track.last_seen).to_sec())
-
-        # Delete tracks that have been set for deletion
-        for track in tracks_to_delete:         
-            track.deleted = True # Because the tracks are also pointed to in self.potential_leg_pairs, we have to mark them deleted so they can deleted from that set too
-            self.objects_tracked.remove(track)
-            
-        # If detections were not matched, create a new track  
-        for detect in detected_clusters:      
-            if not detect in matched_tracks.values():
-                self.objects_tracked.append(ObjectTracked(detect.pos_x, detect.pos_y, now, detect.confidence, is_person=False, in_free_space=detect.in_free_space))
-
-        # Do some leg pairing to create potential people tracks/leg pairs
-        for track_1 in self.objects_tracked:
-            for track_2 in self.objects_tracked:
-                if (track_1 != track_2 
-                    and track_1.id_num > track_2.id_num 
-                    and (not track_1.is_person or not track_2.is_person) 
-                    and (track_1, track_2) not in self.potential_leg_pairs
-                    ):
-                    self.potential_leg_pairs.add((track_1, track_2))
-                    self.potential_leg_pair_initial_dist_travelled[(track_1, track_2)] = (track_1.dist_travelled, track_2.dist_travelled)
-        
-        # We want to iterate over the potential leg pairs but iterating over the set <self.potential_leg_pairs> will produce arbitrary iteration orders.
-        # This is bad if we want repeatable tests (but otherwise, it shouldn't affect performance).
-        # So we'll create a sorted list and iterate over that.
-        potential_leg_pairs_list = list(self.potential_leg_pairs)
-        potential_leg_pairs_list.sort(key=lambda tup: (tup[0].id_num, tup[1].id_num))
-
-        # Check if current leg pairs are still valid and if they should spawn a person
-        leg_pairs_to_delete = set()   
-        for track_1, track_2 in potential_leg_pairs_list:
-            # Check if we should delete this pair because 
-            # - the legs are too far apart 
-            # - or one of the legs has already been paired 
-            # - or a leg has been deleted because it hasn't been seen for a while
-            dist = ((track_1.pos_x - track_2.pos_x)**2 + (track_1.pos_y - track_2.pos_y)**2)**(1./2.)
-            if (dist > self.max_leg_pairing_dist 
-                or track_1.deleted or track_2.deleted
-                or (track_1.is_person and track_2.is_person) 
-                or track_1.confidence < self.confidence_threshold_to_maintain_track 
-                or track_2.confidence < self.confiself, detected_evidences_msgdence_threshold_to_maintain_track
-                ):
-                leg_pairs_to_delete.add((track_1, track_2))
-                continue
-
-            # Check if we should create a tracked person from this pair
-            # Three conditions must be met:
-            # - both tracks have been matched to a evidence in the current scan
-            # - both tracks have travelled at least a distance of <self.dist_travelled_together_to_initiate_leg_pair> since they were paired
-            # - both tracks are in free-space
-            if track_1.seen_in_current_scan and track_2.seen_in_current_scan:
-                track_1_initial_dist, track_2_initial_dist = self.potential_leg_pair_initial_dist_travelled[(track_1, track_2)]
-                dist_travelled = min(track_1.dist_travelled - track_1_initial_dist, track_2.dist_travelled - track_2_initial_dist)
-                if (dist_travelled > self.dist_travelled_together_to_initiate_leg_pair 
-                    and (track_1.in_free_space < self.in_free_space_threshold or track_2.in_free_space < self.in_free_space_threshold)
-                    ):
-                    if not track_1.is_person  and not track_2.is_person:
-                        # Create a new person from this leg pair
-                        self.objects_tracked.append(
-                            ObjectTracked(
-                                (track_1.pos_x+track_2.pos_x)/2., 
-                                (track_1.pos_y+track_2.pos_y)/2., now, 
-                                (track_1.confidence+track_2.confidence)/2., 
-                                is_person=True, 
-                                in_free_space=0.)
-                            )
-                        track_1.deleted = True
-                        track_2.deleted = True
-                        self.objects_tracked.remove(track_1)
-                        self.objects_tracked.remove(track_2)
-                    elif track_1.is_person:
-                        # Matched a tracked person to a tracked leg. Just delete the leg and the person will hopefully be matched next iteration
-                        track_2.deleted = True
-                        self.objects_tracked.remove(track_2)
-                    else: # track_2.is_person:
-                        # Matched a tracked person to a tracked leg. Just delete the leg and the person will hopefully be matched next iteration
-                        track_1.deleted = True
-                        self.objects_tracked.remove(track_1)
-                    leg_pairs_to_delete.add((track_1, track_2))
-
-        # Delete leg pairs set for deletion
-        for leg_pair in leg_pairs_to_delete:
-            self.potential_leg_pairs.remove(leg_pair)
-
-        # Publish to rviz and /people_tracked topic.
-        self.publish_tracked_objects(now)
-        self.publish_tracked_people(now)
-            
-
-    def publish_tracked_objects(self, now):
-        """
-        Publish markers of tracked objects to Rviz
-        """
-        # Make sure we can get the required transform first:
-        if self.use_scan_header_stamp_for_tfs:
-            tf_time = now            
-            try:
-                self.listener.waitForTransform(self.publish_people_frame, self.fixed_frame, tf_time, rospy.Duration(1.0))
-                transform_available = True
-            except:
-                transform_available = False
+        if isinstance(x, Position) or isinstance(b,Position):
+            x = np.array(x.to_list())
+            b = np.array(b.to_list())
         else:
-            tf_time = rospy.Time(0)
-            transform_available = self.listener.canTransform(self.publish_people_frame, self.fixed_frame, tf_time)
-
-        marker_id = 0
-        if not transform_available:
-            rospy.loginfo("Person tracker: tf not avaiable. Not publishing people")
-        else:
-            for track in self.objects_tracked:
-                if track.is_person:
-                    continue
-                    
-                if self.publish_occluded or track.seen_in_current_scan: # Only publish people who have been seen in current scan, unless we want to publish occluded people
-                    # Get the track position in the <self.publish_people_frame> frame
-                    ps = PointStamped()
-                    ps.header.frame_id = self.fixed_frame
-                    ps.header.stamp = tf_time
-                    ps.point.x = track.pos_x
-                    ps.point.y = track.pos_y
-                    try:
-                        ps = self.listener.transformPoint(self.publish_people_frame, ps)
-                    except:
-                        continue
-
-                    # publish rviz markers       
-                    marker = Marker()
-                    marker.header.frame_id = self.publish_people_frame
-                    marker.header.stamp = now
-                    marker.ns = "objects_tracked"
-                    if track.in_free_space < self.in_free_space_threshold:
-                        marker.color.r = track.colour[0]
-                        marker.color.g = track.colour[1]
-                        marker.color.b = track.colour[2]                   
-                    else:                    
-                        marker.color.r = 0 
-                        marker.color.g = 0
-                        marker.color.b = 0
-                    marker.color.a = 1
-                    marker.pose.position.x = ps.point.x 
-                    marker.pose.position.y = ps.point.y
-                    marker.id = marker_id
-                    marker_id += 1
-                    marker.type = Marker.CYLINDER
-                    marker.scale.x = 0.05
-                    marker.scale.y = 0.05
-                    marker.scale.z = 0.2
-                    marker.pose.position.z = 0.15
-                    self.marker_pub.publish(marker)
-
-                    # # Publish a marker showing distance travelled:
-                    # if track.dist_travelled > 1:
-                    #     marker.color.r = 1.0
-                    #     marker.color.g = 1.0
-                    #     marker.color.b = 1.0
-                    #     marker.color.a = 1.0
-                    #     marker.id = marker_id
-                    #     marker_id += 1
-                    #     marker.type = Marker.TEXT_VIEW_FACING
-                    #     marker.text = str(round(track.dist_travelled,1))
-                    #     marker.scale.z = 0.1            
-                    #     marker.pose.position.z = 0.6
-                    #     self.marker_pub.publish(marker)      
-
-                    # Publish <self.confidence_percentile>% confidence bounds of track as an ellipse:
-                    # cov = track.filtered_state_covariances[0][0] + track.var_obs # cov_xx == cov_yy == cov
-                    # std = cov**(1./2.)
-                    # gate_dist_euclid = scipy.stats.norm.ppf(1.0 - (1.0-self.confidence_percentile)/2., 0, std)                    
-                    # marker.type = Marker.SPHERE
-                    # marker.scale.x = 2*gate_dist_euclid
-                    # marker.scale.y = 2*gate_dist_euclid
-                    # marker.scale.z = 0.01   
-                    # marker.color.r = 1.0
-                    # marker.color.g = 1.0
-                    # marker.color.b = 1.0                
-                    # marker.color.a = 0.1
-                    # marker.pose.position.z = 0.0
-                    # marker.id = marker_id 
-                    # marker_id += 1                    
-                    # self.marker_pub.publish(marker)
-
-            # Clear previously published track markers
-            for m_id in xrange(marker_id, self.prev_track_marker_id):
-                marker = Marker()
-                marker.header.stamp = now                
-                marker.header.frame_id = self.publish_people_frame
-                marker.ns = "objects_tracked"
-                marker.id = m_id
-                marker.action = marker.DELETE   
-                self.marker_pub.publish(marker)
-            self.prev_track_marker_id = marker_id
-
-    def get_player_pose_wrt_robot(self):
-        """
-        Gets robot global position. That is, performs a TF transformation from /base_link to /map and returns
-        x,y and theta.
-        OUTPUTS:
-        @ a 3D-numpy array defined as: [x, y, theta] w.r.t /map.
-        """
-        try:
-            self.tf_listener.waitForTransform('/base_link','/player_link_wrt_map', rospy.Time(0), rospy.Duration(1.0))
-            trans, rot = self.tf_listener.lookupTransform('/base_link','/player_link_wrt_map', rospy.Time(0))
-            # transform from quaternion to euler angles
-            # euler = tf.transformations.euler_from_quaternion(rot)
- 
-            return trans[0], trans[1], rot   # [xR,yR,quaternion]
-
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
-            rospy.logerr("Navigation node: " + str(e))
-
-
-    def getRobotPose(self):
-        """
-        Gets robot global position. Thatvel_y is, performs a TF transformation from /base_link to /map and returns
-        x,y and theta.
-        OUTPUTS:
-        @ a 3D-numpy array defined as: [x, y, theta] w.r.t /map.
-        """
-        try:
-            self.tf_listener.waitForTransform('/map','/base_link', rospy.Time(0), rospy.Duration(1.0))
-            trans, rot = self.tf_listener.lookupTransform('/map','/base_link', rospy.Time(0))
-            # transform from quaternion to euler angles
-            euler = tf.transformations.euler_from_quaternion(rot)
- 
-            return np.array([trans[0], trans[1], euler[2]])   # [xR,yR,theta]
-
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
-            rospy.logerr("Navigation node: " + str(e))
+            raise Exception('x and b must be Position instances')
+        return np.exp(-lda*np.dot(np.transpose(np.array(x)-np.array(b)),(np.array(x)-np.array(b))))
 
     def publish_tracked_people(self, now):
         """
@@ -781,151 +593,125 @@ class KalmanTracker:
         if not transform_available:
             rospy.loginfo("Person tracker: tf not avaiable. Not publishing people")
         else:
-
-            person_to_pub = None
             for person in self.objects_tracked:
-                if person_to_pub is None:
-                    person_to_pub = person
-                elif person.confidence > person_to_pub.confidence:
-                    person_to_pub = person
-            
-            if person_to_pub is None:
-                return
-            else: # Only publish people who have been seen in current scan, unless we want to publish occluded people
-                # Get position in the <self.publish_people_frame> frame 
-                ps = PointStamped()
-                ps.header.frame_id = self.fixed_frame
-                ps.header.stamp = tf_time
-                ps.point.x = person.pos_x
-                ps.point.y = person.pos_y
+                if not person.is_player:
+                    continue
 
-                try:
-                    ps = self.listener.transformPoint(self.publish_people_frame, ps)
-                except:
-                    rospy.logerr("Not publishing people due to no transform from fixed_frame-->publish_people_frame")                                                
-                    return
-                
-                # publish to people_tracked topic
-                new_person = Person() 
-                new_person.pose.position.x = ps.point.x 
-                new_person.pose.position.y = ps.point.y 
-                yaw = math.atan2(person.vel_y, person.vel_x)
-                quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
-                new_person.pose.orientation.x = quaternion[0]
-                new_person.pose.orientation.y = quaternion[1]
-                new_person.pose.orientation.z = quaternion[2]
-                new_person.pose.orientation.w = quaternion[3] 
-                new_person.id = person.id_num
-                new_person.confidence = person.confidence
-                new_person.velocity = Point(person.vel_x, person.vel_y, 0)
-                people_tracked_msg.people.append(new_person)
+                if self.publish_occluded or person.seen_in_current_scan: # Only publish people who have been seen in current scan, unless we want to publish occluded people
+                    # Get position in the <self.publish_people_frame> frame 
+                    ps = PointStamped()
+                    ps.header.frame_id = self.fixed_frame
+                    ps.header.stamp = tf_time
+                    ps.point.x = person.pos_x
+                    ps.point.y = person.pos_y
 
-                # publish rviz markers       
-                # Cylinder for body 
-                marker = Marker()
-                marker.header.frame_id = self.publish_people_frame
-                marker.header.stamp = now
-                marker.ns = "People_tracked"
-                marker.color.r = person.colour[0]
-                marker.color.g = person.colour[1]
-                marker.color.b = person.colour[2]          
-                marker.color.a = (rospy.Duration(3) - (rospy.get_rostime() - person.last_seen)).to_sec()/rospy.Duration(3).to_sec() + 0.1
-                marker.pose.position.x = ps.point.x 
-                marker.pose.position.y = ps.point.y
-                marker.id = marker_id 
-                marker_id += 1
-                marker.type = Marker.CYLINDER
-                marker.scale.x = 0.2
-                marker.scale.y = 0.2
-                marker.scale.z = 1.2
-                marker.pose.position.z = 0.8
-                self.marker_pub.publish(marker)  
-
-                # Sphere for head shape                        
-                marker.type = Marker.SPHERE
-                marker.scale.x = 0.2
-                marker.scale.y = 0.2
-                marker.scale.z = 0.2                
-                marker.pose.position.z = 1.5
-                marker.id = marker_id 
-                marker_id += 1                        
-                self.marker_pub.publish(marker)
-
-                # Text showing person's ID number 
-                marker.color.r = 1.0
-                marker.color.g = 1.0
-                marker.color.b = 1.0
-                marker.color.a = 1.0
-                marker.id = marker_id
-                marker_id += 1
-                marker.type = Marker.TEXT_VIEW_FACING
-                marker.text = "Player"
-                marker.scale.z = 0.2         
-                marker.pose.position.z = 2
-                self.marker_pub.publish(marker)
-
-                # Arrow pointing in direction they're facing with magnitude proportional to speed
-                marker.color.r = person.colour[0]
-                marker.color.g = person.colour[1]
-                marker.color.b = person.colour[2]          
-                marker.color.a = (rospy.Duration(3) - (rospy.get_rostime() - person.last_seen)).to_sec()/rospy.Duration(3).to_sec() + 0.1                        
-                start_point = Point()
-                end_point = Point()
-                start_point.x = marker.pose.position.x 
-                start_point.y = marker.pose.position.y 
-                end_point.x = start_point.x + 0.5*person.vel_x
-                end_point.y = start_point.y + 0.5*person.vel_y
-                marker.pose.position.x = 0.
-                marker.pose.position.y = 0.
-                marker.pose.position.z = 0.1
-                marker.id = marker_id
-                marker_id += 1
-                marker.type = Marker.ARROW
-                marker.points.append(start_point)
-                marker.points.append(end_point)
-                marker.scale.x = 0.05
-                marker.scale.y = 0.1
-                marker.scale.z = 2.5
+                    try:
+                        ps = self.listener.transformPoint(self.publish_people_frame, ps)
+                    except:
+                        rospy.logerr("Not publishing people due to no transform from fixed_frame-->publish_people_frame")                                                
+                        continue
                     
-                self.marker_pub.publish(marker)                           
+                    # publish to people_tracked topic
+                    new_person = Person() 
+                    new_person.pose.position.x = ps.point.x 
+                    new_person.pose.position.y = ps.point.y 
+                    yaw = math.atan2(person.vel_y, person.vel_x)
+                    quaternion = tf.transformations.quaternion_from_euler(0, 0, yaw)
+                    new_person.pose.orientation.x = quaternion[0]
+                    new_person.pose.orientation.y = quaternion[1]
+                    new_person.pose.orientation.z = quaternion[2]
+                    new_person.pose.orientation.w = quaternion[3] 
+                    new_person.id = person.id_num 
+                    new_person.speed = np.sqrt(person.vel_x**2 + person.vel_y**2)
+                    people_tracked_msg.people.append(copy.deepcopy(new_person))
 
-                # <self.confidence_percentile>% confidence bounds of person's position as an ellipse:
-                cov = person.filtered_state_covariances[0][0] + person.var_obs # cov_xx == cov_yy == cov
-                std = cov**(1./2.)
-                gate_dist_euclid = scipy.stats.norm.ppf(1.0 - (1.0-self.confidence_percentile)/2., 0, std)
-                marker.pose.position.x = ps.point.x 
-                marker.pose.position.y = ps.point.y                    
-                marker.type = Marker.SPHERE
-                marker.scale.x = 2*gate_dist_euclid
-                marker.scale.y = 2*gate_dist_euclid
-                marker.scale.z = 0.01   
-                marker.color.r = person.colour[0]
-                marker.color.g = person.colour[1]
-                marker.color.b = person.colour[2]            
-                marker.color.a = 0.1
-                marker.pose.position.z = 0.0
-                marker.id = marker_id 
-                marker_id += 1                    
-                self.marker_pub.publish(marker)
+                    # publish rviz markers       
+                    # Cylinder for body 
+                    marker = Marker()
+                    marker.header.frame_id = self.publish_people_frame
+                    marker.header.stamp = now
+                    marker.ns = "People_tracked"
+                    marker.color.r = person.colour[0]
+                    marker.color.g = person.colour[1]
+                    marker.color.b = person.colour[2]        
+                    marker.color.a = (rospy.Duration(3) - (rospy.get_rostime() - person.last_seen)).to_sec()/rospy.Duration(3).to_sec() + 0.1
+                    marker.pose.position.x = ps.point.x 
+                    marker.pose.position.y = ps.point.y
+                    marker.id = marker_id 
+                    marker_id += 1
+                    marker.type = Marker.CYLINDER
+                    marker.scale.x = 0.2
+                    marker.scale.y = 0.2
+                    marker.scale.z = 1.2
+                    marker.pose.position.z = 0.8
+                    self.marker_pub.publish(marker)  
 
+                    # Sphere for head shape                        
+                    marker.type = Marker.SPHERE
+                    marker.scale.x = 0.2
+                    marker.scale.y = 0.2
+                    marker.scale.z = 0.2                
+                    marker.pose.position.z = 1.5
+                    marker.id = marker_id 
+                    marker_id += 1                        
+                    self.marker_pub.publish(marker)     
 
-                self.br.sendTransform((ps.point.x, ps.point.y, 0), 
-                                        tf.transformations.quaternion_from_euler(0, 0, 0),
-                                        rospy.Time.now(), "/player_link_wrt_map", "/map")
+                    # Text showing person's ID number 
+                    marker.color.r = 1.0
+                    marker.color.g = 1.0
+                    marker.color.b = 1.0
+                    marker.color.a = 1.0
+                    marker.id = marker_id
+                    marker_id += 1
+                    marker.type = Marker.TEXT_VIEW_FACING
+                    marker.text = "C: {:.2f}".format(person.confidence) #str(person.id_num)
+                    marker.scale.z = 0.2         
+                    marker.pose.position.z = 1.7
+                    self.marker_pub.publish(marker)
 
+                    # Arrow pointing in direction they're facing with magnitude proportional to speed
+                    marker.color.r = person.colour[0]
+                    marker.color.g = person.colour[1]
+                    marker.color.b = person.colour[2]          
+                    marker.color.a = (rospy.Duration(3) - (rospy.get_rostime() - person.last_seen)).to_sec()/rospy.Duration(3).to_sec() + 0.1                        
+                    start_point = Point()
+                    end_point = Point()
+                    start_point.x = marker.pose.position.x 
+                    start_point.y = marker.pose.position.y 
+                    end_point.x = start_point.x + 0.5*person.vel_x
+                    end_point.y = start_point.y + 0.5*person.vel_y
+                    marker.pose.position.x = 0.
+                    marker.pose.position.y = 0.
+                    marker.pose.position.z = 0.1
+                    marker.id = marker_id
+                    marker_id += 1
+                    marker.type = Marker.ARROW
+                    marker.points.append(start_point)
+                    marker.points.append(end_point)
+                    marker.scale.x = 0.05
+                    marker.scale.y = 0.1
+                    marker.scale.z = 0.2
+                        
+                    self.marker_pub.publish(marker)                           
 
-                player_pose_wrt_robot = self.get_player_pose_wrt_robot()
-                robot_pose_wrt_map = self.getRobotPose()
-
-                # Publishing player position wrt robot for planner
-                self.br.sendTransform((player_pose_wrt_robot[0], player_pose_wrt_robot[1], 0), 
-                                        player_pose_wrt_robot[2],
-                                        rospy.Time.now(), "/player_filtered_link", "/base_link")
-
-                # publish message containing angle of robot wrt center map for orientation puropses
-                angle_msg = Float32()
-                angle_msg.data = math.atan2(player_pose_wrt_robot[1],player_pose_wrt_robot[0])
-                self.pub_angle_center.publish(angle_msg)                   
+                    # <self.confidence_percentile>% confidence bounds of person's position as an ellipse:
+                    cov = person.filtered_state_covariances[0][0] + person.var_obs # cov_xx == cov_yy == cov
+                    std = cov**(1./2.)
+                    gate_dist_euclid = scipy.stats.norm.ppf(1.0 - (1.0-self.confidence_percentile)/2., 0, std)
+                    marker.pose.position.x = ps.point.x 
+                    marker.pose.position.y = ps.point.y                    
+                    marker.type = Marker.SPHERE
+                    marker.scale.x = 2*gate_dist_euclid
+                    marker.scale.y = 2*gate_dist_euclid
+                    marker.scale.z = 0.01   
+                    marker.color.r = person.colour[0]
+                    marker.color.g = person.colour[1]
+                    marker.color.b = person.colour[2]            
+                    marker.color.a = 0.1
+                    marker.pose.position.z = 0.0
+                    marker.id = marker_id 
+                    marker_id += 1                    
+                    self.marker_pub.publish(marker)                
 
         # Clear previously published people markers
         for m_id in xrange(marker_id, self.prev_person_marker_id):
@@ -940,13 +726,12 @@ class KalmanTracker:
         self.prev_person_marker_id = marker_id          
 
         # Publish people tracked message
-        if len(people_tracked_msg.people) != 0:
-            self.people_tracked_pub.publish(people_tracked_msg)            
-
+        self.people_tracked_pub.publish(people_tracked_msg)
+        self.polar_grid.publish_fov(now)         
 
 if __name__ == '__main__':
     rospy.init_node('player_tracker', anonymous=True)
-    kmt = KalmanTracker()
+    t = Tracker()
 
 
 

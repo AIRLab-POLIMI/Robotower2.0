@@ -38,14 +38,14 @@ public:
 
     ros::NodeHandle nh_private("~");
     std::string local_map_topic;
-    nh_.param("fixed_frame", fixed_frame_, std::string("odom"));
+    nh_.param("fixed_frame", fixed_frame_, std::string("base_link"));
     nh_.param("base_frame", base_frame_, std::string("base_link"));
     nh_private.param("local_map_topic", local_map_topic, std::string("test_local_map"));
     nh_private.param("local_map_resolution", resolution_, 0.05);
-    nh_private.param("local_map_cells_per_side", width_, 400);
+    nh_private.param("local_map_cells_per_side", width_, 300);
     nh_private.param("invalid_measurements_are_free_space", invalid_measurements_are_free_space_, false);
     nh_private.param("unseen_is_freespace", unseen_is_freespace_, true);
-    nh_.param("use_scan_header_stamp_for_tfs", use_scan_header_stamp_for_tfs_, false);
+    nh_.param("use_scan_header_stamp_for_tfs", use_scan_header_stamp_for_tfs_, true);
 
     nh_private.param("shift_threshold", shift_threshold_, 1.0);
     nh_private.param("reliable_inf_range", reliable_inf_range_, 5.0);
@@ -67,10 +67,10 @@ public:
       }
     }
 
-	laserScanSubscriber_ = nh_.subscribe("/scan", 1, &OccupancyGridMapping::laserCallback, this);
+	laserScanSubscriber_ = nh_.subscribe("/scan_obstacles", 1, &OccupancyGridMapping::laserCallback, this);
     map_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>(local_map_topic, 10);
 
-	timer = nh_.createTimer(ros::Duration(0.05), &OccupancyGridMapping::reset, this);
+	timer = nh_.createTimer(ros::Duration(0.1), &OccupancyGridMapping::reset, this);
   }
 
 private:
@@ -110,8 +110,6 @@ private:
 	tf::TransformListener tfl_;
 
 	void reset(const ros::TimerEvent&){
-
-		ROS_WARN("Reseting grid...");
 
 		// Initialize map
 		// All probabilities are held in log-space
@@ -223,7 +221,7 @@ private:
 
 						// Find dist and angle of current cell to laser position
 						double dist = sqrt(pow(i * resolution_ + grid_centre_pos_x_ - (width_ / 2.0) * resolution_ - laser_x, 2.0) +
-										pow(j * resolution_ + grid_centre_pos_y_ - (width_ / 2.0) * resolution_ - laser_y, 2.0));
+										   pow(j * resolution_ + grid_centre_pos_y_ - (width_ / 2.0) * resolution_ - laser_y, 2.0));
 						double angle = betweenPIandNegPI( atan2(j * resolution_ + grid_centre_pos_y_ - (width_ / 2.0) * resolution_ - laser_y, 
 										i * resolution_ + grid_centre_pos_x_ - (width_ / 2.0) * resolution_ - laser_x) - laser_yaw);
 						bool is_human;
@@ -232,11 +230,13 @@ private:
 						// Find applicable laser measurement
 						double closest_beam_angle = round(angle / scanMsg->angle_increment) * scanMsg->angle_increment;
 						int closest_beam_idx = (int)round(angle / scanMsg->angle_increment) + scanMsg->ranges.size() / 2;
+						
 
 						// Processing the range value of the closest_beam to determine if
 						// it's a valid measurement or not.
 						// Sometimes it returns infs and NaNs that have to be dealt with
 						bool valid_measurement;
+						
 						if (scanMsg->range_min <= scanMsg->ranges[closest_beam_idx] && scanMsg->ranges[closest_beam_idx] <= scanMsg->range_max) {
 							// This is a valid measurement.
 							valid_measurement = true;
@@ -260,12 +260,14 @@ private:
 							double dist_rel = dist - scanMsg->ranges[closest_beam_idx];
 							double angle_rel = angle - closest_beam_angle;
 							if (dist > scanMsg->range_max or dist > scanMsg->ranges[closest_beam_idx] + ALPHA / 2.0 or
-								fabs(angle_rel) > BETA / 2 or (!std::isfinite(scanMsg->ranges[closest_beam_idx]) and dist > reliable_inf_range_))
+								fabs(angle_rel) > BETA / 2 or (!std::isfinite(scanMsg->ranges[closest_beam_idx]) and dist > reliable_inf_range_)){
 								m_update = UNKNOWN;
-							else if (scanMsg->ranges[closest_beam_idx] < scanMsg->range_max and fabs(dist_rel) < ALPHA / 2 and !is_human)
+							}else if (scanMsg->ranges[closest_beam_idx] < scanMsg->range_max and fabs(dist_rel) < ALPHA / 2 and !is_human){
 								m_update = OBSTACLE;
-							else
+						}
+							else{
 								m_update = FREE_SPACE;
+							}
 						} else {
 							// Assume cells corresponding to erroneous measurements are
 							// either in freespace or unknown
@@ -279,9 +281,12 @@ private:
 					}
 
 					// update l_ using m_update
-					l_[i + width_ * j] = (l_[i + width_ * j] + logit(m_update) - l0_);
-					if (l_[i + width_ * j] < l_min_) l_[i + width_ * j] = l_min_;
-					else if (l_[i + width_ * j] > l_max_) l_[i + width_ * j] = l_max_;
+					l_[i + width_ * j] =  l_[i + width_ * j] + logit(m_update) - l0_;
+
+					if (l_[i + width_ * j] < l_min_)
+						l_[i + width_ * j] = l_min_;
+					else if (l_[i + width_ * j] > l_max_)
+						l_[i + width_ * j] = l_max_;
 				}
 			}
 

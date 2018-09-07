@@ -39,11 +39,11 @@ def generate_position(centre, angle, dx, dy):
   return res
 
 def createMarker(m_id, m_type, action, pose, scale, color, target_frame):
+    global _marker_seq
     marker = Marker()
     marker.header.frame_id = target_frame
     marker.header.stamp = rospy.Time.now()
     marker.header.seq = _marker_seq
-    global _marker_seq
     _marker_seq += 1
     marker.ns = "people_tracker"
     marker.id = m_id

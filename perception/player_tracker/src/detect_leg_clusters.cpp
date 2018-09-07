@@ -74,7 +74,7 @@ public:
     std::string scan_topic;
     if (!nh_.getParam("forest_file", forest_file))
       ROS_ERROR("ERROR! Could not get random forest filename");
-    nh_.param("scan_topic", scan_topic, std::string("scan_obstacles"));
+    nh_.param("scan_topic", scan_topic, std::string("scan"));
     nh_.param("fixed_frame", fixed_frame_, std::string("odom"));
     nh_.param("detection_threshold", detection_threshold_, -1.0);
     nh_.param("cluster_dist_euclid", cluster_dist_euclid_, 0.13);
@@ -185,6 +185,7 @@ private:
     
     // Store all processes legs in a set ordered according to their relative distance to the laser scanner
     std::set <player_tracker::Leg, CompareLegs> leg_set;
+    std::set <player_tracker::Leg, CompareLegs> non_leg_set;
     if (!transform_available)
     {
       ROS_INFO("Not publishing detected leg clusters because no tf was available");
@@ -233,9 +234,32 @@ private:
               new_leg.position.y = position[1];
               new_leg.confidence = probability_of_leg;
               new_leg.points = (*cluster)->getSamples();
-              new_leg.point_indexes = (*cluster)->getSampleIndexes();
               leg_set.insert(new_leg);
             }
+          }else{
+            // Transform cluster position to fixed frame
+            // This should always be succesful because we've checked earlier if a tf was available
+            bool transform_successful_2;
+            try{
+              tfl_.transformPoint(fixed_frame_, position, position);
+              transform_successful_2 = true;
+            }
+            catch (tf::TransformException ex)
+            {
+              ROS_ERROR("%s",ex.what());
+              transform_successful_2 = false;
+            }
+
+            if (transform_successful_2)
+            {  
+              player_tracker::Leg new_non_leg;
+              new_non_leg.position.x = position[0];
+              new_non_leg.position.y = position[1];
+              new_non_leg.confidence = probability_of_leg;
+              new_non_leg.points = (*cluster)->getSamples();
+              non_leg_set.insert(new_non_leg);
+            }
+
           }
         }
       }     
@@ -254,23 +278,23 @@ private:
       clusters_published_counter++;
 
       // Publish marker to rviz
-      // visualization_msgs::Marker m;
-      // m.header.stamp = scan->header.stamp;
-      // m.header.frame_id = fixed_frame_;
-      // m.ns = "LEGS";
-      // m.id = id_num++;
-      // m.type = m.SPHERE;
-      // m.pose.position.x = leg.position.x ;
-      // m.pose.position.y = leg.position.y;
-      // m.pose.position.z = 0.2;
-      // m.scale.x = 0.13;
-      // m.scale.y = 0.13;
-      // m.scale.z = 0.13;
-      // m.color.a = 1;
-      // m.color.r = 0;
-      // m.color.g = leg.confidence;
-      // m.color.b = leg.confidence;
-      // markers_pub_.publish(m);
+      visualization_msgs::Marker m;
+      m.header.stamp = scan->header.stamp;
+      m.header.frame_id = fixed_frame_;
+      m.ns = "LEGS";
+      m.id = id_num++;
+      m.type = m.SPHERE;
+      m.pose.position.x = leg.position.x ;
+      m.pose.position.y = leg.position.y;
+      m.pose.position.z = 0.2;
+      m.scale.x = 0.13;
+      m.scale.y = 0.13;
+      m.scale.z = 0.13;
+      m.color.a = 1;
+      m.color.r = 0;
+      m.color.g = leg.confidence;
+      m.color.b = leg.confidence;
+      markers_pub_.publish(m);
 
       // Comparison using '==' and not '>=' is important, as it allows <max_detected_clusters_>=-1 
       // to publish infinite markers

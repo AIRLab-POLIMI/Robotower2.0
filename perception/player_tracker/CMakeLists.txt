@@ -34,7 +34,6 @@ if(OPENMP_FOUND)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}   ${OpenMP_C_FLAGS}")
 endif()
 
-
 #########################################################
 # FIND PCL
 #########################################################
@@ -82,16 +81,18 @@ add_message_files(
   FILES
   TrackVariance.msg
   Blob.msg
-  Cluster.msg
-  ClusterArray.msg
   Person.msg
   PersonArray.msg
   Leg.msg
   LegArray.msg
   PersonEvidence.msg
   PersonEvidenceArray.msg
-  Tower.msg
-  TowerArray.msg
+)
+
+## Generate services in the 'srv' folder
+add_service_files(
+   FILES
+   LegProbability.srv
 )
 
 generate_messages(
@@ -105,8 +106,6 @@ generate_messages(
 # )
 
 catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES player_tracker
   DEPENDS
     OpenMP
     message_runtime
@@ -116,11 +115,6 @@ catkin_package(
 include_directories(
 	INCLUDE include
 	${catkin_INCLUDE_DIRS}
-)
-
-## Declare a C++ library
-add_library(${PROJECT_NAME}
-  src/laser_processor.cpp
 )
 
 ##########################
@@ -139,6 +133,20 @@ target_link_libraries(
 )
 
 ##########################
+# KF_fusion
+##########################
+add_executable (
+  kf_fusion
+  src/KF_fusion.cpp
+)
+
+target_link_libraries (
+  kf_fusion
+  ${catkin_LIBRARIES}
+  ${Eigen3_LIBRARIES}
+)
+add_dependencies(kf_fusion ${PROJECT_NAME}_generate_messages_cpp)
+##########################
 # local_occupancy_grid_mapping
 ##########################
 add_executable(
@@ -148,6 +156,19 @@ add_executable(
 )
 target_link_libraries(
   local_occupancy_grid_mapping
+  ${catkin_LIBRARIES}
+)
+
+##########################
+# pf_local_occupancy_grid_mapping
+##########################
+add_executable(
+  pf_local_occupancy_grid_mapping
+  src/pf_local_occupancy_grid_mapping.cpp
+  src/laser_processor.cpp
+)
+target_link_libraries(
+  pf_local_occupancy_grid_mapping
   ${catkin_LIBRARIES}
 )
 
@@ -282,35 +303,6 @@ target_link_libraries(
   ${PCL_LIBRARIES}
 )
 
-##########################
-# laser_cluster_extractor
-##########################
-add_executable(
-    laser_cluster_extractor
-    src/laser_cluster_extractor.cpp
-    src/laser_processor.cpp
-)
-
-target_link_libraries(
-  laser_cluster_extractor
-  ${catkin_LIBRARIES}
-)
-
-##########################
-# ramsac
-##########################
-add_executable (
-  random_sample_consensus
-  src/random_sample_consensus.cpp
-)
-
-target_link_libraries (
-  random_sample_consensus
-  ${PCL_LIBRARIES}
-  ${catkin_LIBRARIES}
-  ${Eigen3_LIBRARIES}
-)
-
 add_dependencies(test_local_occupancy_grid_mapping ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(local_occupancy_grid_mapping ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(local_occupancy_grid_mapping ${PROJECT_NAME}_gencfg)
@@ -325,7 +317,6 @@ add_dependencies(spatial_temporal_node ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(test_local_occupancy_grid_mapping ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(cloud_cluster ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(blob_publisher ${PROJECT_NAME}_generate_messages_cpp)
-add_dependencies(laser_cluster_extractor ${PROJECT_NAME}_generate_messages_cpp)
 
 install(
   PROGRAMS scripts/joint_leg_tracker.py
@@ -350,17 +341,4 @@ install(
 install(
   PROGRAMS scripts/detector.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-## Mark executables and/or libraries for installation
-install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
-
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-  FILES_MATCHING PATTERN "*.h"
-  PATTERN ".svn" EXCLUDE
 )

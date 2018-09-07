@@ -202,7 +202,7 @@ void OnboardCamera::imageCallback(const sensor_msgs::ImageConstPtr &image){
         kalmanUpdate(mean_phi);
         kalmanPredict(); // Perform Kalman prediction
         
-        if (abs(mean_phi * (180/M_PI)) > 3){
+        if (abs(mean_phi * (180/M_PI)) > 10){
 
             ROS_INFO_STREAM("Angle mismatch: " << mean_phi);
             ROS_WARN_STREAM("Angle mismatch (KALMAN): " << x(0,0));

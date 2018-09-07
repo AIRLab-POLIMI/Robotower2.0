@@ -1,0 +1,25 @@
+<?xml version="1.0" ?>
+
+<!--
+To check that you've selected the right clusters, play back the generated bagfile with the "pause" option and step through each frame to see where the red markers end up.
+-->
+
+<launch>
+  <!-- global params -->
+  <param name="min_points_per_cluster" value="3" />
+  <param name="cluster_dist_euclid" value="0.13" />
+
+   <!-- first rosbag file with positive examples -->
+  <node pkg="player_tracker" type="extract_positive_training_clusters" name="extract_positive_training_clusters1" output="screen">
+    <param name="load_bag_file" value="/home/airlab/Documents/bags/leg_tracker/_2018-01-31-16-13-29.bag"/>
+    <param name="save_bag_file" value="/home/airlab/Documents/bags/leg_tracker/positive_1_extracted.bag"/>
+    <param name="scan_topic" value="/scan"/>
+    <param name="laser_frame" value="/base_link"/>
+    <param name="x_min" value="-2.76"/> 
+    <param name="x_max" value="2.47"/> 
+    <param name="y_min" value="-2.37"/>
+    <param name="y_max" value="1.49"/> 
+  </node>
+
+</launch>
+

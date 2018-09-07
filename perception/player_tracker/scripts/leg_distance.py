@@ -4,14 +4,12 @@ import tf
 import math
 import copy
 import numpy as np
-import itertools 
-
 from scipy import spatial
 
 # Custom messages
-from player_tracker.msg import Person, PersonArray, Leg, LegArray, PersonEvidence, PersonEvidenceArray, TowerArray, Tower
+from player_tracker.msg import Person, PersonArray, Leg, LegArray, PersonEvidence, PersonEvidenceArray
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import PolygonStamped, Point32, PointStamped, Point, Pose
+from geometry_msgs.msg import PolygonStamped, Point32
 
 from munkres import Munkres, print_matrix # For the minimum matching assignment problem. To install: https://pypi.python.org/pypi/munkres 
 from scipy.stats import beta
@@ -241,197 +239,73 @@ class posterior:
         plt.suptitle(supertitle)
         plt.show()
 
-class LegContextProcessor:
-    ''' 
-    Process pairs of leg clusters and weight them by their
+
+class LegContextProcessor: 
+    '''Process pairs of leg clusters and weight them by their
     probability of being a human using a generative model trained
-    by data.
+    by data..''' 
     
-    Additionally, use a beta-bernoulli model for controlling the
-    combinatorial explosion on the number of leg pair evaluations.
-    
-    '''
-    
-    def __init__(self, model_name):
-        self.model = joblib.load(model_name)
-        self.cutoff = prior(1, 1)                # prior with uniform parameters
+    def __init__(self, x_min, x_max, y_min, y_max, pub_bounding_box=False, logfile=''):
 
-    
-    def updateCutoff(self, data):
-        '''Updates the cutoff probability for the getDistance() method'''
-        self.cutoff = posterior(data, self.cutoff)
-    
-    def getProbability(self, distance):
-        '''Evaluate pair distance probability'''
-        logprob = self.model.score_samples(np.array(distance))   # get log-probability
-        return np.exp(logprob)
+        self.model = joblib.load(rospy.get_param("leg_dist_model"))
 
-class LegDistance: 
-
-    '''Calculates the distance between LEG clusters and saves to file.''' 
-    
-    def __init__(self, logfile=''):
-
-        # TODO: change this path to be acquire from parameter!
-        
-        leg_model_name = rospy.get_param('leg_model')
-        self.leg_context = LegContextProcessor(leg_model_name)
-
-        self.tower_triangle_areas = []
         self.tf_listener = tf.TransformListener()
-        self.pub_tower_markers = rospy.Publisher('tower_rectangle', PolygonStamped, queue_size=1)
-        self.marker_pub = rospy.Publisher('detected_legs_in_bounding_box', Marker, queue_size=3)
-        self.evidence_pub = rospy.Publisher('evidence_of_player', PersonEvidenceArray, queue_size=3)
-        self.pub_towers = rospy.Publisher('estimated_tower_positions', TowerArray, queue_size=5)
 
+        self.pub_bounding_box = pub_bounding_box
         self.isSaveToFile = logfile != ''
         self.fixed_frame = rospy.get_param('fixed_frame')
 
         if self.isSaveToFile:
             self.f = open(logfile, "w")
         
-
-        self.bound_box_points = []
+        # accepted area
+        self.x_min_ = x_min
+        self.x_max_ = x_max
+        self.y_min_ = y_min
+        self.y_max_ = y_max
 
         # ROS subscribers         
         self.detected_clusters_sub = rospy.Subscriber('detected_leg_clusters', LegArray, self.detected_clusters_callback)      
 
         # ROS publishers
         self.pub = rospy.Publisher('bounding_box', PolygonStamped, queue_size=1)
-
-        self.tower_positions, _ = self.get_tower_distances()
-        self.tower_target_distances = set([])
-        
-        for perm in itertools.permutations(self.tower_positions, r=3):
-            dist1_2 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[1].x, perm[1].y]))
-            dist1_3 = spatial.distance.euclidean(np.array([perm[0].x, perm[0].y]),np.array([perm[2].x, perm[2].y]))
-            dist2_3 = spatial.distance.euclidean(np.array([perm[1].x, perm[1].y]),np.array([perm[2].x, perm[2].y]))
-            self.tower_target_distances.add(dist1_2)
-            self.tower_target_distances.add(dist1_3)
-            self.tower_target_distances.add(dist2_3)
-            p = (dist1_2 + dist1_3 + dist2_3) / 2.0     # perimeter
-            area = np.sqrt(p*(p-dist1_2)*(p-dist1_3)*(p-dist2_3))
-            self.tower_triangle_areas.append(area)
-        
-        self.tower_triangle_areas = list(set(self.tower_triangle_areas))
-        self.tower_target_distances = list(set(self.tower_target_distances))
+        self.person_evidence_pub = rospy.Publisher('person_evidence_array', PersonEvidenceArray, queue_size=1)
+        self.marker_pub = rospy.Publisher('detected_legs_in_bounding_box', Marker, queue_size=5)
 
         #rospy.spin() # So the node doesn't immediately shut down
 
-    def get_trans_wrt_robot(self, tower):
-        """
-        Gets tower position with respect to base_link. That is, performs a TF transformation from 'tower_link' to /base_link and returns
-        x,y and theta.
-        Param:
-            @tower the name of the tower tf.
-        Returns:
-            @ a 3D-numpy array defined as: [x, y, theta] w.r.t /map.
-        """
-        try:
-            self.tf_listener.waitForTransform('/base_link', tower, rospy.Time(0), rospy.Duration(1.0))
-            trans, rot = self.tf_listener.lookupTransform('/base_link', tower, rospy.Time(0))
-            # transform from quaternion to euler angles
-            euler = tf.transformations.euler_from_quaternion(rot)
- 
-            return np.array([trans[0], trans[1], euler[2]])   # [xR,yR,theta]
-
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
-            rospy.logerr("Navigation node: " + str(e))
-
-    def is_compatible_with_playground(self, side_to_compare):
-        for d in self.tower_target_distances:
-            if(self.is_close_enough(side_to_compare, d, tol=0.1)):
-                return True
-        return False
-
-    def publish_poligon(self, pts):
-        '''Publish poligon for the bouding box'''
-        
-        polygon = PolygonStamped()
-        polygon.header.stamp = rospy.get_rostime()
-        polygon.header.frame_id = 'map'
-        polygon.polygon.points = self.sort_vertices([p.position for p in pts])
-        #polygon.polygon.points = [p.position for p in pts]
-        self.bound_box_points = polygon.polygon.points
-        self.pub_tower_markers.publish(polygon)
-        #self.publish()
-
-    def get_tower_distances(self, num_towers=4):
-        """Calculate tower distances from each other in the robot frame"""
-        # TODO: get num of towers from param server
-        towers = []
-        for t in range(1,num_towers+1):
-            tower = self.get_trans_wrt_robot("tower_"+str(t))
-            towers.append(Point(tower[0],tower[1],0))
-
-        distances = []
-        for t in range(num_towers):
-            if t != num_towers-1:
-                distances.append(round(spatial.distance.euclidean((towers[t].x,towers[t].y) , (towers[t+1].x,towers[t+1].y)),3))
-            else:
-                distances.append(round(spatial.distance.euclidean((towers[t].x,towers[t].y), (towers[0].x,towers[0].y)),3))
-        
-        return towers, distances
-
+    
     def publish(self):
         '''Publish poligon for the bouding box'''
             
         polygon = PolygonStamped()
         polygon.header.stamp = rospy.get_rostime()
-        polygon.header.frame_id = 'map'
-        polygon.polygon.points = self.bound_box_points#self.sort_vertices()
+        polygon.header.frame_id = 'base_link'
+        p1 = Point32()
+        p1.x = self.x_min_
+        p1.y = self.y_min_
+        p2 = Point32()
+        p2.x = self.x_max_
+        p2.y = self.y_max_
+
+        polygon.polygon.points.append(p1)
+        p11 = Point32()
+        p11.x = p1.x
+        p11.y = p1.y + (p2.y - p1.y)
+        p12 = Point32()
+        p12.x = p1.x + (p2.x - p1.x)
+        p12.y = p1.y
+        polygon.polygon.points.append(p1)
+        polygon.polygon.points.append(p11)
+        polygon.polygon.points.append(p2)
+        polygon.polygon.points.append(p12)
+        polygon.polygon.points.append(p1)
+
         self.pub.publish(polygon)
 
-    def sort_vertices(self, pts):
-        # Sorts vertices of polygon to get a rectangle
-        if(len(pts) == 0):
-            return []   
-        if(len(self.bound_box_points) == 0):
-            self.bound_box_points = [None] * 4
-                 
-        pts.sort(self.point_x_comparator)
-        #rospy.loginfo(pts)
-        self.bound_box_points[0] = pts[0]
-        self.bound_box_points[1] = pts[2]
-        self.bound_box_points[2] = pts[3]
-        self.bound_box_points[3] = pts[1]
-
-        return self.bound_box_points
-
-    def point_x_comparator(self, p1, p2):
-        # Comparator to sort points wrt x-axis
-        if(p1.x > p2.x):
-            return 1
-        else:
-            return -1
-
-    def inside_polygon(self, x, y):
-        """
-        Return True if a coordinate (x, y) is inside a polygon defined by
-        a list of verticies [(x1, y1), (x2, x2), ... , (xN, yN)].
-
-        Reference: http://www.ariel.com.au/a/python-point-int-poly.html
-        """
-        points = self.bound_box_points
-
-        n = len(points)
-        inside = False
-        p1x = points[0].x
-        p1y = points[0].y
-        for i in range(1, n + 1):
-            p2x, p2y = points[i % n].x, points[i % n].y
-            if y > min(p1y, p2y):
-                if y <= max(p1y, p2y):
-                    if x <= max(p1x, p2x):
-                        if p1y != p2y:
-                            xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                        if p1x == p2x or x <= xinters:
-                            inside = not inside
-            p1x, p1y = p2x, p2y
-        return inside
-
-    def is_close_enough(self, num1, num2, tol=0.1):
-        return abs(num1-num2) < tol
+    def getPersonProbability(self,distance):
+        '''Uses self.model to calculate the probability of the pair being a person'''
+        return np.exp(self.model.score_samples(distance))
 
     def detected_clusters_callback(self, detected_clusters_msg):    
         """
@@ -443,254 +317,132 @@ class LegDistance:
        
         accepted_clusters = []
 
-        evidences = PersonEvidenceArray()
-        evidences.header = detected_clusters_msg.header
-
-        # for i,cluster in enumerate(detected_clusters_msg.legs):         
-           
-            # if(len(self.bound_box_points) == 0):
-            #     in_bounding_box = True
-            # else:
-            #     in_bounding_box = self.inside_polygon(cluster.position.x, cluster.position.y)
+        for i,cluster in enumerate(detected_clusters_msg.legs):
             
-            # marker = Marker()
-            # marker.header.frame_id = self.fixed_frame
-            # marker.header.stamp = now
-            # marker.id = i
-            # # Text showing person's ID number 
-            # marker.color.r = 1.0
-            # marker.color.g = 1.0
-            # marker.color.b = 1.0
-            # marker.color.a = 1.0
-            # marker.type = Marker.TEXT_VIEW_FACING
-            # marker.text = "{}\n({:.2f},{:.2f})".format(self.fixed_frame,cluster.position.x, cluster.position.y)
-            # marker.scale.z = 0.1         
-            # marker.pose.position.x = cluster.position.x
-            # marker.pose.position.y = cluster.position.y        
-            # marker.pose.position.z = 0.5 
-            # marker.lifetime = rospy.Duration(0.1)
-            # self.marker_pub.publish(marker)
-
-            # publish rviz markers       
-            # marker = Marker()
-            # marker.header.frame_id = self.fixed_frame
-            # marker.header.stamp = now
-            # marker.id = i+100
-            # marker.ns = "detected_legs"                       
-            # marker.type = Marker.CYLINDER
-            # marker.scale.x = 0.2
-            # marker.scale.y = 0.2
-            # marker.scale.z = 0.01
-            # marker.color.r = 0
-            # marker.color.g = 1
-            # marker.color.b = 0
-            # marker.color.a = 1
-            # marker.pose.position.x = cluster.position.x
-            # marker.pose.position.y = cluster.position.y        
-            # marker.pose.position.z = 0.01                        
-            # marker.lifetime = rospy.Duration(0.1)
-
-            # Publish to rviz and /people_tracked topic.
-            # self.marker_pub.publish(marker)        
+            in_bounding_box = True
             
-        tree = spatial.KDTree(np.array([[c.position.x, c.position.y] for c in detected_clusters_msg.legs]))
-        self.search_bounding_box(detected_clusters_msg)
+            if self.pub_bounding_box:
+                in_bounding_box = cluster.position.x > self.x_min_ and \
+                                  cluster.position.x < self.x_max_ and \
+                                  cluster.position.y > self.y_min_ and \
+                                  cluster.position.y < self.y_max_
+            
+            if in_bounding_box:
+                marker = Marker()
+                marker.header.frame_id = self.fixed_frame
+                marker.header.stamp = now
+                marker.id = i
+                # Text showing person's ID number 
+                marker.color.r = 1.0
+                marker.color.g = 1.0
+                marker.color.b = 1.0
+                marker.color.a = 1.0
+                marker.type = Marker.TEXT_VIEW_FACING
+                marker.text = "t: {}".format(str(now.to_sec()))
+                marker.scale.z = 0.1         
+                marker.pose.position.x = cluster.position.x
+                marker.pose.position.y = cluster.position.y        
+                marker.pose.position.z = 0.5 
+                marker.lifetime = rospy.Duration(0.1)
+                self.marker_pub.publish(marker)
+
+                # publish rviz markers       
+                marker = Marker()
+                marker.header.frame_id = self.fixed_frame
+                marker.header.stamp = now
+                marker.id = i+100
+                marker.ns = "detected_legs"                       
+                marker.type = Marker.CYLINDER
+                marker.scale.x = 0.2
+                marker.scale.y = 0.2
+                marker.scale.z = 0.01
+                marker.color.r = 0
+                marker.color.g = 1
+                marker.color.b = 0
+                marker.color.a = 1
+                marker.pose.position.x = cluster.position.x
+                marker.pose.position.y = cluster.position.y        
+                marker.pose.position.z = 0.01                        
+                marker.lifetime = rospy.Duration(0.1)
+
+                # Publish to rviz and /people_tracked topic.
+                self.marker_pub.publish(marker)
+                
+                # save cluster
+                accepted_clusters.append(cluster)
+
+        if len(accepted_clusters) <= 1:
+            return
+        
+        tree = spatial.KDTree(np.array([[c.position.x, c.position.y] for c in accepted_clusters]))
+
+        pair_set = set([])
 
         for j, pts in enumerate(tree.data):
             nearest_point = tree.query(pts, k=2)
             distance = nearest_point[0][1]
-            
-            if distance == float('inf'):
-                return
+            prob =  self.getPersonProbability(distance)[0]
 
-            # Save to file1.323
+            pair = list(copy.deepcopy(nearest_point[1]))
+            pair.sort()
+            pair.append(prob) 
+            pair = tuple(pair)
+            pair_set.add(pair)
+            
+            # Save to file
             if self.isSaveToFile:   
                 self.f.write(str(distance) +'\n')
                 self.f.flush()
 
-            new_evidence = PersonEvidence()
+            for i, pt in enumerate([pts]):
 
-            for i, pt in enumerate([pts]):    
                 # publish rviz markers 
                 marker = Marker()
                 marker.header.frame_id = self.fixed_frame
                 marker.header.stamp = now
                 marker.id = j + i * 10
-                marker.ns = "person"
-                marker.type = Marker.CYLINDER
-                marker.scale.x = 0.13
-                marker.scale.y = 0.13
-                marker.scale.z = 0.01
-                conf = self.leg_context.getProbability(distance)
-                marker.color.r = conf
+                marker.ns = "person"                       
+                marker.type = Marker.SPHERE
+                marker.scale.x = 0.2
+                marker.scale.y = 0.2
+                marker.scale.z = 0.2
+                marker.color.r = prob
                 marker.color.g = 0
-                marker.color.b = 1
+                marker.color.b = 0
                 marker.color.a = 1
                 marker.pose.position.x = pt[0]
-                marker.pose.position.y = pt[1]   
+                marker.pose.position.y = pt[1]        
                 marker.pose.position.z = 0.1                        
                 marker.lifetime = rospy.Duration(0.1)
+
                 # Publish to rviz and /people_tracked topic.
                 self.marker_pub.publish(marker)
-                
-                new_evidence.pose.position.x = (pt[0] + tree.data[nearest_point[1][1]][0])/2.0
-                new_evidence.pose.position.y = (pt[1] + tree.data[nearest_point[1][1]][1])/2.0
-                new_evidence.confidence = conf
-
-                #rospy.logwarn(self.leg_context.getProbability(out[row][column]))
-
-            evidences.evidences.append(new_evidence)
-
-
         
-        self.evidence_pub.publish(evidences)
 
-    def search_bounding_box(self, detected_clusters_msg):
-        tower_array_msg = TowerArray()
-        tower_array_msg.header = detected_clusters_msg.header
-        if len(detected_clusters_msg.legs) > 3:
-            #rospy.logerr("Checking every possible triangle")
-            for perm in itertools.permutations(detected_clusters_msg.legs, r=3):
-                dist1_2 = spatial.distance.euclidean(np.array([perm[0].position.x, perm[0].position.y]),np.array([perm[1].position.x, perm[1].position.y]))
-                dist1_3 = spatial.distance.euclidean(np.array([perm[0].position.x, perm[0].position.y]),np.array([perm[2].position.x, perm[2].position.y]))
-                dist2_3 = spatial.distance.euclidean(np.array([perm[1].position.x, perm[1].position.y]),np.array([perm[2].position.x, perm[2].position.y]))
-                triangle_distances = [dist1_2, dist1_3, dist2_3]
-                p = (dist1_2 + dist1_3 + dist2_3) / 2.0     # perimeter
-                
-                area = np.sqrt(p*(p-dist1_2)*(p-dist1_3)*(p-dist2_3))
-                
-                for a in self.tower_triangle_areas:
-                    if self.is_close_enough(a, area, tol=0.05):
-                        to_pub = True
+        evid_msg = PersonEvidenceArray()
+        evid_msg.header.frame_id = self.fixed_frame
+        evid_msg.header.stamp = now
 
-                        for side in triangle_distances:
-                            if not self.is_compatible_with_playground(side):
-                                to_pub = False
-                                break
+        for item in pair_set:
+            msg = PersonEvidence()
+            msg.leg1.x = tree.data[item[0]][0]
+            msg.leg1.y = tree.data[item[0]][1]
+            msg.leg2.x = tree.data[item[1]][0]
+            msg.leg2.y = tree.data[item[1]][1]
+            msg.probability = item[2]
+            evid_msg.evidences.append(msg)
 
-                        if to_pub:
-                            tower_array_msg.towers = [Tower(p.position, p.points, p.point_indexes) for p in perm]
-                            missing_vertex = self.get_missing_vertex(tower_array_msg.towers)
-                            # missing_cluster = self.get_missing_cluster(missing_vertex, detected_clusters_msg)
-                            # if(missing_cluster == None):
-                            tower_array_msg.towers.append(Tower(missing_vertex.position, [], [])) 
-                            # else:
-                                # print "Found missing Cluster"
-                                # rospy.loginfo("Cluster position: {}".format(missing_cluster.position))
-                                # tower_array_msg.towers.append(Tower(missing_cluster.position, missing_cluster.points, missing_cluster.point_indexes)) 
-                            vertices = list(perm)
-                            vertices.append(missing_vertex)
-                            self.publish_poligon(vertices)
-                            
-        if len(tower_array_msg.towers) != 0:
-            self.pub_towers.publish(tower_array_msg)
-
-
-
-
-    def get_missing_vertex(self, towers):
-        sides = []
-        sides.append( (towers[0], towers[1]))
-        sides.append( (towers[1], towers[2]))
-        sides.append( (towers[2], towers[0]))
-
-        sides.sort(self.my_comparator, reverse=True) # Sort sides from longest (hypotenuse) to shortest (catethus min)
-
-        vertex_to_extend = sides[0][0] # Take one vertex of the hypotenuse
-
-        if(self.contains_vertex(sides[1], vertex_to_extend)): #Identify which is the opposite cathetus wrt the selected vertex
-            opposite_cathetus = 2
-        else:
-            opposite_cathetus = 1
-
-        for i in range( len(sides[opposite_cathetus]) ):
-            if( self.contains_vertex(sides[0], sides[opposite_cathetus][i]) == False ):
-                #Identify the vertex where the catheti join, the one with the rect angle             
-                rect_vertex_index = i 
-            else:
-                not_rect_vertex_index = i
-
-        
-        # Calculate the orientation of the opposite cathetus centered in the vertex where the two catheti join
-        extension_angle = np.arctan2(sides[opposite_cathetus][rect_vertex_index].position.y - sides[opposite_cathetus][not_rect_vertex_index].position.y,
-            sides[opposite_cathetus][rect_vertex_index].position.x - sides[opposite_cathetus][not_rect_vertex_index].position.x)
-
-        # Calculate the lenght of the opposite cathetus
-        extension_magnitude = ( (sides[opposite_cathetus][0].position.x - sides[opposite_cathetus][1].position.x)**2 + 
-            (sides[opposite_cathetus][0].position.y - sides[opposite_cathetus][1].position.y)**2 )**0.5
-
-        # Calculate the cartesian projections of the opposite cathetus
-        extension_x = extension_magnitude * np.cos(extension_angle + np.pi)
-        extension_y = extension_magnitude * np.sin(extension_angle + np.pi)
-
-        
-        # Reconstruct missing vertex by extending the chosen one from the hypotenuse
-        missing_vertex = Pose()
-        missing_vertex.position.x = vertex_to_extend.position.x + extension_x
-        missing_vertex.position.y = vertex_to_extend.position.y + extension_y
-        missing_vertex.position.z = 0
-
-        return missing_vertex
-
-    def get_missing_cluster(self, missing_vertex, detected_clusters_msg):
-        ''' Returns the closest cluster to the estimated missing vertex'''
-        # Convert missing vertex from map frame to robot frame 
-        point_to_transform = PointStamped()
-        point_to_transform.header.stamp = rospy.Time()
-        point_to_transform.header.frame_id = "/map"
-
-        point_transformed = self.tf_listener.transformPoint(point_to_transform)
-        
-        for cluster in detected_clusters_msg.legs:
-            centroid = cluster.position
-            if self.is_close_enough(missing_vertex.position.x, centroid.x) and self.is_close_enough(missing_vertex.position.y, centroid.y):
-                return cluster
-
-        return None
-
-
-
-
-
-    def my_comparator(self, side_a, side_b):
-        # Returns the longest side
-        length_a = (side_a[0].position.x - side_a[1].position.x)**2 + (side_a[0].position.y - side_a[1].position.y)**2
-        length_b = (side_b[0].position.x - side_b[1].position.x)**2 + (side_b[0].position.y - side_b[1].position.y)**2
-
-        if(length_a > length_b):
-            return 1
-        return -1
-
-    def are_pose_equal(self, pose_1, pose_2, thd = 0.1):
-        if( abs(pose_1.position.x - pose_2.position.x) < thd and abs(pose_1.position.y - pose_2.position.y) < thd) :
-            return True
-        return False
-
-    def contains_vertex(self, side, vertex):
-        if(self.are_pose_equal(side[0], vertex) or self.are_pose_equal(side[1], vertex)):
-            return True
-        #if(side[0] == vertex or side[1] == vertex):
-            #return True
-        return False
-
-    def match_cluster(self, vertex, accepted_clusters, acceptance_thd = 0.1):
-        """ Trying to match the given vertex with one of the accepted_clusters """
-        for cluster in accepted_clusters:
-            centroid = cluster.position
-            if( abs(vertex.position.x - centroid.x) < acceptance_thd and abs(vertex.position.y - centroid.y) < acceptance_thd ):
-                return cluster
-        return None
+        self.person_evidence_pub.publish(evid_msg)
 
 
 if __name__ == '__main__':
     rospy.init_node('leg_distance_node', anonymous=True)
     rospy.logwarn('THE BOUDING BOX PARAMETERS SHOULD BE THE SAME AS THE ONES IN "extract_positive*.launch" file!')
-    #ldistance = LegDistance(x_min=-2.76, x_max=2.47, y_min=-2.37, y_max=1.49)# logfile='/home/airlab/Desktop/newFile.txt')
-    
-    
-    ldistance = LegDistance()
+    ldistance = LegContextProcessor(x_min=-2.76, x_max=2.47, y_min=-2.37, y_max=1.49)# logfile='/home/airlab/Desktop/newFile.txt')
 
     r = rospy.Rate(10) # 10hz
 
     while not rospy.is_shutdown():
-        r.sleep() 
+        if ldistance.pub_bounding_box:
+            ldistance.publish()
+        r.sleep()

@@ -24,7 +24,8 @@
  /game_navigation/estimated_tower
  /game_navigation/danger_zone
  /game_navigation/closest_point
-
+ /people_tracked
+ /kf_fusion_marker
 " />
 	<arg name="file_name"  	default=""/>
 

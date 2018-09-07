@@ -1,5 +1,6 @@
 #include "particle_filter/Particle.h"
-
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 
 Particle::Particle(const Particle& that) {
     this->state = that.state;
@@ -18,41 +19,40 @@ Particle::Particle(Vec5f state): weight(0), state(state){
     u << 0,0,0,0,0;
 
     H << 1,0,0,0,0,           // measurement function 5 states - 3 observed (x, y, theta)
-            0,1,0,0,0,
-            0,0,1,0,0;  
+         0,1,0,0,0,
+         0,0,1,0,0;  
 
     I << 1,0,0,0,0,           // identity matrix
-            0,1,0,0,0,
-            0,0,1,0,0,
-            0,0,0,1,0,
-            0,0,0,0,1;
+         0,1,0,0,0,
+         0,0,1,0,0,
+         0,0,0,1,0,
+         0,0,0,0,1;
 
 
-    R << 0.5,0,0,               // measurement uncertainty (3 uncorrelated measures with uncertainty)
-            0,0.5,0,
-            0,0,0.5;
+    R << 10,0,0,               // measurement uncertainty (3 uncorrelated measures with uncertainty)
+         0,10,0,
+         0,0,10;
 
-    P << 1,0,0,0,0,             // initial uncertainty
-            0,1,0,0,0,
-            0,0,1,0,0,
-            0,0,0,1,0,
-            0,0,0,0,1;            
+    P << 100,0,0,0,0,             // initial uncertainty
+         0,100,0,0,0,
+         0,0,100,0,0,
+         0,0,0,100,0,
+         0,0,0,0,100;            
                                             // Transition Matrix
-    F << 1,   0,   0, 0, 0,             // x
-            0,   1,   0, 0, 0,             // y
-            0,   0,   1, 0, 0,             // theta
-            0.1, 0,   0, 1, 0,             // x_dot
-            0,   0.1, 0, 0, 1;             // y_dot
+    F << 1,0,0,0.1,0,             // x
+         0,1,0,0,0.1,             // y
+         0,0,1,0,0,               // theta
+         0,0,0,1,0,               // x_dot
+         0,0,0,0,1;               // y_dot
 
-    Q << 0.1,0,0,0,0,           // process noise matrix
-            0,0.1,0,0,0,
-            0,0,0.01,0,0,
-            0,0,0,0.01,0,
-            0,0,0,0,0.01;
+    Q << 0.5,0,0,0,0,           // process noise matrix
+         0,0.5,0,0,0,
+         0,0,1,0,0,
+         0,0,0,1,0,
+         0,0,0,0,1;
 }
 
-Particle::~Particle()
-{ /*    */ };
+Particle::~Particle(){ /*    */ };
 
 Vec5f Particle::getState() {
     return this->state;
@@ -81,10 +81,10 @@ float Particle::distance(Eigen::Vector2f &obs)
 void Particle::fillPose(geometry_msgs::Pose &pose) {
     pose.position.x = state(0);
     pose.position.y = state(1);
-    pose.orientation.z = state(2);
+    pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, atan2(state(4), state(3)));
 }
 
-void Particle::setWeight(float weight) {
+void Particle::setWeight(float weight){
     this->weight = weight;
 }
 
@@ -107,25 +107,23 @@ void Particle::update(Eigen::Vector3f &Z) {
     P = (I - (K*H)) * P;
 }
 
-void Particle::update(Eigen::Vector2f &z) {
+void Particle::update(Eigen::Vector2f &z){
     Eigen::Vector3f Z;
-    Z << z.x(), z.y(), 0;
+    Z << z.x(), z.y(), state(2,0);
     update(Z);
 }
 
-ParticlePtr Particle::perturbate(float noiseX, float noiseY, float noiseTheta) const
-{
+ParticlePtr Particle::perturbate(float noiseX, float noiseY, float noiseTheta) const{
     Particle* perturbated = new Particle(*this);
-    perturbated->state(0) += noiseX;
-    perturbated->state(1) += noiseY;
-    perturbated->state(2) += noiseTheta;
+    perturbated->state(3) += noiseX;
+    perturbated->state(4) += noiseY;
+    //perturbated->state(2) += noiseTheta;
 
     return perturbated;
 }
 
 // new functions
-float Particle::confidenceLevel(Vec2f &person)
-{
+float Particle::confidenceLevel(Vec2f &person){
     // ellipsoid (x/sigma_x)^2 + (y/sigma_y)^2 = s (s=5.991 for 95%)
     Vec2f diff = state.topRows(2) - person;
     diff(0) /= P(0, 0); // sigma_x
@@ -133,7 +131,6 @@ float Particle::confidenceLevel(Vec2f &person)
     return diff.transpose() * diff;
 }
 
-bool Particle::isInsideConfidenceInterval(Vec2f &person)
-{
+bool Particle::isInsideConfidenceInterval(Vec2f &person){
     return confidenceLevel(person) < 5.991f; // true if inside confidence interval of 95%
 }

@@ -105,15 +105,7 @@ public:
   */
   void clear();
 
-  /**
-  * @brief Get all cluster members
-  */
   std::vector<geometry_msgs::Point32> getSamples();
-
-  /*
-  * @brief get all cluster member indexes on range array in the LaserScan message.
-  */
-  std::vector<int> getSampleIndexes();
 
   /**
   * @brief Get the centroid of the sample points

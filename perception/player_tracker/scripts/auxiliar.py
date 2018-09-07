@@ -2,10 +2,11 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import PointStamped, Point
 import numpy as np
 import rospy
+import math
 import copy
 import tf
 
-class KinectEvidence:
+class KinectEvidence(object):
     '''This class maintains the kinect evidence about where the player is located'''
     def __init__(self, divisions=30):
         self.divisions = divisions
@@ -27,10 +28,10 @@ class PolarGrid:
     def __init__(self, n_sections=30, fframe='base_link', cframe='base_link'):
         self.n_sections = n_sections
         self.namespace = "polar_occupancy_grid"
-        self.lines_pub = rospy.Publisher('polar_markers', Marker, queue_size=1)
-        self.arrow_pub = rospy.Publisher('polar_arrow_marker', Marker, queue_size=1)
-        self.fov_pub = rospy.Publisher('fov_marker', Marker, queue_size=1)
-        self.text_pub = rospy.Publisher('text_marker', Marker, queue_size=1)
+        self.lines_pub = rospy.Publisher('polar_markers', Marker, queue_size=10)
+        self.arrow_pub = rospy.Publisher('polar_arrow_marker', Marker, queue_size=10)
+        self.fov_pub = rospy.Publisher('fov_marker', Marker, queue_size=10)
+        self.text_pub = rospy.Publisher('text_marker', Marker, queue_size=10)
         self.line_scale = 4
         self.tf_listener = tf.TransformListener()
         self.fixed_frame = fframe

@@ -169,6 +169,10 @@ add_executable(${PROJECT_NAME}_set_blob_parameters_node
 				src/setBlob.cpp)
 				
 add_executable(${PROJECT_NAME}_reader_node src/camera_reader.cpp)
+
+add_executable(${PROJECT_NAME}_realsense_node
+				src/main_realsense.cpp
+                src/utils.cpp)
 				
 
 ## Add cmake target dependencies of the executable
@@ -178,8 +182,18 @@ add_dependencies(${PROJECT_NAME}_node
                  ${ground_plane_estimation_EXPORTED_TARGETS}
 				 ${catkin_EXPORTED_TARGETS})
 
+add_dependencies(${PROJECT_NAME}_realsense_node 
+				 ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                 ${ground_plane_estimation_EXPORTED_TARGETS}
+				 ${catkin_EXPORTED_TARGETS})
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
+					  ${catkin_LIBRARIES}
+					  ${OpenCV_LIBS}
+					  ${OpenCL_LIBRARIES})
+
+target_link_libraries(${PROJECT_NAME}_realsense_node
 					  ${catkin_LIBRARIES}
 					  ${OpenCV_LIBS}
 					  ${OpenCL_LIBRARIES})
