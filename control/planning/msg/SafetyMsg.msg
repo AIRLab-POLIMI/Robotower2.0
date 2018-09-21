@@ -1,0 +1,3 @@
+bool safety
+int32 danger_index
+int32 section_index

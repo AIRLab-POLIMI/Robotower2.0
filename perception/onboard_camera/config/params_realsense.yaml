@@ -4,7 +4,7 @@ tracker_cam_width: 640
 tracker_cam_height: 480
 camera_namespace: "camera"
 queue_size: 5
-show_frame: true
+show_frame: false
 color_frame: "/color/image_raw"
 depth_frame: "/aligned_depth_to_color/image_raw"
 seg_threshold: 300                    # in mm

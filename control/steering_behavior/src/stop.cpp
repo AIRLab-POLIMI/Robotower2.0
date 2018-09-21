@@ -15,3 +15,7 @@ geometry_msgs::Vector3 SteeringBehavior::Stop::calculate_steering_force(geometry
     output = VectorUtility::vector_difference(current_vel, VectorUtility::revert(current_vel));
     return output;
 }
+
+float SteeringBehavior::Stop::evaluate(){
+    return 0.0;
+}

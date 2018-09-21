@@ -1,0 +1,81 @@
+<launch>
+
+<!-- Parameters -->
+    <rosparam command="load" file="$(find behavior_control)/config/config.yaml" />
+    <rosparam command="load" file="$(find game_manager)/params/velocity_config.yaml" />
+    <rosparam command="load" file="$(find game_manager)/params/game.yaml" />
+    <!-- -->	
+    
+    <!--<param name="enable_statistics" value="true" /> -->
+
+    <arg name="node_name"             value="velocity_smoother"/>
+	<arg name="nodelet_manager_name"  value="nodelet_manager"/>
+	<arg name="config_file"           value="$(find yocs_velocity_smoother)/param/standalone.yaml"/>
+	<arg name="raw_cmd_vel_topic"     value="raw_cmd_vel"/>
+	<arg name="smooth_cmd_vel_topic"  value="cmd_vel"/>
+	<arg name="robot_cmd_vel_topic"   value="cmd_vel"/>
+	<arg name="odom_topic"            value="odom"/>
+    
+    <!-- nodelet manager -->
+	<node pkg="nodelet" type="nodelet" name="$(arg nodelet_manager_name)" args="manager"/>
+
+	<!-- velocity smoother -->
+	<include file="$(find yocs_velocity_smoother)/launch/velocity_smoother.launch">
+		<arg name="node_name"             value="$(arg node_name)"/>
+		<arg name="nodelet_manager_name"  value="$(arg nodelet_manager_name)"/>
+		<arg name="config_file"           value="$(arg config_file)"/>
+		<arg name="raw_cmd_vel_topic"     value="$(arg raw_cmd_vel_topic)"/>
+		<arg name="smooth_cmd_vel_topic"  value="$(arg smooth_cmd_vel_topic)"/>
+		<arg name="robot_cmd_vel_topic"   value="$(arg robot_cmd_vel_topic)"/>
+		<arg name="odom_topic"            value="$(arg odom_topic)"/>
+	</include>
+	
+	<!-- Robogame teleop nodes -->
+	<param name="linear_scale" value="0.75" />
+	<param name="angular_scale" value="1.5" />
+	<param name="axis_deadman" value="5"/>
+	<param name="linear_x_axis" value="1"/>
+	<param name="linear_y_axis" value="0"/>
+	<param name="angular_axis" value="2"/>
+	<param name="max_linear_scale" value="2"/>
+	<param name="max_angular_scale" value="3"/>
+	<param name="maximal_time_delay_to_stop" value="10"/>
+	
+	<node pkg="joy" type="joy_node" name="joy">
+        <param name="autorepeat_rate" value="60" />
+	</node>
+
+	<node pkg="joystick" type="joystick_node" name="joystick_node" output="screen" respawn="false">
+		<remap from="cmd_vel" to="raw_cmd_vel"/>
+	</node>
+
+    <!-- Load dynamic reconfigure parameters for acml -->
+	<node name="dynamic_reconfigure_load" pkg="dynamic_reconfigure" type="dynparam" args="load /amcl $(find game_manager)/params/optimized_params.yaml" />   
+
+    <!-- behavior manager  REMOVE PLANNER  -->
+    <!--<include file="$(find behavior_control)/launch/run.launch" /> -->
+   
+
+    <!-- player and tower game information -->
+    <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
+    <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
+    
+    <!-- player classification module
+    <node pkg="activity_recognition" type="classifier.py" name="activity_classifier" output="screen" respawn="true" /> -->
+    
+    <!-- game manager -->
+    <node pkg="game_manager" type="node.py" name="game_manager" output="screen" respawn="true" />
+    
+
+    <!-- navigation -->
+    <include file="$(find game_navigation_deception)/launch/navigation.launch"/> 
+    
+    <!-- Player Tracking  -->
+    <!--<include file="$(find player_tracker)/launch/experiments/run.launch"/> -->
+    <include file="$(find radial_tracking)/launch/run.launch"/>
+
+	 <!--Onboard camera  -->
+    <!--<include file="$(find onboard_camera)/launch/run.launch"/> -->
+
+
+</launch>

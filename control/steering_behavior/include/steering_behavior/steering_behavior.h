@@ -3,8 +3,14 @@
 
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Vector3.h>
+#include <sensor_msgs/LaserScan.h>
 
 #include <cmath>
+
+#define FLEE 0
+#define SEEK 1
+#define STOP 2
+#define ARRIVAL 3
 
 namespace SteeringBehavior{
 
@@ -13,6 +19,8 @@ namespace SteeringBehavior{
 		geometry_msgs::Point32 target_;
 
 	public:
+		SteeringBehavior(){}
+
 		SteeringBehavior(geometry_msgs::Point32 target){
 			target_ = target;
 		}
@@ -29,12 +37,26 @@ namespace SteeringBehavior{
 
 		// Calculates the velocity vector that would follow a straight path to the targert
 		virtual geometry_msgs::Vector3 calculate_desired_velocity(geometry_msgs::Point32 current_pos) = 0;
+		
+		// Calculates the steering behavior score 
+		virtual float evaluate() = 0;
+
+		virtual std::string getName() = 0;
+		virtual int getCode() = 0;
+		virtual void updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos) = 0;
 	};
 
 	class Flee;
 	class Seek;
 	class Stop;
 	class Arrival;
+
+	class SteeringFactory{
+		public:
+			SteeringBehavior* generateSteeringBehavior(int steering_code, geometry_msgs::Point32 target);
+			SteeringBehavior* generateSteeringBehavior(int steering_code);
+
+	};
 
 	// Static utility class to operate with vectors
 	class VectorUtility{
@@ -135,7 +157,7 @@ namespace SteeringBehavior{
 				output.z = -vector.z;
 				return output;
 			}
-
+			
 			static geometry_msgs::Vector3 rotate(geometry_msgs::Vector3 vector, float angle){
 				geometry_msgs::Vector3 output;
 

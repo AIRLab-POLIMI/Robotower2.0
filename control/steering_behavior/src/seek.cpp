@@ -15,3 +15,8 @@ geometry_msgs::Vector3 SteeringBehavior::Seek::calculate_steering_force(geometry
     output = VectorUtility::vector_difference(current_vel, desired_vel);
     return output;
 }
+
+float SteeringBehavior::Seek::evaluate(){
+    silly_counter_++;
+    return silly_counter_;
+}

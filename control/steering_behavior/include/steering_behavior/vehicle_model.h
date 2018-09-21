@@ -4,8 +4,9 @@
 #include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Pose.h>
-#include "steering_behavior/steering_behavior.h"
+#include <sensor_msgs/LaserScan.h>
 #include <tf/transform_listener.h>
+#include "steering_behavior/steering_behavior.h"
 
 namespace VehicleModel
 {
@@ -21,6 +22,9 @@ namespace VehicleModel
             ros::NodeHandle nh_;
             ros::Subscriber pose_sub_;
             ros::Subscriber vel_sub_;
+            ros::Subscriber scan_sub_;
+
+            sensor_msgs::LaserScan current_scan_;
             tf::TransformListener listener;
 
 
@@ -32,11 +36,14 @@ namespace VehicleModel
 
             // Updates the current position of the robot
             void updateCurrentPos(const geometry_msgs::Pose& msg);
-            void updateCurrentPos();
+			void updateCurrentPos();
             geometry_msgs::Twist alignCommand(geometry_msgs::Twist cmd);
-
             // Updates current velocity of robot
             void updateCurrentVelocity(const geometry_msgs::Twist& msg);
+
+            void laserCallback(const sensor_msgs::LaserScan& scan){
+                current_scan_ = scan;
+            }
 
             void setMaxForce(float force){
                 max_force_ = force;

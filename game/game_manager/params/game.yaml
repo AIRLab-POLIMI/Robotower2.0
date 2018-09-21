@@ -51,6 +51,6 @@ difficulties: {
                        bf_exponent: 1}
                }
 
-current_difficulty: easy
+current_difficulty: medium
 
 block_timeout: 3.0    #the time span for consider the player has blocked the robot

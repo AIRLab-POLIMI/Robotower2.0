@@ -5,7 +5,7 @@ height_fov: 1.0471975512      # 60.0*M_PI/180
 cam_width: 640
 cam_height: 480
 camera_namespace: "/onboard_camera"
-show_frame: true
+show_frame: false
 image_topic_name: "color_image"
 color_frame: "/color_image"
 seg_threshold: 300                    # in mm

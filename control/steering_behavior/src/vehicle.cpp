@@ -15,17 +15,11 @@ VehicleModel::PointVehicle::PointVehicle(){
     std::string pose_topic;
     std::string vel_topic;
 
-    if (!nh_.getParam("/steering_behavior_node/vel_topic_sub", vel_topic)){
+    if (!nh_.getParam("/planning/vel_topic_sub", vel_topic)){
         ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read 'vel_topic_sub' from rosparam!");
         exit(-1);
     }
 
-    if (!nh_.getParam("/steering_behavior_node/pose_topic", pose_topic)){
-        ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read 'vel_topic' from rosparam!");
-        exit(-1);
-    }
-
-    //pose_sub_ = nh_.subscribe(pose_topic, 1, &PointVehicle::updateCurrentPos, this);
     vel_sub_ = nh_.subscribe(vel_topic, 1, &PointVehicle::updateCurrentVelocity, this);
 
     if (!nh_.getParam("/steering_behavior_node/mass", mass_) ){
@@ -34,17 +28,17 @@ VehicleModel::PointVehicle::PointVehicle(){
     }
 
     if (!nh_.getParam("/steering_behavior_node/max_speed", max_speed_) ){
-        ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read the parameter 'mass' from rosparam! Check steerning_behavior .yaml file!");
+        ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read the parameter 'max_speed' from rosparam! Check steerning_behavior .yaml file!");
         exit(-1);
     }
 
     if (!nh_.getParam("/steering_behavior_node/max_force", max_force_) ){
-        ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read the parameter 'mass' from rosparam! Check steerning_behavior .yaml file!");
+        ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read the parameter 'max_force' from rosparam! Check steerning_behavior .yaml file!");
         exit(-1);
     }
 
     // read whether we should run on simulation
-    if (!nh_.getParam("/steering_behavior_node/simulation", on_simulation)){
+    if (!nh_.getParam("/simulation", on_simulation)){
         ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read 'simulation' from rosparam!");
         exit(-1);
     }

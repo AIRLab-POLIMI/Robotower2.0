@@ -24,6 +24,8 @@
  /game_navigation/estimated_tower
  /game_navigation/danger_zone
  /game_navigation/closest_point
+ /game_navigation/trajectory_marker_array
+ /game_navigation/single_marker_trajectory
  /people_tracked
  /kf_fusion_marker
 " />

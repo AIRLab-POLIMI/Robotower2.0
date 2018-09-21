@@ -4,8 +4,8 @@ max_speed: 2.0 # maximum speed of the vehicle
 
 
 # TOPICS FOR TURTLESIM"
-vel_topic_sub: "/vel"
-vel_topic_pub: "/game_navigation/unsafe/cmd_vel"
+vel_topic_sub: "/turtle1/vel"
+vel_topic_pub: "/turtle1/cmd_vel"
 pose_topic: "/turtle1/my_pose"
 
 # TOPICS FOR TRISKAR

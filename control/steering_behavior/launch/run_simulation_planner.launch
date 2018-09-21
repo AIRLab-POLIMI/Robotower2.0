@@ -1,0 +1,14 @@
+<launch>
+
+  	<arg name="simulation"			default='false'/>
+	<arg name="robot_base"			default='robot_0/base_link'/>
+	<arg name="player_base"			default='robot_1/base_link'/>
+	
+	<group ns="steering_behavior_node">
+		<rosparam command="load" file="$(find steering_behavior)/config/params.yaml"/>
+		<rosparam command="load" file="$(find steering_behavior)/config/params_sim.yaml"/>
+	</group>
+	<param name="/simulation" 		 type="bool" value="$(arg simulation)"/>
+
+    <include file="$(find planning)/launch/run_planning.launch"/>
+</launch>

@@ -71,18 +71,15 @@
     <!-- Player Tracking 
     <include file="$(find player_tracker)/launch/experiments/run.launch"/> 
     <include file="$(find radial_tracking)/launch/run.launch"/>
-	 -->
+	-->	
+	 
   	<arg name="simulation"			default='true'/>
 	<arg name="robot_base"			default='robot_0/base_link'/>
 	<arg name="player_base"			default='robot_1/base_link'/>
 
+	<include file="$(find steering_behavior)/launch/run_simulation_planner.launch"/>
 
-	<node name="steering_behavior_node" pkg="steering_behavior" type="steering_behavior_node" output="screen" respawn="true">
-		<rosparam command="load" file="$(find steering_behavior)/config/params.yaml"/>
-		<rosparam command="load" file="$(find steering_behavior)/config/params_sim.yaml"/>
-		<param name="simulation" 		 type="bool" value="$(arg simulation)"/>
-		<param name="robot_base" 	 	 type="str" value="$(arg robot_base)"/>
-		<param name="player_base" 	 	 type="str" value="$(arg player_base)"/>
-	</node>
+	<!--Onboard camera  -->
+    <include file="$(find onboard_camera)/launch/run.launch"/>
 
 </launch>

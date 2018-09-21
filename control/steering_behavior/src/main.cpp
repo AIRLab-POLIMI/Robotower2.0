@@ -99,7 +99,7 @@ int main(int argc, char** argv){
     int behavior_code = STOP;
 
     if (!nh.getParam("/steering_behavior_node/vel_topic_pub", vel_topic)){
-        ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read 'vel_topic_pub' from rosparam!");
+        ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read 'STOCAZZO' from rosparam!");
         exit(-1);
     }
 

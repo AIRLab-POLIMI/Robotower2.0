@@ -226,8 +226,6 @@ void OnboardCamera::publishKalman(){
 
 
 void OnboardCamera::callback(const sensor_msgs::ImageConstPtr &depth, const sensor_msgs::ImageConstPtr &image){
-
-    ROS_WARN("iMAGE Received");
     
     cv_bridge::CvImagePtr cv_depth_ptr;
     cv_bridge::CvImagePtr cv_rgb_ptr;
