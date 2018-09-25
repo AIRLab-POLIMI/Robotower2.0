@@ -63,6 +63,7 @@ class SocialAnalyzer(object):
         self.deception_duration_time_per_slope = 100
     
         self.tf_listener = tf.TransformListener()
+        self.sub = rospy.Subscriber('/player_tracked_particle_filter/player_filtered', PointStamped, self.callback_player_filtered)
         self.pub = rospy.Publisher('/game/goal', Goal, queue_size=1)
         self.pub_deception = rospy.Publisher('/game/is_deceiving', Deception, queue_size=1)
 
@@ -99,12 +100,15 @@ class SocialAnalyzer(object):
             return numpy.array([trans[0], trans[1]])   # [xR,yR,theta]
 
         except Exception as e:
-            rospy.logerr("Behavior with deception node: " + str(e))        
+            rospy.logerr("Behavior with deception node: " + str(e))       
+
+    def callback_player_filtered(self, msg):
+        self.player_xy = np.array([msg.point.x, msg.point.y])
         
     def set_position_agents(self):
         # Getting agents' position
         self.robot_xy = numpy.zeros(2)
-        self.player_xy = self.get_pose("/player_filtered_link", "/base_link")
+        # self.player_xy = self.get_pose("/player_filtered_link", "/base_link")
         self.towers_xy = numpy.array([self.get_pose("/tower_1", "/base_link"), self.get_pose("/tower_2", "/base_link"),
                             self.get_pose("/tower_3", "/base_link"), self.get_pose("/tower_4", "/base_link")])
 

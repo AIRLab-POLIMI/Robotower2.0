@@ -475,13 +475,13 @@ class Navigation:
         return filtered_values
 
     def set_evaluator_mode(self, goal = None):
-        if(self.is_near_goal(goal = goal)):
+        if(self.is_near_goal(goal = goal) and goal is None):
             self.lock_rotation = True
             if(self.danger):
                 self.safety_evaluator.set_mode(SafetyEvaluator.APPROACHING_TOWER)
-                print "APPROACHING TOWER"
+                # rospy.debug("APPROACHING TOWER")
             elif(self.search): # Needed to avoid to pass an empty filtered scan 
-                print "SEARCHING TOWER"
+                # rospy.debug("SEARCHING TOWER")
                 self.safety_evaluator.set_mode(SafetyEvaluator.SEARCHING_TOWER)
                 # TODO IMPROVEMENT
                 self.safety_evaluator.set_searching_angle(self.estimate_tower_angle(goal = goal))
@@ -501,6 +501,7 @@ class Navigation:
             target_x = goal[0]
             target_y = goal[1]
             distance_max = 0.1
+
 
         # define initial e final point when the robot receive the id of the targeted tower
         xd = (self.robot_estimated_pose[0][0], target_x)
@@ -696,6 +697,4 @@ class Navigation:
         marker.pose.position.x = point[0]
         marker.pose.position.y = point[1] 
         marker.pose.position.z = 0.2
-        return marker
-
-        
+        return marker      

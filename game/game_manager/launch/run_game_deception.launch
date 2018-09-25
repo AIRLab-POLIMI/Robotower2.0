@@ -71,11 +71,11 @@
     <include file="$(find game_navigation_deception)/launch/navigation.launch"/> 
     
     <!-- Player Tracking  -->
-    <!--<include file="$(find player_tracker)/launch/experiments/run.launch"/> -->
+	<include file="$(find player_tracker)/launch/experiments/run.launch"/>
     <include file="$(find radial_tracking)/launch/run.launch"/>
 
-	 <!--Onboard camera  -->
-    <!--<include file="$(find onboard_camera)/launch/run.launch"/> -->
+	<!-- Onboard camera  
+    <include file="$(find onboard_camera)/launch/run.launch"/>-->
 
 
 </launch>

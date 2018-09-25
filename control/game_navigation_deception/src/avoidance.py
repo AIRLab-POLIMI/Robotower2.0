@@ -301,7 +301,10 @@ class FuzzyAvoider:
         #rospy.logwarn("rr: {}, r: {}, fr: {}, fl: {}, l: {}, rl: {}".format(rear_right, right, front_right, front_left, left, rear_left))
 
         # Crunch the numbers
-        self.fuzzyAvoider.compute()
+        try:
+            self.fuzzyAvoider.compute()
+        except Exception as e:
+            rospy.logwarn(str(e))
         
         # print out the numerical results
         #print "Vx_out: {}".format(self.fuzzyAvoider.output['Vx out'])

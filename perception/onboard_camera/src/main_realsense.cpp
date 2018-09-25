@@ -340,7 +340,18 @@ void OnboardCamera::callback(const sensor_msgs::ImageConstPtr &depth, const sens
         target_pos.setX(pixel_sph_coord(0,0));
         target_pos.setY(pixel_sph_coord(1,0));
         target_pos.setZ(pixel_sph_coord(2,0));
-    } 
+    } else {
+        std_msgs::Int16 angle_msg = std_msgs::Int16();
+        
+        if (current_servo_angle == 0 + ANGULAR_DISPLACEMENT){
+            angle_when_lost_player = +15;
+        }else if (current_servo_angle == 180 + ANGULAR_DISPLACEMENT) {
+            angle_when_lost_player = -15;
+        }
+        
+        angle_msg.data = angle_when_lost_player;
+        pub_servo_angle.publish(angle_msg);
+    }
 
     kalmanPredict(); // Perform Kalman prediction
     publishKalman(); // publish Kalman filtered player tf.

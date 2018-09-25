@@ -1,0 +1,24 @@
+footprint: [
+  [0.1175, -0.3137],  
+  [-0.3304, -0.0551],
+  [-0.3304, 0.05507],
+  [0.1175, 0.3137],
+  [0.2130, 0.2586],
+  [0.2130, -0.2586]]
+
+always_send_full_costmap: false
+
+
+observation_sources: laser_scan_right_sensor laser_scan_left_sensor
+
+laser_scan_right_sensor: {sensor_frame: /base_link, data_type: LaserScan,
+                             topic: scan_right, marking: true, clearing: true,
+                             observation_persistence: 0.0,
+                             raytrace_range: 11.0, obstacle_range: 5.6,
+                             expected_update_rate: 0.15}
+
+laser_scan_left_sensor: {sensor_frame: /base_link, data_type: LaserScan,
+                             topic: scan_left, marking: true, clearing: true,
+                             observation_persistence: 0.0,
+                             raytrace_range: 11.0, obstacle_range: 5.6,
+                             expected_update_rate: 0.15}

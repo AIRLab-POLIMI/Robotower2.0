@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<launch>
+
+   <!-- params -->
+   <param name="forest_file" value="$(find player_tracker)/config/trained_leg_detector_res=0.33.yaml" />
+   <param name="scan_topic" value="/scan" />
+   <param name="fixed_frame" value="/map"/>
+   <param name="scan_frequency" value="10"/>
+  
+   <!-- run detect_leg_clusters -->  
+   <node pkg="player_tracker" type="detect_leg_clusters" name="detect_leg_clusters" output="screen"/>
+   <!-- run local_occupancy_grid_mapping -->
+   <node pkg="player_tracker" type="local_occupancy_grid_mapping" name="local_occupancy_grid_mapping" output="screen"/>
+
+    <!-- run particle_filter launch-prefix="xterm -e gdb -args" -->
+    <node pkg="player_tracker" type="particle_filter" name="particle_filter" output="screen" respawn="true"/>
+    <node pkg="player_tracker" type="costmap_translator" name="costmap_translator" output="screen" respawn="true"/>
+    <node pkg="player_tracker" type="human_marker.py" name="rviz_player_marker_generator" output="screen" respawn="true"/>
+    <node pkg="player_tracker" type="tower_rectangle_creator.py" name="tower_rectangle_creator" output="screen" respawn="true"/>
+
+    <!-- run rviz -->
+    <node pkg="rviz" type="rviz" name="rviz" />
+    <!--  /home/ewerlopes/Desktop/_2018-08-30-16-10-13.bag"/ -->
+    <!-- play rosbag normal rate param is 1-->
+
+    <!-- bags: 
+        * VERY_HARD: _2018-08-29-11-15-45.bag
+        * EASY: _2018-08-30-16-10-13.bag
+        * UNRELIABLE: _2018-08-24-14-53-15.bag (tower misaligned - we should avoid tower misalignment)
+        * GOOD: _2018-08-30-16-32-26 (robust upon player reacquisition)
+        * FAILED: _2018-09-24-19-23-58.bag (NEW BAG)
+    -->
+    <node pkg="rosbag" type="play" name="player" output="screen" required="true" 
+        args="--delay=4
+        --clock 
+        --rate=1
+        -s 0
+        $(find player_tracker)/rosbags/_2018-09-24-19-23-58.bag" />
+    <param name="use_sim_time" value="true" />
+
+</launch>

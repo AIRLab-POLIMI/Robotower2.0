@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<launch>
+  <!-- params -->
+  <param name="forest_file" value="$(find player_tracker)/config/trained_leg_detector_res=0.33.yaml" />
+  <param name="scan_topic" value="/scan" />
+  <param name="fixed_frame" value="/map"/>
+  <param name="scan_frequency" value="10"/>  
+  
+  <!-- Run particle_filter launch-prefix="xterm -e gdb -args" -->
+  <node pkg="player_tracker" type="particle_filter" name="particle_filter" output="screen" respawn="true"/>
+  <node pkg="player_tracker" type="costmap_translator" name="costmap_translator" output="screen" respawn="true"/>
+
+  <!-- Run player marker for Rviz visualization-->
+  <node pkg="player_tracker" type="human_marker.py" name="rviz_player_marker_generator" output="screen" respawn="true"/>
+  
+  <!-- Run detect_leg_clusters For helping detecting towers-->  
+  <node pkg="player_tracker" type="detect_leg_clusters" name="detect_leg_clusters" output="screen"/>
+  <!-- Run local_occupancy_grid_mapping -->
+  <node pkg="player_tracker" type="local_occupancy_grid_mapping" name="local_occupancy_grid_mapping" output="screen"/>
+
+  <!-- Run tower rectangle creator -->
+  <node pkg="player_tracker" type="tower_rectangle_creator.py" name="tower_rectangle_creator" output="screen" respawn="true"/>
+    
+</launch>

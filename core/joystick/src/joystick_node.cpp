@@ -70,7 +70,7 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 			twistMsg = lastUnsafeTwistMsg_;
 			twistPub.publish(twistMsg);
 		}else{
-			ROS_WARN("unsafe/cmd_vel too old... skipping..  Time diff:%d", time_diff.toSec());
+			ROS_DEBUG("unsafe/cmd_vel too old... skipping..  Time diff:%d", time_diff.toSec());
 		}
 	}else if (msg->buttons[deadmanButton] && !msg->buttons[6]) {		// if deadman switch is pressed
 		if (msg->buttons[3]){
