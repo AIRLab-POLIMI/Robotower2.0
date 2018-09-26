@@ -1,0 +1,11 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "origin"]
+	url = https://github.com/ewerlopes/leg_tracker.git
+	fetch = +refs/heads/player_tracker:refs/remotes/origin/player_tracker
+[branch "player_tracker"]
+	remote = origin
+	merge = refs/heads/player_tracker
