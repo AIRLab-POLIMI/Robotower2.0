@@ -1,0 +1,9 @@
+rigid_bodies:
+    '1':
+        pose: robot/pose_gt
+        child_frame_id: kinect_gt_frame
+        parent_frame_id: world
+    '2':
+        pose: player/pose_gt
+        child_frame_id: player_gt_frame
+        parent_frame_id: world

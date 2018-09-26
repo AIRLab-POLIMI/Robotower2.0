@@ -1,0 +1,16 @@
+tracker_width_fov: 1.089085      # 69.4*M_PI/180
+tracker_height_fov:  0.7417649     # 42.5*M_PI/180
+tracker_cam_width: 640
+tracker_cam_height: 480
+camera_namespace: "camera"
+queue_size: 5
+show_frame: false
+color_frame: "/color/image_raw"
+depth_frame: "/aligned_depth_to_color/image_raw"
+seg_threshold: 300                    # in mm
+h_min: 127
+s_min: 99
+v_min: 39
+h_max: 165
+s_max: 256
+v_max: 256

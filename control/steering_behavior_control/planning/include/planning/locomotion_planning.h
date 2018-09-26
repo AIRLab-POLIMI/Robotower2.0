@@ -7,8 +7,7 @@
 
 #include <steering_behavior/vehicle_model.h>
 #include <steering_behavior/steering_behavior.h>
-//#include <steering_behavior/arrival.h>
-//#include <steering_behavior/seek.h>
+#include <visualization_msgs/Marker.h>
 
 
 namespace LocomotionPlanning{
@@ -30,6 +29,7 @@ namespace LocomotionPlanning{
 		    ros::NodeHandle nh_;
 		    ros::Subscriber steering_sub_;
 		    ros::Publisher vel_pub_;
+			ros::Publisher marker_pub_;
 
 		    planning::SteeringBehaviorEncoded current_steering_;
 		    SteeringFactory steering_factory_;
@@ -44,6 +44,7 @@ namespace LocomotionPlanning{
 
 		    void steeringCallback(const planning::SteeringBehaviorEncoded& steering);
 		    geometry_msgs::Point32 generateTarget();
+			void publishTarget(geometry_msgs::Point32 target);
  };
 
 }

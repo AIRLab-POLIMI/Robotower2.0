@@ -22,7 +22,6 @@ def main():
             social_analyzer.get_targets()
             social_analyzer.get_outcome_matrices()
             social_analyzer.map_outcome_matrices_in_interdependence_space()
-            # if not social_analyzer.get_last_deception():
             social_analyzer.check_for_deception()
 
         rate.sleep()

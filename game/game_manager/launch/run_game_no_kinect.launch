@@ -57,7 +57,7 @@
    
 
     <!-- player and tower game information -->
-    <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
+    <!--<node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />-->
     <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
     
     <!-- player classification module
@@ -68,18 +68,25 @@
     
 
     <!-- navigation -->
-    <!--<include file="$(find game_navigation)/launch/navigation.launch"/> -->
+    <include file="$(find game_navigation)/launch/navigation.launch"/> 
     
     <!-- Player Tracking  -->
     <!--<include file="$(find player_tracker)/launch/experiments/run.launch"/> -->
-    <include file="$(find radial_tracking)/launch/run.launch"/>
+    <!--<include file="$(find radial_tracking)/launch/run.launch"/>-->
 
 	<!-- Onboard camera  -->
-    <include file="$(find onboard_camera)/launch/run.launch"/> 
+    <!--<include file="$(find onboard_camera)/launch/run.launch"/> -->
 
     <!-- Player Particle Filter 
     <node pkg="radial_tracking" type="node.py" name="radial_tracking" output="screen" respawn="true"/>
 	-->
+	<group ns="planning">
+        <rosparam command="load" file="$(find planning)/config/config.yaml"/>
+        <!--Node to evaluate safety-->
+        <node name="planning_safety_node" pkg="planning" type="planning_safety_node" output="screen" respawn="true"/>
+    </group>
+
+	<include file="$(find player_tracker)/launch/run.launch"/>
 	
     <!-- <node pkg="scan_filter" type="scan_filter_node" name="scan_filter" output="screen" respawn="true"/>  launch-prefix="xterm -e gdb args" -->
 

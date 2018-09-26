@@ -33,7 +33,7 @@ VehicleModel::PointVehicle::PointVehicle(){
         exit(-1);
     }
 
-    if (!nh_.getParam("/steering_behavior_node/max_force", max_force_) ){
+    if (!nh_.getParam("/steering_behavior_node/max_force", base_max_force_) ){
         ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read the parameter 'max_force' from rosparam! Check steerning_behavior .yaml file!");
         exit(-1);
     }
@@ -80,7 +80,7 @@ geometry_msgs::Twist VehicleModel::PointVehicle::generateCommandVel(){
     geometry_msgs::Twist command;
     // Calculate desired velocity according to the current steering behavior
     geometry_msgs::Vector3 desired_velocity = steering_behavior_->calculate_desired_velocity(current_pos_);
-    ROS_WARN("Desired velocity x:%.2f, y:%.2f, z:%.2f", desired_velocity.x, desired_velocity.y, desired_velocity.z);
+    // ROS_WARN("Desired velocity x:%.2f, y:%.2f, z:%.2f", desired_velocity.x, desired_velocity.y, desired_velocity.z);
 
     // Truncate the velocity according to vehicle specs
     desired_velocity = SteeringBehavior::VectorUtility::truncate(desired_velocity, max_speed_);
@@ -88,13 +88,13 @@ geometry_msgs::Twist VehicleModel::PointVehicle::generateCommandVel(){
 
     // Calculate the steering force to apply according to the current steering behavior
     geometry_msgs::Vector3 steering_force = steering_behavior_->calculate_steering_force(current_vel_, desired_velocity);
-    ROS_WARN("Steering force x:%.2f, y:%.2f, z:%.2f", steering_force.x, steering_force.y, steering_force.z);
+    // ROS_WARN("Steering force x:%.2f, y:%.2f, z:%.2f", steering_force.x, steering_force.y, steering_force.z);
 
     // Truncate the force according to vehicle specs
     steering_force = SteeringBehavior::VectorUtility::truncate(steering_force, max_force_);
 
-    ROS_WARN("Desired velocity x:%.2f, y:%.2f, z:%.2f", desired_velocity.x, desired_velocity.y, desired_velocity.z);
-    ROS_WARN("Steering force x:%.2f, y:%.2f, z:%.2f", steering_force.x, steering_force.y, steering_force.z);
+    // ROS_WARN("Desired velocity x:%.2f, y:%.2f, z:%.2f", desired_velocity.x, desired_velocity.y, desired_velocity.z);
+    // ROS_WARN("Steering force x:%.2f, y:%.2f, z:%.2f", steering_force.x, steering_force.y, steering_force.z);
 
     // Calculate the velocity resulting from applying the steering force to the vehicle
     geometry_msgs::Vector3 acceleration = SteeringBehavior::VectorUtility::scalar_multiply(steering_force, (1/mass_));
@@ -103,7 +103,7 @@ geometry_msgs::Twist VehicleModel::PointVehicle::generateCommandVel(){
     // Truncate the velocity according to vehicle specs
     command.linear = SteeringBehavior::VectorUtility::truncate(command_lin, max_speed_);
 
-    if(steering_behavior_->updateTarget(current_scan_, current_pos_)){
+    if(steering_behavior_->updateTarget(current_scan_, current_pos_, current_rotation_wrt_map_)){
         changeParams(steering_behavior_->getUpdateWeights());
     }
     return command;
@@ -112,7 +112,7 @@ geometry_msgs::Twist VehicleModel::PointVehicle::generateCommandVel(){
 // Updates the current position of the robot
 void VehicleModel::PointVehicle::updateCurrentPos(const geometry_msgs::Pose& msg){
     // TODO get robot pose using ROS
-    ROS_INFO("Updating Pose...");
+    // ROS_INFO("Updating Pose...");
     current_pos_.x = msg.position.x;
     current_pos_.y = msg.position.y;
     current_pos_.z = msg.position.z;
@@ -158,9 +158,9 @@ geometry_msgs::Twist VehicleModel::PointVehicle::alignCommand(geometry_msgs::Twi
 void VehicleModel::PointVehicle::updateCurrentVelocity(const geometry_msgs::Twist& msg){
     // TODO get robot current velocity using ROS
      // TODO GET ROTATION BETWEEN BASE_LINK E MAP
-    ROS_ERROR("Unrotated_vel x:%.2f, y:%.2f", msg.linear.x, msg.linear.y);
+    // ROS_ERROR("Unrotated_vel x:%.2f, y:%.2f", msg.linear.x, msg.linear.y);
     current_vel_ = SteeringBehavior::VectorUtility::rotate(msg.linear, current_rotation_wrt_map_);
-    ROS_ERROR("Rotated_vel x:%.2f, y:%.2f", current_vel_.x, current_vel_.y);
+    // ROS_ERROR("Rotated_vel x:%.2f, y:%.2f", current_vel_.x, current_vel_.y);
 }
 
 void VehicleModel::PointVehicle::changeParams(std::vector<float> update_weights){
@@ -170,10 +170,14 @@ void VehicleModel::PointVehicle::changeParams(std::vector<float> update_weights)
     // max_force_ = 
     mass_ = mass_ / update_weights[0];
     max_speed_ = max_speed_ * update_weights[1];
+    max_force_ = max_force_ * update_weights[2];
+
+    ROS_INFO("NEW PARAMS [mass = %.2f, max_speed = %.2f, max_force = %.2f]", mass_, max_speed_, max_force_);
 }
 
 void VehicleModel::PointVehicle::resetParams(){
     mass_ = base_mass_;
     max_speed_ = base_max_speed_;
+    max_force_ = base_max_force_;
 
 }

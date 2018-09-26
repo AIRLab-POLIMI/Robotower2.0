@@ -6,6 +6,7 @@ from player_tracker.msg import TowerArray
 from sensor_msgs.msg import LaserScan
 from navigation import Navigation
 from std_msgs.msg import Float32
+from planning.msg import SafetyMsg
 from geometry_msgs.msg import PolygonStamped
 import numpy as np
 import rospy
@@ -70,6 +71,7 @@ def main():
     laser_sub       = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)
     laser_tower_sub = rospy.Subscriber('/estimated_tower_positions', TowerArray, navigation.tpos_callback)
     tower_rectangle_sub = rospy.Subscriber('/tower_rectangle', PolygonStamped, navigation.tower_rectangle_callback)
+    safety_sub = rospy.Subscriber('/safety', SafetyMsg, navigation.safety_callback)
 
     # TODO adjust this subscriber: move to another location, ask Ewerton
     angle_sub = rospy.Subscriber('/angle', Float32, navigation.angleCallback)

@@ -1,6 +1,0 @@
-<launch>
-
-	<rosparam command="load" file="$(find kinect_tracker)/config/tracker.yaml"/>
-  <node name="kinect_tracker" pkg="kinect_tracker" type="kinect_tracker_node" respawn="true" output="screen"/>
-  
-</launch>

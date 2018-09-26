@@ -1,6 +1,0 @@
-<launch>
-  <rosparam command="load" file="$(find onboard_camera)/config/params_realsense.yaml"/>
-  <include file="$(find realsense2_camera)/launch/rs_aligned_depth.launch"/>
-  <node pkg="onboard_camera" type="onboard_camera_realsense_node" name="onboard_camera_node" output="screen" respawn="true" />
-</launch>
-

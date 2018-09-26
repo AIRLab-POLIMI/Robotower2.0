@@ -57,7 +57,6 @@ namespace Action
             ros::Subscriber scan_sub_;
             ros::Subscriber tower_rectangle_sub_;
             tf::TransformListener listener;
-            ros::Publisher marker_pub_;
 
             ros::NodeHandle nh_;
 
@@ -72,6 +71,7 @@ namespace Action
 
             int last_tower_index_;
             bool ready_;
+            float current_rotation_wrt_map_;
 
             Action::AbstractAction* generateCaptureAction(int tower_index);
             Action::AbstractAction* generateEscapeAction(planning::ActionEncoded action_msg);
@@ -85,7 +85,7 @@ namespace Action
             void updateTowerPositions(std::vector<geometry_msgs::Point32>);
             int matchTowerIndex(geometry_msgs::Point32 point);
             void updateCurrentPos();
-            void publishTarget(geometry_msgs::Point32 target);
+            // void publishTarget(geometry_msgs::Point32 target);
         public:
             ActionFactory();
 

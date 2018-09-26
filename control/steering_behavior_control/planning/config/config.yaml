@@ -5,9 +5,13 @@ vel_topic_sub: "/vel"
 player_angle_topic: "/player_filtered"
 tower_pos_topic: "/tower_position"
 safety_topic: "/safety"
-scan_topic: "/scan"
+scan_topic: "/scan_player_tracking"
 tower_rectangle_topic: "/tower_rectangle"
 deception_topic: "/deception"
 
 number_sections_safety: 8
-safety_treshold: 0.64
+safety_treshold: 1
+safety_treshold_flee: 0.7
+collision_angle_treshold: 1.57079632
+window_width: 1.57079632
+speed_thd: 0.1

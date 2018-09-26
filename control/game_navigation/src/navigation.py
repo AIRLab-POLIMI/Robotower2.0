@@ -3,6 +3,7 @@ from kinect_tracker.msg import PlayerInfo
 from player_tracker.msg import TowerArray
 from geometry_msgs.msg import Twist, PointStamped
 from sensor_msgs.msg import LaserScan
+from planning.msg import SafetyMsg
 from avoidance import FuzzyAvoider
 from SafetyEvaluator import SafetyEvaluator
 from KFfiltering import EKF
@@ -61,10 +62,13 @@ class Navigation:
 
         self.U_bar = np.array([[0.],[0.],[0.]])
         self.is_safe = True
+        self.current_safety = True
+        # self.current_safety_msg.data = True
         self.last_cmd_vel = Twist()         #last cmd_vel given
 
         self.safety_evaluator = SafetyEvaluator(self.DONTCARE)
         self.lock_rotation = False
+        
 
 
     def set_max_speed(self,value):
@@ -75,6 +79,12 @@ class Navigation:
 
     def set_ks(self,value):
         self.KS = value
+
+    def safety_callback(self, msg):
+        """
+        Updates safety condition
+        """
+        self.current_safety = msg.safety
 
     def velCallback(self,msg):
         """
@@ -302,30 +312,30 @@ class Navigation:
 
     def evaluateColision(self):
         """Set is_safe variable"""
-
+        self.is_safe = self.current_safety
         # check if an obstacle is detected below the proximity threeshold
-        proximity = False
-        for values in self.current_scan_obstacles.ranges:
-            if values < self.PROXIMITY_THREESHOLD:
-                proximity = True
-                break
+        # proximity = False
+        # for values in self.current_scan_obstacles.ranges:
+        #     if values < self.PROXIMITY_THREESHOLD:
+        #         proximity = True
+        #         break
 
-        # NOTE:  Why do we have proximity and dontcare as well thersholds? I think Davide meant to use 'proximity'
-        # as a way to start reducing the efect of inertia in case we have to suddenly stop because of a 'dontcare'
-        # condition.  Thus, 'proximity' is use just to start reducing the robot action and preparing it to a possible
-        # obstacle avoidance.
+        # # NOTE:  Why do we have proximity and dontcare as well thersholds? I think Davide meant to use 'proximity'
+        # # as a way to start reducing the efect of inertia in case we have to suddenly stop because of a 'dontcare'
+        # # condition.  Thus, 'proximity' is use just to start reducing the robot action and preparing it to a possible
+        # # obstacle avoidance.
 
-        # perform a safety check (NOTE: Does not care for direction of movement)
-        # dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
+        # # perform a safety check (NOTE: Does not care for direction of movement)
+        # # dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
 
-        #dontcare_condition = self.dontcare_condition_evaluation()
-        #dontcare_condition = self.dontcare()
+        # #dontcare_condition = self.dontcare_condition_evaluation()
+        # #dontcare_condition = self.dontcare()
 
-        filtered_scan = self.filter_scan(self.current_scan_obstacles.ranges)
+        # filtered_scan = self.filter_scan(self.current_scan_obstacles.ranges)
        
-        self.set_evaluator_mode()
-        self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan, self.current_scan_obstacles)
-        # rospy.loginfo("Safety condition: {}".format(self.is_safe))
+        # self.set_evaluator_mode()
+        # self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan, self.current_scan_obstacles)
+        # # rospy.loginfo("Safety condition: {}".format(self.is_safe))
 
     
     def laserScanManager(self):

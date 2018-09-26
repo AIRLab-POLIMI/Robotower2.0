@@ -75,7 +75,7 @@ class Filter(object):
         # TODO: get num of towers from param server
         towers = []
         for t in range(1,num_towers+1):
-            tower = self.get_trans_wrt_robot("tower_"+str(t))
+            tower = self.get_trans_wrt_robot("/tower_"+str(t))
             towers.append(Point(tower[0],tower[1],0))
 
         distances = []

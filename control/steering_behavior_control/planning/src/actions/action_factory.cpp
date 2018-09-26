@@ -29,7 +29,7 @@ Action::ActionFactory::ActionFactory(){
 
     scan_sub_ = nh_.subscribe("/scan", 1, &Action::ActionFactory::laserCallback, this);
     tower_rectangle_sub_ = nh_.subscribe(tower_rectangle_topic_, 1, &Action::ActionFactory::towerRectangleCallback, this);
-    marker_pub_ = nh_.advertise<visualization_msgs::Marker>("/target_steering", 1);
+    
 
     ready_ = false;
     towers_.resize(4);
@@ -95,6 +95,7 @@ void Action::ActionFactory::laserCallback(const sensor_msgs::LaserScan scan){
 
 Action::AbstractAction* Action::ActionFactory::generateAction(planning::ActionEncoded action_msg, int tower_index){
     if(ready_){
+        updateCurrentPos();
         switch(action_msg.action_code){
             case CAPTURE_TOWER:
                 return generateCaptureAction(tower_index);
@@ -110,49 +111,23 @@ Action::AbstractAction* Action::ActionFactory::generateAction(planning::ActionEn
 }
 
 Action::AbstractAction* Action::ActionFactory::generateCaptureAction(int tower_index){
-    updateCurrentPos();
     geometry_msgs::Point32 target;
     float min_dist = 100.0;
     int min_index;
     for(int i=0; i<4; i++){
         float dist = pow(current_pos_.x - towers_[i].x, 2) + pow(current_pos_.y - towers_[i].y, 2);
-        if(dist < min_dist){
+        if(dist < min_dist && i!=last_tower_index_){
             min_dist = dist;
             min_index = i;
         }
     }
     target = towers_[min_index];   
-    // TODO remove
-    // target = towers_[3];
 
-    ROS_ERROR("Tower :%d", 3);
-    publishTarget(target);
+    ROS_ERROR("Tower :%d", min_index);
+    // publishTarget(target);
     last_tower_index_ = min_index;
     
     return new Action::CaptureTower(tower_index, target);
-}
-
-void Action::ActionFactory::publishTarget(geometry_msgs::Point32 target){
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = "/map";
-    marker.header.stamp = ros::Time::now();
-
-    marker.type = visualization_msgs::Marker::SPHERE;
-    
-    marker.scale.x = 0.2;
-    marker.scale.y = 0.2;
-    marker.scale.z = 0.0;
-    
-    marker.color.r = 1.0f;
-    marker.color.g = 0.0f;
-    marker.color.b = 0.0f;
-    marker.color.a = 1.0f;
-
-    marker.pose.position.x = target.x;
-    marker.pose.position.y = target.y;
-    marker.pose.position.z = target.z;
-
-    marker_pub_.publish(marker);
 }
 
 Action::AbstractAction* Action::ActionFactory::generateEscapeAction(planning::ActionEncoded action_msg){
@@ -161,11 +136,10 @@ Action::AbstractAction* Action::ActionFactory::generateEscapeAction(planning::Ac
     float obstacle_distance = current_scan_.ranges[action_msg.danger_index];
     float obstacle_angle = (action_msg.danger_index * (2*M_PI/1000.0));
 
-    target.x = current_pos_.x + cos(obstacle_angle)*obstacle_distance;
-    target.y = current_pos_.y + sin(obstacle_angle)*obstacle_distance;
+    target.x = current_pos_.x + cos(obstacle_angle + current_rotation_wrt_map_)*obstacle_distance;
+    target.y = current_pos_.y + sin(obstacle_angle + current_rotation_wrt_map_)*obstacle_distance;
     target.z = 0.0;
     
-    // target = towers_[last_tower_index_];
     return new Action::Escape(target);
 }
 
@@ -187,13 +161,11 @@ std::vector<geometry_msgs::Point32> Action::ActionFactory::generateDeceptiveTarg
     fake_target.x = (real_target.x + deceptive_tower.x)/2.0;
     fake_target.y = (real_target.y + deceptive_tower.y)/2.0;
 
-    ROS_ERROR("A");
     geometry_msgs::Vector3 vector;
     float magnitude;
     vector = SteeringBehavior::VectorUtility::vector_difference(current_pos_, fake_target);
     magnitude = SteeringBehavior::VectorUtility::magnitude(vector);
 
-    ROS_ERROR("B");
 
     vector = SteeringBehavior::VectorUtility::scalar_multiply(SteeringBehavior::VectorUtility::normalize(vector), magnitude*0.8);
     fake_target.x = current_pos_.x + vector.x;
@@ -206,7 +178,7 @@ std::vector<geometry_msgs::Point32> Action::ActionFactory::generateDeceptiveTarg
     targets.resize(2);
     targets[0] = fake_target;
     targets[1] = real_target;
-    publishTarget(targets[0]);
+    // publishTarget(targets[0]);
     return targets;
 }
 
@@ -268,6 +240,12 @@ void Action::ActionFactory::updateCurrentPos(){
             current_pos_.x = transform.getOrigin().getX();
             current_pos_.y = transform.getOrigin().getY();
             current_pos_.z = transform.getOrigin().getZ();
+
+            double roll, pitch, yaw;
+            tf::Quaternion quat = transform.getRotation();            
+            tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+            
+            current_rotation_wrt_map_ = yaw;
             
         }
         catch (tf::TransformException ex){

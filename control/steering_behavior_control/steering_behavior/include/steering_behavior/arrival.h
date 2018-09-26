@@ -49,15 +49,16 @@ class Arrival: public SteeringBehavior {
             return 3;
         }
 
-        bool updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos){
+        bool updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos, float current_rotation_wrt_map){
 			return false;
 		}
 
         std::vector<float> getUpdateWeights(){
             std::vector<float> output;
-            output.resize(2);
+            output.resize(3);
             output[0] = 1;
             output[1] = 1;
+			output[2] = 1;
             return output;
         }
 

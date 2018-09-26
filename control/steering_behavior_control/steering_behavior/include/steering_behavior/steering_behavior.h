@@ -59,7 +59,7 @@ namespace SteeringBehavior{
 
 		virtual std::string getName() = 0;
 		virtual int getCode() = 0;
-		virtual bool updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos) = 0;
+		virtual bool updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos, float current_rotation_wrt_map) = 0;
 		virtual std::vector<float> getUpdateWeights() = 0;
 	};
 

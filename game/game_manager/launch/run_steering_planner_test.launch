@@ -56,10 +56,10 @@
 
    
 
-    <!-- player and tower game information 
-    <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
+    <!-- player and tower game information -->
+    <!--<node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />-->
     <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
-    -->
+    
     <!-- game manager 
     <node pkg="game_manager" type="node.py" name="game_manager" output="screen" respawn="true" />
     -->
@@ -79,6 +79,8 @@
 	<arg name="player_base"			default='robot_1/base_link'/>
 
 	<include file="$(find steering_behavior)/launch/run_test_planner.launch"/>
+
+	<include file="$(find player_tracker)/launch/run.launch"/>
 
 	<!--Onboard camera  -->
     <!--<include file="$(find onboard_camera)/launch/run.launch"/>-->

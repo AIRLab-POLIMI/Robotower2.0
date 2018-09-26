@@ -26,8 +26,11 @@
  /game_navigation/closest_point
  /game_navigation/trajectory_marker_array
  /game_navigation/single_marker_trajectory
+ /player_filtered
+ /player_marker
  /people_tracked
  /kf_fusion_marker
+ /target_steering
 " />
 	<arg name="file_name"  	default=""/>
 

@@ -20,7 +20,7 @@ float SteeringBehavior::Deception::evaluate(){
     return 1;
 }
 
-bool SteeringBehavior::Deception::updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos){
+bool SteeringBehavior::Deception::updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos, float current_rotation_wrt_map){
     ROS_ERROR("REACHING TARGET x:%.2f y:%.2f", target_.x, target_.y);
     if(current_target_index_ == targets_.size() - 1){
         // We're going towards the real target
@@ -42,14 +42,16 @@ bool SteeringBehavior::Deception::updateTarget(sensor_msgs::LaserScan scan, geom
 
 std::vector<float> SteeringBehavior::Deception::getUpdateWeights(){
             std::vector<float> output;
-            output.resize(2);
+            output.resize(3);
             if(targets_.size() == 2){
                 output[0] = 2.0;
                 output[1] = 2.0;
+                output[2] = 2.0;
             }
             else{
                 output[0] = 1.5;
                 output[1] = 1.4;
+                output[2] = 1.3;
             }
             return output;
         }

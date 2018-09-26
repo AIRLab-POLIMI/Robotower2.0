@@ -17,6 +17,7 @@ namespace VehicleModel
             float max_force_;
             float max_speed_;
             float base_max_speed_;
+            float base_max_force_;
             float current_rotation_wrt_map_;
             geometry_msgs::Vector3 current_vel_;
             geometry_msgs::Point32 current_pos_;

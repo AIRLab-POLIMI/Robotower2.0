@@ -16,12 +16,15 @@ import deception
 from behavior_with_deception.srv import DeceptiveCommand 
 from behavior_with_deception.msg import Goal
 from behavior_with_deception.msg import Deception
+# from behavior_with_deception.msg import DeceptionCommandMsg
+
+from geometry_msgs.msg import PointStamped
 
 class SocialAnalyzer(object):
     def __init__(self):
         
         # Initializing towers' positions and agents' positions
-        self.player_xy = self.robot_xy = numpy.zeros(2)
+        self.player_xy = self.robot_xy = None
         self.towers_xy = numpy.zeros(4)
 
         # Target array says for each tower how 'likely' the robot/player wants to win it
@@ -63,9 +66,11 @@ class SocialAnalyzer(object):
         self.deception_duration_time_per_slope = 100
     
         self.tf_listener = tf.TransformListener()
-        self.sub = rospy.Subscriber('/player_tracked_particle_filter/player_filtered', PointStamped, self.callback_player_filtered)
+        self.sub = rospy.Subscriber('/player_filtered', PointStamped, self.callback_player_filtered)
         self.pub = rospy.Publisher('/game/goal', Goal, queue_size=1)
         self.pub_deception = rospy.Publisher('/game/is_deceiving', Deception, queue_size=1)
+
+		#self.pub_deception_command = rospy.Publisher('/game/is_deceiving', Deception, queue_size=1)
 
         rospy.wait_for_service('/behavior_with_deception/make_deception')
         
@@ -103,7 +108,17 @@ class SocialAnalyzer(object):
             rospy.logerr("Behavior with deception node: " + str(e))       
 
     def callback_player_filtered(self, msg):
-        self.player_xy = np.array([msg.point.x, msg.point.y])
+        # msg = self.transform_player_pose(msg)
+        if msg is not None:
+            self.player_xy = numpy.array([msg.point.x, msg.point.y])
+
+
+    def transform_player_pose(self,msg):
+        '''Transforming player position from base_link to map '''
+        try:
+            return self.tf_listener.transformPoint('/map', msg)
+        except Exception as e:
+            rospy.logerr('Social analizer: {}'.format(str(e)))
         
     def set_position_agents(self):
         # Getting agents' position

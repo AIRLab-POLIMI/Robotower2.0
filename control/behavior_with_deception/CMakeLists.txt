@@ -54,6 +54,7 @@ add_message_files(
   FILES
   Goal.msg
   Deception.msg
+  DeceptionCommandMsg.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -24,7 +24,7 @@ class Deception: public SteeringBehavior {
 			return 4;
 		}
 
-		bool updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos);
+		bool updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos, float current_rotation_wrt_map);
 
 		std::vector<float> getUpdateWeights();
 };

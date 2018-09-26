@@ -7,7 +7,11 @@
         <node name="planning_action_node" pkg="planning" type="planning_action_node" output="screen" respawn="true"/>
         <node name="planning_steering_node" pkg="planning" type="planning_steering_node" output="screen" respawn="true"/>
         <node name="planning_locomotion_node" pkg="planning" type="planning_locomotion_node" output="screen" respawn="true"/>
-        <!--<node name="planning_safety_node" pkg="planning" type="planning_safety_node" output="screen" respawn="true"/>-->
-        <node name="planning_testing_node" pkg="planning" type="planning_testing_node" output="screen" respawn="true"/>
+
+        <!--Node to evaluate safety-->
+        <node name="planning_safety_node" pkg="planning" type="planning_safety_node" output="screen" respawn="true"/>
+
+        <!--Node to trigger deception-->
+        <!--<node name="planning_testing_node" pkg="planning" type="planning_testing_node" output="screen" respawn="true"/>-->
     </group>
 </launch>

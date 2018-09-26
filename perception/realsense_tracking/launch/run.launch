@@ -1,6 +1,0 @@
-<launch>
-
-	<rosparam command="load" file="$(find realsense_tracking)/config/tracker.yaml"/>
-  <node name="realsense_tracking" pkg="realsense_tracking" type="realsense_tracking_node" respawn="true" output="screen"/>
-  
-</launch>

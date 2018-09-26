@@ -11,16 +11,12 @@ geometry_msgs::Vector3 SteeringBehavior::Flee::calculate_desired_velocity(geomet
 
 geometry_msgs::Vector3 SteeringBehavior::Flee::calculate_steering_force(geometry_msgs::Vector3 current_vel, geometry_msgs::Vector3 desired_vel){
     geometry_msgs::Vector3 output;
-    // if(desired_vel.x == 0 && desired_vel.y == 0 && desired_vel.z == 0){
-    //     return output;
-    // }
     output = VectorUtility::vector_difference(current_vel, desired_vel);
     return output;
 }
 
 bool SteeringBehavior::Flee::evaluateSafety(geometry_msgs::Point32 current_pos){
     float distance_from_target = VectorUtility::distance(current_pos, target_);
-    // ROS_WARN("We're %f meters from target", distance_from_target);
     if(distance_from_target > safety_distance_){
         return true;
     }
@@ -31,7 +27,7 @@ float SteeringBehavior::Flee::evaluate(){
     return 0.0;
 }
 
-bool SteeringBehavior::Flee::updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos){
+bool SteeringBehavior::Flee::updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos, float current_rotation_wrt_map){
     float min_dist = 6.0; // minimum distance from sensor is 5.6 meters
     int min_index;
 
@@ -47,10 +43,15 @@ bool SteeringBehavior::Flee::updateTarget(sensor_msgs::LaserScan scan, geometry_
     float obstacle_angle = min_index * (2*M_PI/1000);
 
     geometry_msgs::Point32 target;
-    target.x = current_pos.x + cos(obstacle_angle)*min_dist;
-    target.y = current_pos.y + sin(obstacle_angle)*min_dist;
+    target.x = current_pos.x + cos(obstacle_angle + current_rotation_wrt_map + M_PI)*min_dist;
+    target.y = current_pos.y + sin(obstacle_angle + current_rotation_wrt_map + M_PI)*min_dist;
 
     setTarget(target);
+
+    if(to_update_){
+        to_update_ = false;
+        return true;
+    }
 
     return false;
 }

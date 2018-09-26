@@ -1,0 +1,17 @@
+<!-- This launch file calls the setBlob_node for enabling 
+	 adjusting the HSV parameters for blob (player) detection.
+	 
+	 After you adjust the sliders, write down the values they 
+	 take and insert them in the run.launch. After that the kinect_tacker
+	 is going to react to the color you set up.
+-->
+
+<launch>
+	<arg name="image_topic" default="/kinect2/hd/image_color_rect" />
+	
+ 	<include file="$(find kinect2_bridge)/launch/kinect2_bridge.launch"/>
+
+	<node name="set_blob_parameter" pkg="kinect_tracker" type="kinect_tracker_setBlob_node" respawn="true" output="screen">
+		<param name="image_topic"       type="str"    value="$(arg image_topic)"/>
+  	</node>
+</launch>

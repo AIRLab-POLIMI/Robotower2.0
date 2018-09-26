@@ -1,0 +1,15 @@
+<launch>
+
+<!-- rosserial launch file for arduino -->
+	<include file="$(find rosserial_core)/launch/serial_node.launch">
+		<arg name="port" value="/dev/arduino" />
+	</include>
+
+  <group ns= "/onboard_camera">
+	  <rosparam command="load" file="$(find onboard_camera)/config/params.yaml"/>
+    <node pkg="onboard_camera" type="onboard_camera_reader_node" name="onboard_camera_reader" output="screen" respawn="true" />
+    <node pkg="onboard_camera" type="onboard_camera_node" name="onboard_camera_node" output="screen" respawn="true" />
+  </group>
+
+</launch>
+
