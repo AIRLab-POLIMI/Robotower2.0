@@ -1,0 +1,62 @@
+<launch>
+	
+	<arg name="teleop" default="1" />
+	<arg name="record" default="1" />
+	<arg name="laser" default="1" />
+	
+	<!-- rosserial launch file for nova core -->
+	<include file="$(find rosserial_core)/launch/serial_node.launch">
+		<arg name="port" value="/dev/novaCore" />
+	</include>
+	
+	<!-- status node -->
+	<!-- <node pkg="triskar" type="status.py" name="status"/>-->	
+
+	<!-- joy node -->
+	<node respawn="true" pkg="joy" type="joy_node" name="joy_node" if="$(arg teleop)">
+		<param name="dev" type="string" value="/dev/input/js0" />
+		<param name="deadzone" value="0.0" />
+		<param name="autorepeat_rate" value="100.0" />
+	</node>
+	
+	<!-- triskar teleop node 
+	<rosparam file="$(find triskar)/params/teleop_triskarone.yaml" command="load" ns="triskar_teleop" if="$(arg teleop)"/>
+	<node pkg="teleop_twist_joy" type="teleop_node" name="triskar_teleop" if="$(arg teleop)"/>-->
+	
+	<!-- Robogame teleop nodes -->
+	<include file="$(find joystick)/launch/joystick.launch"/>
+	
+	<!-- Launch heartbeat and arduino_publisher -->
+	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
+	
+	<node pkg="odometry_publisher" type="odometry_publisher" name="odometry_publisher"/>
+	
+	<include file="$(find triskar)/launch/hokuyo_nodes.launch"/>
+	
+	<!-- Merges the two lasers-->
+	<include file="$(find ira_laser_tools)/launch/laserscan_multi_merger.launch"/>
+	
+	<!-- Run move_base
+	<include file="$(find triskar_navigation)/launch/move_base.launch" />   -->	
+
+	<!-- Run gmapping server -->
+	<node name="slam_gmapping" pkg="gmapping" type="slam_gmapping">
+		<param name="map_update_interval" value="0.2" />
+		<param name="particles" value="100" />
+		<param name="maxUrange" value="5.0" />
+		<param name="xmin" value="-5.0" />
+		<param name="ymin" value="-5.0" />
+		<param name="xmax" value="5.0" />
+		<param name="ymax" value="5.0" />
+		<param name="maxRange" value="5.6" />
+		
+		<!-- 
+		<param name="scan" value="/scan_right" />
+		<name="base_frame" value="base_link" />
+		<param name="linearUpdate" value="0.2" />
+		<param name="maxRange" value="4.6" />		
+		<remap from="scan" to="scan_right" />
+		-->
+	</node>
+	
+</launch> 

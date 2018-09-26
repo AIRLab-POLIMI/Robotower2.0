@@ -1,0 +1,17 @@
+<launch>
+	
+	<arg name="teleop" default="1" />
+
+	<!-- joy node -->
+	<node respawn="true" pkg="joy" type="joy_node" name="joy_node" if="$(arg teleop)">
+		<param name="dev" type="string" value="/dev/input/js0" />
+		<param name="deadzone" value="0.0" />
+		<param name="autorepeat_rate" value="100.0" />
+	</node>
+	
+	<!-- Triskar teleop node -->
+	<rosparam file="$(find triskar)/params/teleop_triskarone.yaml" command="load" ns="triskar_teleop" if="$(arg teleop)"/>
+	<node pkg="teleop_twist_joy" type="teleop_node" name="triskar_teleop" if="$(arg teleop)"/>
+
+	
+</launch> 

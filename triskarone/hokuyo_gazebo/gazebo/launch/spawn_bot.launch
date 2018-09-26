@@ -1,0 +1,5 @@
+<launch>
+
+	<node name="spawn_bot" pkg="gazebo_ros" type="spawn_model" args="-file $(find nubot_description)/models/nubot/model.sdf -sdf -model bot1 -x 0.0 -y 0.0 -z 0.0"/>
+
+</launch>

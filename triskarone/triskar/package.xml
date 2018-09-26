@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package>
+  <name>triskar</name>
+  <version>0.1.0</version>
+  <description>The triskar package</description>
+  
+  <maintainer email="davide.tateo@polimi.it">Davide Tateo</maintainer>
+  <license>GPLv3</license>
+
+  <build_depend>triskar_msgs</build_depend>
+  <buildtool_depend>catkin</buildtool_depend>
+
+</package>

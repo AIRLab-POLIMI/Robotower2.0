@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find triskar)/launch/hokuyo_nodes.launch"/>
+  <node pkg="odometry_publisher" type="odometry_publisher" name="odometry_publisher"/>
+
+</launch>

@@ -1,0 +1,10 @@
+# pack-refs with: peeled fully-peeled 
+d2cb3f667c222d7102081f88f9ab0e3b764614dc refs/remotes/origin/electric-devel
+19e0010190a71d69771c96d0fa30673866e584d0 refs/remotes/origin/fuerte-devel
+2218ce5a624cef696cc1d026f69a1e25734849e7 refs/remotes/origin/groovy-devel
+0115c1391407c03e1a2e10d7adba1bb0aebc09f2 refs/remotes/origin/hydro-devel
+c25283fe48ad8eabf6a1b72241ee40cbe0a2cf72 refs/remotes/origin/indigo-devel
+62bcf16c10b452bbd6e6ac145698a49e46a1bdc2 refs/tags/1.7.5
+2020d53d998cdec218782d1dd42237c3673c47bd refs/tags/1.7.6
+7efa55cb1865cdf844b219c61d915e9bcd5ee657 refs/tags/1.7.7
+0115c1391407c03e1a2e10d7adba1bb0aebc09f2 refs/tags/1.7.8

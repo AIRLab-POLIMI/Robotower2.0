@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+<launch>
+
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+    <arg name="verbose" value="true"/>
+  </include>
+
+  <include file="$(find hokuyo_gazebo)/gazebo/launch/spawn_bot.launch">
+  </include>
+
+</launch>

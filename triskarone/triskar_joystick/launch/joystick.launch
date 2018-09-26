@@ -1,0 +1,23 @@
+<!-- This is a launch file to control the triskar robot using a PS3-like Joystick. What is different here
+     is the fact that I can increase velocity using the joystick not the keyboard as in the default
+     joystick node ros tutorial.-->
+
+<launch>
+
+	<param name="linear_scale" value="0.75" />
+	<param name="angular_scale" value="1.5" />
+	<param name="axis_deadman" value="5"/>
+	<param name="linear_x_axis" value="1"/>
+	<param name="linear_y_axis" value="0"/>
+	<param name="angular_axis" value="2"/>
+	<param name="max_linear_scale" value="2"/>
+	<param name="max_angular_scale" value="3"/>
+	
+	<node pkg="joy" type="joy_node" name="joy">
+        <param name="autorepeat_rate" value="60" />
+	</node>
+
+	<node pkg="triskar_joystick" type="triskar_joystick_node" name="triskar_joystick_node" output="screen" respawn="false">
+	</node>
+
+</launch>

@@ -1,0 +1,16 @@
+footprint: [
+  [0.1175, -0.3137],  
+  [-0.3304, -0.0551],
+  [-0.3304, 0.05507],
+  [0.1175, 0.3137],
+  [0.2130, 0.2586],
+  [0.2130, -0.2586]]
+
+inflation_radius: 0.15
+observation_sources: laser_scan_sensor
+
+laser_scan_sensor: {sensor_frame: /base_link, data_type: LaserScan,
+                     topic: scan, marking: true, clearing: true,
+                     observation_persistence: 0.0,
+                     raytrace_range: 11.0, obstacle_range: 5.6,
+                     expected_update_rate: 0.2}

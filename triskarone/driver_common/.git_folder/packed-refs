@@ -1,0 +1,17 @@
+# pack-refs with: peeled fully-peeled 
+7f90704dce79ef5038f5c9c83a4d39af5e2186b1 refs/remotes/origin/electric-devel
+7f90704dce79ef5038f5c9c83a4d39af5e2186b1 refs/remotes/origin/fuerte-devel
+2c5a83649f9f6e4a7e9b982bd6b368f252b34715 refs/remotes/origin/groovy-devel
+5bef9d91b29c6b2e1b6d372b24114a1c04340538 refs/remotes/origin/hydro-devel
+89ba6d730240713fe23d37994fe467f6c484ec6d refs/remotes/origin/indigo-devel
+2229632e84f04666fbfdb662f1775a297e88fd19 refs/tags/1.6.0
+^4b7ebf00dca73130b6df1e17ec84c135d0b78e53
+4555b88065069d93a631b0cfe53070b2355f72a1 refs/tags/1.6.1
+a1d6fa74021c95828fa336392a8d16ada1134694 refs/tags/1.6.2
+ca25de8b51ccdcb10f804c5200282ebb9f9983ba refs/tags/1.6.3
+47b04ae03173ddb625b9eda2c8a467f295b9c34e refs/tags/1.6.4
+92ccd97e84636c0c9164e214595e5b5bb559858b refs/tags/1.6.5
+^06489fa8dc7a1e3100695c08ac578267d90a8ff5
+2c5a83649f9f6e4a7e9b982bd6b368f252b34715 refs/tags/1.6.6
+5bef9d91b29c6b2e1b6d372b24114a1c04340538 refs/tags/1.6.7
+2ff038d6f0bb0638b100786b75c021dc9c2705e9 refs/tags/1.6.8

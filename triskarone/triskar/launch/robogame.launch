@@ -1,0 +1,30 @@
+<launch>
+	<arg name="teleop" default="1" />
+	<arg name="record" default="1" />
+	<arg name="laser" default="1" />
+	<arg name="laserID" default="H0707625"/>
+	
+	<!-- rosserial launch file for nova core -->
+	<include file="$(find rosserial_core)/launch/serial_node.launch">
+		<arg name="port" value="/dev/novaCore" />
+	</include>
+	
+	<!-- status node -->
+<!--	<node pkg="triskar" type="status.py" name="status"/>
+-->	
+	
+	<!-- joystick node -->
+	<include file="$(find robogame_joystick)/launch/joystick.launch"/>
+	
+<!-- record node launch file -->
+<!--	<include file="$(find record_ros)/launch/record_ros.launch" if="$(arg record)">
+		<arg name="path_save" value="/home/airlab/test" />
+		<arg name="file_name" value="triskar" />
+	</include>
+ -->	
+	<!-- laser node -->
+<!--	<node pkg="hokuyo_node" type="hokuyo_node" name="hokuyo_node" if="$(arg laser)">
+		<param name="port" type="string" value="/dev/sensors/hokuyo_$(arg laserID)" />
+ 	</node>
+-->	
+</launch> 

@@ -1,0 +1,10 @@
+<launch>
+        <!-- triskar teleop node-->
+        <node pkg="triskar" type="random_exploration" name="random_exploration" />
+        
+        <!-- triskar pixy teleop node-->
+        <node pkg="triskar" type="pixy_demo" name="pixy_demo" />
+
+		<!-- rosserial launch file for nova core  -->
+		<include file="$(find rosserial_core)/launch/serial_node.launch" />
+</launch> 

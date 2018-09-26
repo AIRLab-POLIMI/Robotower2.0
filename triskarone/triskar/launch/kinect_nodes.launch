@@ -1,0 +1,12 @@
+<launch>
+	
+	<!-- kinect2 static transform -->
+	<node pkg="tf"
+		type="static_transform_publisher"
+		name="kinect_link_st"
+		args="0 0 1.14 0 0 0 base_link kinect2_link 100"
+	/>
+	
+	<include file="$(find robogame_kinect_bridge)/launch/run.launch" /> 
+	
+</launch> 

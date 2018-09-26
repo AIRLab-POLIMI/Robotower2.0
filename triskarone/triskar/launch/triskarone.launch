@@ -1,0 +1,31 @@
+<launch>
+	
+	<!-- rosserial launch file for nova core -->
+	<include file="$(find rosserial_core)/launch/serial_node.launch">
+		<arg name="port" value="/dev/novaCore" />
+	</include>
+	
+	<!-- Navigation launch file  -->
+<!--	<include file="$(find triskar_navigation)/launch/RBNav.launch" /> -->
+	<include file="$(find triskar_navigation)/launch/move_base.launch" />
+	
+	<!-- Mocap launch file 
+	<include file="$(find mocap_optitrack)/launch/mocap.launch" />
+	 -->
+	 
+	<!-- triskar teleop nodes -->
+	<!--<include file="$(find triskar)/launch/triskar teleop.launch"/> -->
+	
+	<!-- Replaces triskar_teleop.launch and adds support for heartbeat and others. -->
+	<include file="$(find game_manager)/launch/support_nodes.launch"/>
+	
+	<!-- triskar odometry node -->
+	<node pkg="odometry_publisher" type="odometry_publisher" name="odometry_publisher"/>
+	
+	<!-- triskar hokuyo nodes (lasers) -->
+	<include file="$(find triskar)/launch/hokuyo_nodes.launch"/>
+	
+	<!-- Merges the two lasers-->
+	<include file="$(find ira_laser_tools)/launch/laserscan_multi_merger.launch"/>
+	
+</launch> 

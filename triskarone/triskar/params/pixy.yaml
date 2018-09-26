@@ -1,0 +1,14 @@
+#Joypad pixy config
+axis_pan: 4
+axis_tilt: 5
+scale: 25.0
+reset_button: 2
+
+#Pixy max and min commands
+minPan: 0
+minTilt: 0
+maxPan: 1000
+maxTilt: 1000
+
+#Node command rate
+rate: 10
