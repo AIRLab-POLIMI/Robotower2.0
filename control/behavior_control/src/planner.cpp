@@ -1,11 +1,13 @@
 #include "behavior_control/planner.h"
+
 #include <std_msgs/Bool.h>
 
 Behavior::Planner::Planner(){
     
     target_tower_ID_ = 1;
     is_game_over_ = false;
-    previous_decision_  = 0;
+    previous_decision_ = -1;
+    recent_decision_ = -1;
     min_speed_ = .1;
     max_speed_ = 0.2;
     bf_exponent_ = 1;
@@ -81,14 +83,25 @@ Behavior::Planner::Planner(){
     tower_robot_distances_.resize(num_towers_);
     towers_robot_transforms_.resize(num_towers_);
     towers_player_transforms_.resize(num_towers_);
+    utilities_.resize(num_towers_);
 
     behavior_server_ = nh_.advertiseService("change_behavior", &Planner::changeGameBehavior, this);
     inv_block_server_ = nh_.advertiseService("inv_block_info", &Planner::calcInvBlockFreq, this);
-    tower_state_sub_ = nh_.subscribe("/arduino/tower_state", 1, &Planner::towerStateCallback, this);
+    tower_state_sub_ = nh_.subscribe("game_manager/towers/State", 1, &Planner::towerStateCallback, this);
+    player_sub_ = nh_.subscribe("/player_filtered", 1, &Planner::playerCallback, this);
+    reset_sub_ = nh_.subscribe("/game_manager/reset", 1, &Planner::resetCallback, this);
     
     //get action list
     std::vector<std::string> action_list;
     std::vector<std::string> goal_list;
+
+    was_last_target_.resize(num_towers_);
+    was_recent_target_.resize(num_towers_);
+    for(int i=0; i<was_last_target_.size(); i++){
+        was_last_target_[i] = false;
+        was_recent_target_[i] = false;
+    }
+    towers_left_ = 4;
     
     if (!nh_.getParam("/planner_node/actions", action_list) || !nh_.getParam("/planner_node/goals", goal_list)){
         ROS_ERROR("BEHAVIOR MANAGER: could not read the parameters 'actions' or 'goals' from rosparam! Check behavior_control .yaml file!");
@@ -134,6 +147,10 @@ Behavior::Planner::Planner(){
 
 }
 
+void Behavior::Planner::resetCallback(const std_msgs::Bool reset){
+    towers_left_ = num_towers_;
+}
+
 bool Behavior::Planner::calcInvBlockFreq(behavior_control::InvBlockInfo::Request &req, behavior_control::InvBlockInfo::Response &resp){
     
     //send inver_block frequency data
@@ -163,10 +180,36 @@ Behavior::Planner::~Planner(void){
 
 }
 
-void Behavior::Planner::towerStateCallback(const arduino_publisher::TowerState::ConstPtr& msg){
-    for (int i; i < num_charg_leds_; i ++){
-        leds_on_[msg->id] += msg->leds[i];
+// void Behavior::Planner::towerStateCallback(const arduino_publisher::TowerState::ConstPtr& msg){
+//     for (int i; i < num_charg_leds_; i ++){
+//         leds_on_[msg->id] += msg->leds[i];
+//     }
+// }
+
+void Behavior::Planner::towerStateCallback(const game_manager::Towers::ConstPtr& msg){
+    towers_left_ = 4;
+    leds_on_[0] = countLeds(msg->tw1);
+    leds_on_[1] = countLeds(msg->tw2);
+    leds_on_[2] = countLeds(msg->tw3);
+    leds_on_[3] = countLeds(msg->tw4);
+}
+
+int Behavior::Planner::countLeds(game_manager::TowerState state){
+    int i;
+    int count;
+
+    if(state.status == 4){ // Has been captured
+        return 4;
+        towers_left_ -= 1;
     }
+
+    for(i=0, count=0; i< state.leds.size(); i++){
+        if(state.leds[i]){
+            count += 1;
+        }
+    }
+
+    return count;
 }
 
 void Behavior::Planner::odomCallback(const nav_msgs::Odometry::ConstPtr& msg){
@@ -194,6 +237,10 @@ float Behavior::Planner::euclideanDistance(tf::StampedTransform t){
     return sqrt(pow(t.getOrigin().x(), 2) + pow(t.getOrigin().y(), 2) + pow(t.getOrigin().z(), 2));
 }
 
+float Behavior::Planner::euclideanDistance(float delta_x, float delta_y){
+    return sqrt(pow(delta_x, 2) + pow(delta_y, 2));
+}
+
 bool Behavior::Planner::getTransform(std::string target, std::string source, ros::Time &time, tf::StampedTransform &result){
     try{
         tf_listener_->waitForTransform(target.c_str(), time, source.c_str(), time, "/map", ros::Duration(0.20));
@@ -203,6 +250,10 @@ bool Behavior::Planner::getTransform(std::string target, std::string source, ros
         ROS_WARN("ERROR when getting transform: %s",ex.what());
         return false;
     }
+}
+
+void Behavior::Planner::playerCallback(const geometry_msgs::PointStamped pos){
+    player_pos_ = pos;
 }
 
 void Behavior::Planner::updateDecisionVariables(){
@@ -223,19 +274,8 @@ void Behavior::Planner::updateDecisionVariables(){
     }
 
     /* GET THE POSITION OF THE PLAYER WITH RESPECT TO THE ROBOT*/
-    try{
-        tf_listener_->waitForTransform(robot_base_.c_str(), now, player_base_.c_str(), now, "/map", ros::Duration(0.10));
-        tf_listener_->lookupTransform(robot_base_.c_str(), player_base_.c_str(), now, player_transform_);
-       
-        float x_player = player_transform_.getOrigin().x(), y_player = player_transform_.getOrigin().y();
-        alpha_player = atan2(y_player, x_player);
-
-    } catch (const std::exception& ex){
-        ROS_WARN("PLANNER NODE: %s does not exist! Skipping using player position for calculating next tower to attack.\n Details: %s",
-                 player_base_.c_str(), ex.what());
-        //all_transforms_available = false;
-        player_transform_available = false;
-    }
+    float x_player = player_pos_.point.x, y_player = player_pos_.point.y;
+    alpha_player = atan2(y_player, x_player);
 
     /* GET THE POSITION OF THE TOWERS WITHT RESPECT TO THE ROBOT */
     for(int i = 0; i < num_towers_ && all_transforms_available; i++){
@@ -251,9 +291,14 @@ void Behavior::Planner::updateDecisionVariables(){
             tower_robot_distances_[i] = euclideanDistance(towers_robot_transforms_[i]);
             
             if (player_transform_available) {
-                tf_listener_->waitForTransform(tower_frame, now, player_base_.c_str(), now, "/map", ros::Duration(0.20));
-                tf_listener_->lookupTransform(player_base_.c_str(), tower_frame, now, towers_player_transforms_[i]);
-                tower_player_distances_[i] = euclideanDistance(towers_player_transforms_[i]);
+                tf_listener_->waitForTransform(tower_frame, now, "/map", now, "/map", ros::Duration(0.20));
+                tf_listener_->lookupTransform("/map", tower_frame, now, towers_player_transforms_[i]);
+                
+                geometry_msgs::PointStamped player_wrt_map_;
+                tf_listener_->waitForTransform("base_link", now, "/map", now, "/map", ros::Duration(0.20));
+                tf_listener_->transformPoint("/map", player_pos_, player_wrt_map_);
+
+                tower_player_distances_[i] = euclideanDistance(towers_player_transforms_[i].getOrigin().x() - player_wrt_map_.point.x, towers_player_transforms_[i].getOrigin().y() - player_wrt_map_.point.y);
                 /* BLOCKING FACTOR */
                 alpha_tower[i] = atan2(y_tower, x_tower);
                 blocking_factor_[i] = 1 - 1/M_PI * atan2(fabs(sin(alpha_player - alpha_tower[i])), cos(alpha_player - alpha_tower[i]));
@@ -279,18 +324,27 @@ void Behavior::Planner::updateDecisionVariables(){
             float utility;
 
             if (player_transform_available){
-                utility = -tower_player_distances_[i] * pow(blocking_factor_[i], bf_exponent_) - (leds_on_[i]*1000); //1000 is a larger weight associated with the number of leds.
+                // utility = -tower_player_distances_[i] * pow(blocking_factor_[i], bf_exponent_) - (leds_on_[i]*1000) * (leds_on_[i] == 4); //1000 is a larger weight associated with the number of leds.
+                utility = - (tower_robot_distances_[i] - tower_player_distances_[i]) - /** pow(blocking_factor_[i], bf_exponent_)*/ 
+                            (leds_on_[i]*1000) * (leds_on_[i] == 4) -
+                            (was_recent_target_[i] == true) * (((double)rand()/(RAND_MAX)) < (2.0/3.0)) * (towers_left_ > 3)*1000 -
+                            (was_last_target_[i] == true)*(towers_left_ > 1)*1000; //1000 is a larger weight associated with the number of leds.
             }else{
-                utility = -tower_player_distances_[i] - (leds_on_[i]*1000); // 1000 is a larger weight associated with the number of leds.
+                // utility = -tower_player_distances_[i] - (leds_on_[i]*1000) * (leds_on_[i] == 4); // 1000 is a larger weight associated with the number of leds.
+                utility = - (tower_player_distances_[i]) - 
+                            (leds_on_[i]*1000) * (leds_on_[i] == 4) - 
+                            (was_recent_target_[i] == true)*(towers_left_ > 3)*1000 -
+                            (was_last_target_[i] == true)*(towers_left_ > 1)*1000; // 1000 is a larger weight associated with the number of leds.
             }
+            utilities_[i] = utility;
             float bad_value = -utility;
             actions_[i]->setGoalChange(goals_[j]->getName(), bad_value); // algorithm minimizes Goal Value, 
             ROS_DEBUG_STREAM("Action: " << actions_[i]->getName() << "\tGoal: " << goals_[j]->getName()<< "\tUtility: " << utility);
-            ROS_DEBUG("Player is %f away from tower %d", tower_player_distances_[i], (i+1));
+            // ROS_DEBUG("Player is %f away from tower %d", tower_player_distances_[i], (i+1));
         }
     }
 
-    is_game_over_ = isGameOver();
+    // is_game_over_ = isGameOver();
  
 }
 
@@ -298,7 +352,7 @@ void Behavior::Planner::updateDecisionVariables(){
 bool Behavior::Planner::isGameOver(){
     // TODO:  Refactor this, it seems it should not be here.
     /*CHECKS WHETHER ROBOT HAS ARRIVED TO TARGET, THUS WINNING THE GAME*/
-    int tower_index = target_tower_ID_ - 1;
+    int tower_index = target_tower_ID_;
     tf::StampedTransform t_transform = towers_robot_transforms_[tower_index];
     float x_tower = towers_robot_transforms_[tower_index].getOrigin().x(), y_tower = towers_robot_transforms_[tower_index].getOrigin().y();
     return (pow(x_tower, 2) + pow(y_tower, 2) < pow(min_dist_to_tower_, 2));
@@ -382,13 +436,25 @@ bool Behavior::Planner::checkBlockTimeout(){
 
 }
 
-bool Behavior::Planner::isCancelGoal(int new_goal_ID){
-    if (previous_decision_ != new_goal_ID){
+bool Behavior::Planner::isCancelGoal(int current_decision){
+    if (previous_decision_ != current_decision){
         ROS_WARN("Goal changed!");
-        previous_decision_ = new_goal_ID;
+        for(int i=0; i<was_last_target_.size(); i++){
+            was_last_target_[i] = false;
+            was_recent_target_[i] = false;
+        }
+        
+        was_last_target_[current_decision] = true;
+        if(previous_decision_ >=0){
+            was_recent_target_[previous_decision_] = true;
+        }
+
+        // recent_decision_ = previous_decision_;
+        previous_decision_ = current_decision;
         CancelCurrentGoal();
         
         num_blocks_ += checkBlockTimeout();     //if no block timeout add one to the count.
+
         return true;
     }
 
@@ -413,4 +479,68 @@ void Behavior::Planner::makeDecision(){
     }
 
     ROS_WARN("Decision: %s", decision->getName().c_str());
+}
+
+std::vector<int> Behavior::Planner::sortTowerIndexes(){
+    std::vector<int> indexes_sorted;
+    std::vector<float> utilities_copy;
+
+    for(int i=0; i<utilities_.size(); i++){
+        indexes_sorted.push_back(i);
+        utilities_copy.push_back(utilities_[i]);
+    }
+
+    bool has_changed = true;
+    while(has_changed){
+        has_changed = false;
+        for(int j=0; j<utilities_copy.size()-1; j++){
+            if(utilities_copy[j] > utilities_copy[j+1]){
+                float tmp = utilities_copy[j+1];
+                utilities_copy[j+1] = utilities_copy[j];
+                utilities_copy[j] = tmp;
+
+                int tmp_idx = indexes_sorted[j+1];
+                indexes_sorted[j+1] = indexes_sorted[j];
+                indexes_sorted[j] = tmp_idx;
+
+                has_changed = true;
+            }
+        }
+    }
+
+    return indexes_sorted;
+}
+
+bool Behavior::Planner::goalRequestHandler(behavior_control::GoalService::Request &req, behavior_control::GoalService::Response &res){
+    
+    ROS_ERROR("Receiving a request with parameter_id: %d", req.parameter_id);
+    updateDecisionVariables();
+
+    if (is_game_over_){
+        ROS_DEBUG("Game is over!");
+        CancelCurrentGoal();
+    }else{
+        std::vector<int> sorted_indexes = sortTowerIndexes();
+        ROS_WARN_STREAM("Utilities:");
+        for(int i=0; i<utilities_.size(); i++){
+            ROS_WARN_STREAM(std::to_string(i+1) + ": " + std::to_string(utilities_[i]));
+        }
+
+        if(towers_left_ < 2){
+            target_tower_ID_ = sorted_indexes[sorted_indexes.size() - 1];
+        }
+        else if(req.parameter_id > 1){
+            // Choose best one
+            target_tower_ID_ = sorted_indexes[sorted_indexes.size() - 2];
+        }
+        else{
+            // Choose second best one
+            target_tower_ID_ = sorted_indexes[sorted_indexes.size() - 1];
+        }
+        isCancelGoal(target_tower_ID_);
+        monitorCollision();
+    }
+    
+    res.tower_id = target_tower_ID_ + 1;
+    return true;
 }

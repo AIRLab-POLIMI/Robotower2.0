@@ -134,8 +134,10 @@ class GameManagerNode(object):
 
         # setup subscriber 
         rospy.Subscriber('/joy', Joy, self.joy_callback, queue_size=1)
-        rospy.Subscriber(rospy.get_param("/button_topic_name"), ButtonState,  self.tower_bt_callback)
+        # rospy.Subscriber(rospy.get_param("/button_topic_name"), ButtonState,  self.tower_bt_callback)
         rospy.Subscriber(rospy.get_param("/tilt_sensor_topic_name"), TiltSensor,  self.tower_tilt_sensor_callback, queue_size=1)
+        rospy.Subscriber("/tower/feedback_com", ChangeLEDs,  self.feedback_callback, queue_size=1)
+
         
         # setting towers
         self.towers = dict((int(i),0) for i in range(1,self.NUM_TOWERS+1))
@@ -147,6 +149,7 @@ class GameManagerNode(object):
         self.pub_game_on = rospy.Publisher('game_manager/isGameON', Bool, queue_size=1)
         self.pub_tws_state = rospy.Publisher('game_manager/towers/State', Towers, queue_size=10)
         self.pub_led = rospy.Publisher('game_manager/towers/ChangeLEDs', ChangeLEDs, queue_size=10)
+        self.pub_reset = rospy.Publisher('game_manager/reset', Bool, queue_size=1)
         
         # ros rate
         self.rate = rospy.Rate(10) # 10hz
@@ -161,6 +164,7 @@ class GameManagerNode(object):
         self.bt_msg_on_process   = None
 
         self.feedback_timer = None
+        
         self.feedback_charled_state = 0
         self.feedback_statusled_state = Tower.LED_COLOR['blank']
 
@@ -168,13 +172,13 @@ class GameManagerNode(object):
                            2: 'medium',
                            3: 'hard'}
 
-        self.behavior_service = rospy.get_param("behavior_service_name")
+        # self.behavior_service = rospy.get_param("behavior_service_name")
 
-        rospy.loginfo("DIFFICULTY CONTROL: Waiting '%s' service to come up..." % self.behavior_service)
-        rospy.wait_for_service(self.behavior_service)
-        rospy.loginfo("DIFFICULTY CONTROL: making connection")
-        self.srv_handler = rospy.ServiceProxy(self.behavior_service, BehaviorParams)
-        rospy.loginfo("DIFFICULTY CONTROL: connection with '%s' established!" % self.behavior_service)
+        # rospy.loginfo("DIFFICULTY CONTROL: Waiting '%s' service to come up..." % self.behavior_service)
+        # rospy.wait_for_service(self.behavior_service)
+        # rospy.loginfo("DIFFICULTY CONTROL: making connection")
+        # self.srv_handler = rospy.ServiceProxy(self.behavior_service, BehaviorParams)
+        # rospy.loginfo("DIFFICULTY CONTROL: connection with '%s' established!" % self.behavior_service)
 
 
     def talk_to_service(self, max_sp, min_sp, bf_exp):
@@ -190,6 +194,19 @@ class GameManagerNode(object):
             return resp
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
+
+    def feedback_callback(self, msg):
+        tower = self.towers[msg.id]
+        # tower.leds = msg.charge_leds
+        for i in range(3):
+            tower.update_led(i, msg.charge_leds[i])
+        tower.status_led_color = msg.status_led_color
+
+        if(msg.status_led_color[0] == 0 and msg.status_led_color[1]==1):
+            # If status color is green
+            tower.status = TowerState.TYPE_TOWER_CAPTURED
+
+
 
     def change_difficulty(self, difficulty):
         max_sp = self.difficulties[difficulty]['max_speed']
@@ -231,7 +248,7 @@ class GameManagerNode(object):
             
         msg.charge_leds = current_led_state
         msg.status_led_color = self.feedback_statusled_state
-        self.pub_led.publish(msg)
+        # self.pub_led.publish(msg)
         
 
     def tower_bt_callback(self, msg):
@@ -255,7 +272,7 @@ class GameManagerNode(object):
             if (time_diff / self.BT_PRESS_THD) >= 1:
                 self.update_tw_led(self.bt_msg_on_process.id)
             else:
-                self.publish_LED_update(self.bt_msg_on_process.id)
+                # self.publish_LED_update(self.bt_msg_on_process.id)
                 rospy.logdebug("Time elapsed from last led: {:.2f}".format(time_diff))
             self.bt_msg_on_process = None
 
@@ -294,7 +311,7 @@ class GameManagerNode(object):
             self.bt_msg_on_process = None
             self.stop_feedback_timer()
 
-        self.publish_LED_update(tower_number)
+        # self.publish_LED_update(tower_number)
         rospy.logdebug("#leds in tower{}: {}".format(tower_number,self.towers[tower_number].leds))
         rospy.logdebug("Bt_presses in tower{}: {}".format(tower_number,self.towers[tower_number].num_presses))
 
@@ -324,6 +341,7 @@ class GameManagerNode(object):
 
     def reset_game(self):
         """Reset game by reseting tower data"""
+        self.pub_reset.publish(True)
         for tw in self.towers.keys():
         
             self.towers[tw].reset_data()
@@ -355,6 +373,7 @@ class GameManagerNode(object):
         msg.id = tw_id
         msg.charge_leds = self.towers[tw_id].leds[:3]
         msg.status_led_color = self.towers[tw_id].status_led_color
+        msg.feedback_led_threshold = self.BT_PRESS_THD * 1000; # threshold to light a led
         self.pub_led.publish(msg)
         return True
 

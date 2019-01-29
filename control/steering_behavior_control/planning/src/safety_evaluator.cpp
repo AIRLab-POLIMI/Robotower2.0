@@ -3,56 +3,61 @@
 #include "planning/SafetyMsg.h"
 #include <std_msgs/Bool.h>
 
-#define SPEED_THD 0.01
+#define SPEED_THD 0.1
 #define COLLIDING_ANGLE_THD 0.785
 
 Safety::SafetyEvaluator::SafetyEvaluator(){
     if (!nh_.getParam("/planning/vel_topic_sub", vel_topic_)){
             ROS_ERROR("SAFETY PLANNER: could not read 'vel_topic_sub' from rosparam!");
-            exit(-1);
+            vel_topic_ = "/vel";
+            // exit(-1);
     }
 
     if (!nh_.getParam("/planning/player_angle_topic", player_angle_topic_)){
         ROS_ERROR("SAFETY PLANNER: could not read 'player_angle_topic' from rosparam!");
-        exit(-1);
+        player_angle_topic_ = "/player_filtered";
+        // exit(-1);
     }
 
     if (!nh_.getParam("/planning/safety_treshold", safety_treshold_)){
         ROS_ERROR("SAFETY PLANNER: could not read 'safety_treshold' from rosparam!");
-        exit(-1);
-    }
-
-    if (!nh_.getParam("/planning/number_sections_safety", number_of_sections_)){
-        ROS_ERROR("SAFETY PLANNER: could not read 'number_sections_safety' from rosparam!");
-        exit(-1);
+        safety_treshold_ = 1.0;
+        // exit(-1);
     }
 
     if (!nh_.getParam("/planning/safety_topic", safety_topic_)){
         ROS_ERROR("SAFETY MANAGER: could not read 'safety_topic' from rosparam!");
-        exit(-1);
+        safety_topic_ = "/safety";
+        // exit(-1);
     }
 
     if (!nh_.getParam("/planning/safety_treshold_flee", safety_treshold_flee_)){
         ROS_ERROR("SAFETY MANAGER: could not read 'safety_topic' from rosparam!");
-        exit(-1);
+        safety_treshold_flee_ = 0.7;
+        // exit(-1);
     }
 
 	if (!nh_.getParam("/planning/collision_angle_treshold", collision_angle_treshold_)){
         ROS_ERROR("SAFETY MANAGER: could not read 'collision_angle_treshold' from rosparam!");
-        exit(-1);
+        collision_angle_treshold_ = 1.57079632;
+        // exit(-1);
     }
 
     if (!nh_.getParam("/planning/window_width", window_width_)){
         ROS_ERROR("SAFETY MANAGER: could not read 'window_width' from rosparam!");
-        exit(-1);
+        window_width_ = 1.57079632;
+        // exit(-1);
     }
 
     if (!nh_.getParam("/planning/speed_thd", speed_thd_)){
         ROS_ERROR("SAFETY MANAGER: could not read 'window_width' from rosparam!");
-        exit(-1);
+        speed_thd_ = 0.1;
+        // exit(-1);
     }
 
+    // ROLLBACK
     laser_sub_ = nh_.subscribe("/scan", 1, &Safety::SafetyEvaluator::laserCallback, this);
+    // laser_sub_ = nh_.subscribe("/scan_player_tracking", 1, &Safety::SafetyEvaluator::laserCallback, this);
     player_angle_sub_ = nh_.subscribe(player_angle_topic_, 1, &Safety::SafetyEvaluator::playerCallback, this);
     vel_sub_ = nh_.subscribe(vel_topic_, 1, &Safety::SafetyEvaluator::velCallback, this);
     safety_pub_ = nh_.advertise<planning::SafetyMsg>(safety_topic_, 1);
@@ -98,17 +103,21 @@ Safety::SafetyEvaluator::SafetyEvaluator(){
 bool Safety::SafetyEvaluator::isCollidingDirection(){
     // Function to evaluate wheter we are moving in the direction of the player or not, given a tolerance treshold
     float angle_diff = calculateAngleDiff(current_angle_motion_, current_angle_player_);
-    ROS_INFO("ANGLE DIFF: %.2f", angle_diff);
+    // ROS_INFO("ANGLE DIFF: %.2f", angle_diff);
 	
 	// Divided by two because the angle diff is absolute
 	// Checking if player is in [angle_motion - COLLIDING_ANGLE_THD/2, angle_motion + COLLIDING_ANGLE_THD/2]
     if( angle_diff < collision_angle_treshold_/2){	
-        ROS_ERROR("ANGLE DIFF: %.2f", angle_diff);
-        ROS_ERROR("WE'RE MOVING TOWARDS PLAYER");
+        // ROS_ERROR("ANGLE DIFF: %.2f", angle_diff);
+        // ROS_ERROR("WE'RE MOVING TOWARDS PLAYER");
         return true;
     }
     return false;
 }
+
+// bool Safety::SafetyEvaluator::isPlayerCloseToTower(){
+
+// }
 
 float Safety::SafetyEvaluator::calculateAngleDiff(float angle1, float angle2){
     float abs_diff;
@@ -122,48 +131,6 @@ float Safety::SafetyEvaluator::calculateAngleDiff(float angle1, float angle2){
     return abs_diff;
 }
 
-// bool Safety::SafetyEvaluator::checkHeadingSector(){
-//     ROS_INFO("PLAYER DISTANCE %.2f", player_distance_);
-//     if(player_distance_ < safety_treshold_){
-//         ROS_ERROR("PLAYER DISTANCE %.2f", player_distance_);
-//         return false;
-//     }
-//     else{
-//         return true;
-//     }
-
-
-//     float angle_increment = 2*M_PI / current_scan_.ranges.size();
-//     int number_of_indexes = COLLIDING_ANGLE_THD / angle_increment;
-
-//     ROS_INFO("Number of indexes: %d", number_of_indexes);
-
-//     int player_direction_scan_index = (current_angle_player_ + M_PI) / angle_increment;
-//     ROS_INFO("Player Index: %d", player_direction_scan_index);
-//     int starting_index = player_direction_scan_index - (number_of_indexes/2);
-
-//     return checkLaserCone(starting_index, number_of_indexes);
-// }
-
-// bool Safety::SafetyEvaluator::checkLaserCone(int starting_index, int number_of_indexes){
-//     if(starting_index < 0){
-//         starting_index = current_scan_.ranges.size() + starting_index;
-//     }
-
-//     ROS_INFO("CHECKING_FROM: %d TO %d", starting_index, starting_index + number_of_indexes);
-
-//     for(int i=0; i<number_of_indexes; i++){
-//         int index_to_check = starting_index + i;
-//         if(index_to_check >= current_scan_.ranges.size()){
-//             index_to_check = index_to_check % current_scan_.ranges.size();
-//         }
-//         if(current_scan_.ranges[index_to_check] < safety_treshold_){
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
 bool Safety::SafetyEvaluator::checkAllScan(){
     // Check the whole scan if there's something below treshold
     float min_dist = 6.0;
@@ -175,31 +142,13 @@ bool Safety::SafetyEvaluator::checkAllScan(){
 
     if(min_dist <= safety_treshold_flee_){
         // We are in a non safe condition
-        ROS_WARN("UNSAFE");
+        // ROS_WARN("UNSAFE");
         return false;
     }
     else{
         return true;
     }
 }
-
-// bool Safety::SafetyEvaluator::checkHeadingSector(){
-//     // Checks if there's something too close in the direction of movement
-//     for(int i=-1; i<2; i++){
-//         int idx = current_heading_sector_ + i;
-//         if(idx == number_of_sections_){
-//             idx = 0;
-//         }
-//         else if(idx == -1){
-//             idx = number_of_sections_ - 1;
-//         }
-//         bool is_safe = checkSector(idx);
-//         if(!is_safe){
-//             ROS_WARN("UNSAFE");
-//             return false;
-//         }
-//     }
-// }
 
 bool Safety::SafetyEvaluator::checkSector(int idx){
     // Checks if there's something too close in the direction of movement
@@ -216,10 +165,10 @@ bool Safety::SafetyEvaluator::checkSector(int idx){
             min_index = i;
         }
     }
-    ROS_INFO("Min dist: %.2f", min_dist);
+    // ROS_INFO("Min dist: %.2f", min_dist);
     if(min_dist <= safety_treshold_){
         // We are in a non safe condition
-        ROS_WARN("UNSAFE");
+        // ROS_WARN("UNSAFE");
         return false;
     }
     else{
@@ -232,14 +181,17 @@ bool Safety::SafetyEvaluator::evaluateSafety(){
 
     // Check whether the player is in the motion direction
     if(current_speed_ > speed_thd_){
-        ROS_ERROR("Speed: %.2f", current_speed_);
+        // ROS_ERROR("Speed: %.2f", current_speed_);
         // DO NOT TAKE ACTION IF SPEED TOO LOW
         if(!currently_safe_){
             currently_safe_ = checkAllScan();
         }
         else{
             // ROS_WARN("Checking movement direction");
+            
+            // ROLLBACK uncomment the condition evaluation
             bool is_colliding_direction = isCollidingDirection();
+            // bool is_colliding_direction = true;
             if(is_colliding_direction){
                 // Identify the one we're moving towards
                 // Check if there's something close to it
@@ -259,24 +211,9 @@ bool Safety::SafetyEvaluator::evaluateSafety(){
 }
 
 void Safety::SafetyEvaluator::laserCallback(const sensor_msgs::LaserScan& scan){
-    // Segment surrounding of robot into sections
-    // Useful for safety calculations
-
-    // int section_lenght = scan.ranges.size() / number_of_sections_;
-    // current_scan_segmented_.resize(number_of_sections_);
-    // int i;
-    // int j;
-    // int k;
-    // for(i=0; i<number_of_sections_; i++){
-    //     j = i * section_lenght;
-    //     current_scan_segmented_[i].resize(section_lenght);
-    //     for(k=0; k < section_lenght; k++){
-    //         current_scan_segmented_[i][k] = scan.ranges[j+k];
-    //     }
-    // }
     current_scan_ = scan;
 }
-// CHANGE HEADER FILE
+
 bool Safety::SafetyEvaluator::isHeadingSectorSafe(){
     // Function to check wheter the sector where the robot is heading is free from the player
 
@@ -284,7 +221,7 @@ bool Safety::SafetyEvaluator::isHeadingSectorSafe(){
 
     int number_of_indexes = getNumberOfScans(window_width_); // Sector dimension given in number of scan indexes
 
-    ROS_INFO("Number of indexes: %d", number_of_indexes);
+    // ROS_INFO("Number of indexes: %d", number_of_indexes);
 
     // Now we have to use the index where the robot is virtually headed to as center of heading sector
 	// We should start from half width before the center
@@ -300,7 +237,7 @@ bool Safety::SafetyEvaluator::isWindowSafe(int starting_index, int number_of_ind
 	// Iterates through the laser scan given starting position an number of steps
 	
 	int idx_to_check = starting_index;
-    ROS_INFO("Checking from %d", idx_to_check);
+    // ROS_INFO("Checking from %d", idx_to_check);
     for(int i=0; i<number_of_indexes; i++){
         idx_to_check = getNextIndex(idx_to_check);
         if(current_scan_.ranges[idx_to_check] < safety_treshold_){
@@ -308,7 +245,7 @@ bool Safety::SafetyEvaluator::isWindowSafe(int starting_index, int number_of_ind
             return false;
         }
     }
-    ROS_INFO("TO %d", idx_to_check);
+    // ROS_INFO("TO %d", idx_to_check);
     return true;
 }
 // CHANGE HEADER FILE
@@ -363,12 +300,11 @@ float Safety::SafetyEvaluator::convertIndexToAngle(int idx){
 }
 
 void Safety::SafetyEvaluator::velCallback(const geometry_msgs::Twist& vel){
-    // DIO CANEEEEEEEEEEEEEEEEEEEEEEEEEEEE
     current_speed_ = sqrt(pow(vel.linear.y,2) + pow(vel.linear.x,2));
     current_angle_motion_ = atan2(vel.linear.y, vel.linear.x);
     // int current_angle_deg = current_angle_motion_ * (180 / M_PI); // Converting to degrees
     // current_heading_sector_ = (current_angle_deg + 180) / section_angular_width_;
-    ROS_WARN("Current motion angle: %.2f", current_angle_motion_ * (180/M_PI));
+    // ROS_WARN("Current motion angle: %.2f", current_angle_motion_ * (180/M_PI));
     // ROS_WARN("Current heading sector: %d", current_heading_sector_);
 }
 
@@ -377,34 +313,14 @@ void Safety::SafetyEvaluator::playerCallback(const geometry_msgs::PointStamped& 
     current_angle_player_ = atan2(position.point.y, position.point.x);
     // int current_angle_deg = current_angle_player_ * (180 / M_PI);  // Converting to degrees
     // current_player_sector_ = (current_angle_deg + 180) / section_angular_width_;
-    ROS_WARN("Current player angle: %.2f", current_angle_player_ * (180/M_PI));
+    // ROS_WARN("Current player angle: %.2f", current_angle_player_ * (180/M_PI));
     // ROS_WARN("Current player sector: %d", current_player_sector_);
 }
-
-// void Safety::SafetyEvaluator::velCallback(const geometry_msgs::Twist& vel){
-//     // DIO CANEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-//     current_speed_ = sqrt(pow(vel.linear.y,2) + pow(vel.linear.x,2));
-//     current_angle_motion_ = atan2(vel.linear.y, vel.linear.x);
-//     int current_angle_deg = current_angle_motion_ * (180 / M_PI); // Converting to degrees
-//     current_heading_sector_ = (current_angle_deg + 180) / section_angular_width_;
-//     ROS_WARN("Current motion angle: %.2f", current_angle_motion_ * (180/M_PI));
-//     // ROS_WARN("Current heading sector: %d", current_heading_sector_);
-// }
-
-// void Safety::SafetyEvaluator::playerCallback(const geometry_msgs::PointStamped& position){
-//     player_distance_ = sqrt(pow(position.point.y,2) + pow(position.point.x,2));
-//     current_angle_player_ = atan2(position.point.y, position.point.x);
-//     int current_angle_deg = current_angle_player_ * (180 / M_PI);  // Converting to degrees
-//     current_player_sector_ = (current_angle_deg + 180) / section_angular_width_;
-//     ROS_WARN("Current player angle: %.2f", current_angle_player_ * (180/M_PI));
-//     // ROS_WARN("Current player sector: %d", current_player_sector_);
-// }
-
 
 int main(int argc, char** argv){
     ros::init(argc, argv, "planning_safety_node");
     ros::NodeHandle nh;
-    ros::Rate rate(10);
+    ros::Rate rate(30);
 
     Safety::SafetyEvaluator safety_evaluator;
 

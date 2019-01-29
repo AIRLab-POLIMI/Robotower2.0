@@ -24,6 +24,8 @@
 #include <visualization_msgs/Marker.h>
 #include <laser_geometry/laser_geometry.h>
 
+#include <player_tracker/LegArray.h>
+
 #include <sensor_msgs/point_cloud2_iterator.h>
 
 // Custom messages
@@ -35,14 +37,9 @@
 #include <algorithm>    // std::min
 
 
-/** @todo Make these parameters externally settable */
-#define ALPHA 0.2
-#define BETA 0.2 //0.1
-#define OBSTACLE 1 //0.7
-#define FREE_SPACE 0.2
-#define UNKNOWN 0.5
-#define MIN_PROB 0.001
-#define MAX_PROB 1 - MIN_PROB
+#define TOLERANCE_RADIUS 0.3
+#define OBSTACLE 100
+#define UNKNOWN -1
 
 /**
 * @basic A simple 'local' occupancy grid map that maps LaserScan points that are not part
@@ -69,10 +66,16 @@ public:
 	
 
 	laserScanSubscriber_ = nh_.subscribe(scan_topic, 1, &OccupancyGridMapping::laserCallback, this);
-	cloud_pub_isteff_ = nh_.advertise<sensor_msgs::PointCloud>( "test_cloud_isteff", 1);
-	cloud_pub_obstacles_ = nh_.advertise<sensor_msgs::PointCloud>( "cloud_obstacles", 1);
+	detected_leg_sub_ = nh_.subscribe("/detected_leg_clusters", 1, &OccupancyGridMapping::detectedClusterCallback, this);
+	// cloud_pub_isteff_ = nh_.advertise<sensor_msgs::PointCloud>( "test_cloud_isteff", 1);
+	// cloud_pub_obstacles_ = nh_.advertise<sensor_msgs::PointCloud>( "cloud_obstacles", 1);
+	// scan_player_pub_tmp_ = nh_.advertise<sensor_msgs::LaserScan>( "scan_player_tracking_tmp", 1);
 	scan_player_pub_ = nh_.advertise<sensor_msgs::LaserScan>( "scan_player_tracking", 1);
 	map_sub_ = nh.subscribe("map", 10, &OccupancyGridMapping::mapCallback, this);
+
+	detected_leg_mask_.resize(1000, false);
+
+
   }
 
 private:
@@ -83,12 +86,15 @@ private:
 	ros::NodeHandle nh_;
 
 	ros::Subscriber laserScanSubscriber_;
+	ros::Subscriber legClusterSubscriber_;
+	ros::Subscriber detected_leg_sub_;
 	ros::Subscriber map_sub_;
 
-	ros::Publisher cloud_pub_obstacles_;
+	// ros::Publisher cloud_pub_obstacles_;
 	ros::Publisher scan_player_pub_;
+	// ros::Publisher scan_player_pub_tmp_;
 
-	ros::Publisher cloud_pub_isteff_;
+	// ros::Publisher cloud_pub_isteff_;
 
 	nav_msgs::OccupancyGridPtr last_map_;
 
@@ -96,6 +102,8 @@ private:
 
 
 	float current_rotation_wrt_map_;
+
+	std::vector<bool> detected_leg_mask_;
 
 
 	int width_;
@@ -107,6 +115,32 @@ private:
 		last_map_ = msg;
 	}
 
+	void detectedClusterCallback(const player_tracker::LegArray legs){
+		detected_leg_mask_.clear();
+		detected_leg_mask_.resize(1000, false);
+		// ROS_INFO_STREAM(detected_leg_mask_)
+		for(int i=0; i<legs.legs.size(); i++){
+			for(int j=0; j<legs.legs[i].point_indexes.size(); j++){
+				detected_leg_mask_[legs.legs[i].point_indexes[j]] = true;
+			}
+		}
+	}
+
+	// sensor_msgs::LaserScan filterObstacles(sensor_msgs::LaserScan scan_obstacles){
+	// 	// Removes evidences outside the static map that are not legs
+	// 	int i;
+	// 	for(i=0; i<scan_obstacles.ranges.size(); i++){
+	// 		if(scan_obstacles.ranges[i] != std::numeric_limits<double>::infinity()){
+	// 			if(!detected_leg_mask_[i]){
+	// 				// If the index does not correspond to a leg cluster
+	// 				scan_obstacles.ranges[i] = std::numeric_limits<double>::infinity();
+	// 			}
+	// 		}
+	// 	}
+
+	// 	return scan_obstacles;
+	// }
+
 	void laserCallback(const sensor_msgs::LaserScan::ConstPtr &scanMsg){
 		// do nothing in case we do not receive a map;
 		if (last_map_ == nullptr){
@@ -116,6 +150,7 @@ private:
 		updateCurrentPos();
 		double angle_increment = 2*M_PI / scanMsg->ranges.size();
 		sensor_msgs::LaserScan output_scan;
+		// sensor_msgs::LaserScan output_scan_tmp;
 		sensor_msgs::PointCloud cloud_wrt_map;
 		sensor_msgs::PointCloud cloud_obstacle;
 		std::vector<geometry_msgs::Point32> points_wrt_map;
@@ -132,6 +167,17 @@ private:
 		output_scan.scan_time = scanMsg->scan_time;
 		output_scan.range_min = scanMsg->range_min;
 		output_scan.range_max = scanMsg->range_max;
+
+		// Scan to get an image for my thesis [ISTEFF]
+		// output_scan_tmp.header = scanMsg->header;
+		// output_scan_tmp.ranges.resize(scanMsg->ranges.size());
+		// output_scan_tmp.angle_min = scanMsg->angle_min;
+		// output_scan_tmp.angle_max = scanMsg->angle_max;
+		// output_scan_tmp.angle_increment = scanMsg->angle_increment;
+		// output_scan_tmp.time_increment = scanMsg->time_increment;
+		// output_scan_tmp.scan_time = scanMsg->scan_time;
+		// output_scan_tmp.range_min = scanMsg->range_min;
+		// output_scan_tmp.range_max = scanMsg->range_max;
 
 		// ROS_INFO("ORGIN X:%.2f, Y:%.2f", last_map_->info.origin.position.x, last_map_->info.origin.position.y);
 		//ROS_INFO("RESOLUTION X:%.2f", last_map_->info.resolution);
@@ -181,11 +227,19 @@ private:
 						//ROS_ERROR("OBSTACLE");
 						obstacles[i] = my_point;
 						output_scan.ranges[i] = std::numeric_limits<double>::infinity();
+						// output_scan_tmp.ranges[i] = std::numeric_limits<double>::infinity();
 					}
 					else{
 						// NOT AN OBSTACLE ADD TO VISUALIZATION
 						points_wrt_map[i] = my_point;
-						output_scan.ranges[i] = scanMsg->ranges[i];
+						// output_scan_tmp.ranges[i] = scanMsg->ranges[i];
+						if(detected_leg_mask_[i]){
+							// A leg was detected in that scan index
+							output_scan.ranges[i] = scanMsg->ranges[i];
+						}
+						else{
+							output_scan.ranges[i] = std::numeric_limits<double>::infinity();
+						}
 					}
 
 				} catch (tf::TransformException ex) {
@@ -194,17 +248,19 @@ private:
 			}
 			else{
 				output_scan.ranges[i] = std::numeric_limits<double>::infinity();
+				// output_scan_tmp.ranges[i] = std::numeric_limits<double>::infinity();
 			}
 		}
-		cloud_wrt_map.points = points_wrt_map;
-		cloud_obstacle.points = obstacles;
+		// cloud_wrt_map.points = points_wrt_map;
+		// cloud_obstacle.points = obstacles;
 		// cloud_pub_isteff_.publish(cloud_wrt_map); // Publishes player as PointCloud
-		cloud_pub_obstacles_.publish(cloud_obstacle);
+		// cloud_pub_obstacles_.publish(cloud_obstacle);
 		scan_player_pub_.publish(output_scan);
+		// scan_player_pub_tmp_.publish(output_scan_tmp);
 	}
 
 	bool checkContour(unsigned int cellX, unsigned int cellY){
-		float tolerance_radius = 0.35; // Tolerating misplacement of 35cm
+		float tolerance_radius = TOLERANCE_RADIUS; // Tolerating misplacement of 35cm
 		int tolerance_cell_number = tolerance_radius / last_map_->info.resolution;
 		int number_of_cells_to_check = pow(tolerance_cell_number, 2);
 
@@ -246,7 +302,7 @@ private:
 			return false;
 		}
 
-		if (last_map_->data[idx] == 100){
+		if (last_map_->data[idx] == OBSTACLE || last_map_->data[idx] == UNKNOWN){
 				return true;
 			}
 		return false;

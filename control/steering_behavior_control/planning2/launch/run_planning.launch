@@ -1,0 +1,6 @@
+<launch>
+
+    <node name="planning2_intention_node" pkg="planning2" type="planning2_intention_node" output="screen" respawn="true"/>
+    <node name="planning2_action_node" pkg="planning2" type="planning2_action_node" output="screen" respawn="true"/>
+    <node name="planning2_locomotion_node" pkg="planning2" type="planning2_locomotion_node" output="screen" respawn="true"/>
+</launch>

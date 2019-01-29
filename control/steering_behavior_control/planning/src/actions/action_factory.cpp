@@ -4,101 +4,81 @@
 #include "action/deceive.h"
 #include "planning/ActionEncoded.h"
 #include <steering_behavior/steering_behavior.h>
+#include <behavior_control/Goal.h>
+#include <behavior_control/GoalService.h>
 
 #include <ros/ros.h>
 #include <cmath>
 #include <string>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Vector3.h>
+#include <std_msgs/Int8.h>
 
 #define CAPTURE_TOWER 1
 #define ESCAPE 2
 #define DECEIVE 3
 
 Action::ActionFactory::ActionFactory(){
-    if (!nh_.getParam("/planning/tower_pos_topic", tower_topic_)){
-        ROS_ERROR("ACTION FACTORY: could not read 'tower_topic' from rosparam!");
-        exit(-1);
-    }
-
-
-    if (!nh_.getParam("/planning/tower_rectangle_topic", tower_rectangle_topic_)){
-        ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read 'tower_rectangle_topic' from rosparam!");
-        exit(-1);
-    }
-
     scan_sub_ = nh_.subscribe("/scan", 1, &Action::ActionFactory::laserCallback, this);
-    tower_rectangle_sub_ = nh_.subscribe(tower_rectangle_topic_, 1, &Action::ActionFactory::towerRectangleCallback, this);
-    
+    // goal_sub_ = nh_.subscribe("/game/goal", 1, &Action::ActionFactory::goalCallback, this); 
+    goal_sub_ = nh_.subscribe("/game/goal", 1, &Action::ActionFactory::goalCallback, this); 
+    parameter_sub_ = nh_.subscribe("/parameter_id", 1, &Action::ActionFactory::parameterCallback, this); 
+    start_interaction_pub_ = nh_.advertise<std_msgs::Int8>("/start_interaction", 1);
+    abort_interaction_pub_ = nh_.advertise<std_msgs::Int8>("/abort_interaction", 1);
 
+    start_attack_pub_ = nh_.advertise<std_msgs::Int8>("/start_attack", 1);
+    end_attack_pub_ = nh_.advertise<std_msgs::Int8>("/end_attack", 1);
+
+    goal_service_client_ = nh_.serviceClient<behavior_control::GoalService>("goal_service");
     ready_ = false;
-    towers_.resize(4);
 
+    // Initializing tower position
+    towers_.resize(4);
     std::vector<float> tower_pos;
     for(int i=0; i<4; i++){
         std::string param_name;
         param_name = "/tower_" + std::to_string(i+1);
         if (!nh_.getParam(param_name, tower_pos)){
-            ROS_ERROR("STEERING BEHAVIOR MANAGER: could not read 'tower' from rosparam!");
+            ROS_ERROR("ACTION FACTORY: could not read 'tower' from rosparam!");
             exit(-1);
         }
         geometry_msgs::Point32 pos;
         pos.x = tower_pos[0];
         pos.y = tower_pos[1];
         towers_[i] = pos;
-        ready_ = true;
-
     }
 
-    std::vector<float> ran(1000, 5.0);
-    laserCallback(current_scan_);    
+    current_goal_ = -1; // Initializing to invalid index
+
 }
 
-void Action::ActionFactory::towerRectangleCallback(const geometry_msgs::PolygonStamped& poly){
-    std::vector<geometry_msgs::Point32> points;
-    points.resize(4);
-    for(int i=0; i<4; i++){
-        points[i] = poly.polygon.points[i];
-    }
-    updateTowerPositions(points);
-}
+// void Action::ActionFactory::goalCallback(const behavior_with_deception::Goal& goal_msg){
+//     // Goals are published in range [1,4] but the array has domain [0,3] => subtract 1
+//     ready_ = true;
+//     current_goal_ = goal_msg.tower_number - 1;
+// }
 
-void Action::ActionFactory::updateTowerPositions(std::vector<geometry_msgs::Point32> points){
-    for(int i=0; i<points.size(); i++){
-        geometry_msgs::Point32 point = points[i];
-        int index = matchTowerIndex(point);
-        towers_[index].x = point.x;
-        towers_[index].y = point.y;
-    }
-       
-}
-
-int Action::ActionFactory::matchTowerIndex(geometry_msgs::Point32 point){
-    // Match the closest tower with the point given
-    float min_dist = 100.0;
-    int min_index;
-
-    for(int i=0; i<towers_.size(); i++){
-        float distance = pow(point.x - towers_[i].x, 2) + pow(point.y - towers_[i].y, 2);
-        if(distance < min_dist){
-            min_index = i;
-            min_dist = distance;
-        }
-    }
-    return min_index;
+void Action::ActionFactory::goalCallback(const behavior_control::Goal& goal_msg){
+    // Goals are published in range [1,4] but the array has domain [0,3] => subtract 1
+    ready_ = true;
+    current_goal_ = goal_msg.tower_number - 1;
 }
 
 void Action::ActionFactory::laserCallback(const sensor_msgs::LaserScan scan){
     current_scan_ = scan;
 }
 
+void Action::ActionFactory::parameterCallback(const std_msgs::Int8 msg){
+    parameter_id_ = msg.data;
+}
 
-Action::AbstractAction* Action::ActionFactory::generateAction(planning::ActionEncoded action_msg, int tower_index){
+
+Action::AbstractAction* Action::ActionFactory::generateAction(planning::ActionEncoded action_msg){
+    ready_ = true;
     if(ready_){
-        updateCurrentPos();
         switch(action_msg.action_code){
             case CAPTURE_TOWER:
-                return generateCaptureAction(tower_index);
+                return generateCaptureAction();
             case ESCAPE:
                 return generateEscapeAction(action_msg);
             case DECEIVE:
@@ -106,31 +86,41 @@ Action::AbstractAction* Action::ActionFactory::generateAction(planning::ActionEn
         }
     }
     else{
-        throw "Waiting for towers!!!";
+        throw "Waiting for goal!!!";
     }
 }
 
-Action::AbstractAction* Action::ActionFactory::generateCaptureAction(int tower_index){
+Action::AbstractAction* Action::ActionFactory::generateCaptureAction(){
     geometry_msgs::Point32 target;
-    float min_dist = 100.0;
-    int min_index;
-    for(int i=0; i<4; i++){
-        float dist = pow(current_pos_.x - towers_[i].x, 2) + pow(current_pos_.y - towers_[i].y, 2);
-        if(dist < min_dist && i!=last_tower_index_){
-            min_dist = dist;
-            min_index = i;
-        }
-    }
-    target = towers_[min_index];   
 
-    ROS_ERROR("Tower :%d", min_index);
-    // publishTarget(target);
-    last_tower_index_ = min_index;
+    ROS_WARN("Waiting for service");
+    goal_service_client_.waitForExistence();
+    ROS_WARN("Service Ready!");
+    behavior_control::GoalService goal_srv;
+
+    goal_srv.request.parameter_id = parameter_id_;
+    if(goal_service_client_.call(goal_srv)){
+        current_goal_ = goal_srv.response.tower_id - 1;
+    }
+    else{
+        ROS_ERROR("Failed to call goal service");
+    }
     
-    return new Action::CaptureTower(tower_index, target);
+    target = towers_[current_goal_];
+
+    ROS_ERROR("Tower :%d", current_goal_ + 1);
+
+    std_msgs::Int8 interaction_msg;
+    interaction_msg.data = current_goal_;
+    start_interaction_pub_.publish(interaction_msg);
+    start_attack_pub_.publish(interaction_msg);
+    
+    return new Action::CaptureTower(current_goal_, target);
 }
 
 Action::AbstractAction* Action::ActionFactory::generateEscapeAction(planning::ActionEncoded action_msg){
+    // Update out current position to interpret laser scan correctly
+    updateCurrentPos();
     geometry_msgs::Point32 target;
 
     float obstacle_distance = current_scan_.ranges[action_msg.danger_index];
@@ -139,19 +129,32 @@ Action::AbstractAction* Action::ActionFactory::generateEscapeAction(planning::Ac
     target.x = current_pos_.x + cos(obstacle_angle + current_rotation_wrt_map_)*obstacle_distance;
     target.y = current_pos_.y + sin(obstacle_angle + current_rotation_wrt_map_)*obstacle_distance;
     target.z = 0.0;
+
+    std_msgs::Int8 interaction_msg;
+    abort_interaction_pub_.publish(interaction_msg);
+    end_attack_pub_.publish(0);
     
     return new Action::Escape(target);
 }
 
 Action::AbstractAction* Action::ActionFactory::generateDeceivingAction(planning::ActionEncoded action_msg){
     // TODO get tower from Laura's message
-    geometry_msgs::Point32 real_target = towers_[2];
-    geometry_msgs::Point32 deceptive_tower = towers_[3];
-    
-    std::vector<geometry_msgs::Point32> targets = generateDeceptiveTargets(real_target, deceptive_tower); // DOES THE SERPENTONE THING
-    // std::vector<geometry_msgs::Point32> targets = generateDeceptiveTargetsBIS(real_target, deceptive_tower); // GO TO MIDDLE POINT AND DECIDES
+    geometry_msgs::Point32 real_target = towers_[action_msg.real_target];
+    geometry_msgs::Point32 deceptive_tower = towers_[action_msg.fake_target];
+    std::vector<geometry_msgs::Point32> targets;
+	if(action_msg.type == 3){
+        ROS_WARN("PREPARING FOR TYPE 3 DECEPTION");
+    	targets = generateDeceptiveTargets(real_target, deceptive_tower); // DOES THE SERPENTONE THING
+	}
+	else{
+        ROS_WARN("PREPARING FOR TYPE 1/2 DECEPTION");
+        targets = generateDeceptiveTargetsBIS(real_target, deceptive_tower); // GO TO MIDDLE POINT AND DECIDES
+    }
 
-    return new Action::Deceive(targets);
+    std_msgs::Int8 interaction_msg;
+    abort_interaction_pub_.publish(interaction_msg);
+
+    return new Action::Deceive(targets, action_msg.real_target);
 }
 
 std::vector<geometry_msgs::Point32> Action::ActionFactory::generateDeceptiveTargetsBIS(geometry_msgs::Point32 real_target, geometry_msgs::Point32 deceptive_tower){
@@ -178,22 +181,25 @@ std::vector<geometry_msgs::Point32> Action::ActionFactory::generateDeceptiveTarg
     targets.resize(2);
     targets[0] = fake_target;
     targets[1] = real_target;
-    // publishTarget(targets[0]);
     return targets;
 }
 
 std::vector<geometry_msgs::Point32> Action::ActionFactory::generateDeceptiveTargets(geometry_msgs::Point32 real_target, geometry_msgs::Point32 fake_target){
     // DOES THE SERPENTONE THING
+
+    // Vector representing shortest path to the fake tower
     geometry_msgs::Vector3 vector_fake;
     float magnitude_fake;
     vector_fake = SteeringBehavior::VectorUtility::vector_difference(current_pos_, fake_target);
     magnitude_fake = SteeringBehavior::VectorUtility::magnitude(vector_fake);
 
+    // Vector representing shortest path to the real tower
     geometry_msgs::Vector3 vector_true;
     float magnitude_true;
     vector_true = SteeringBehavior::VectorUtility::vector_difference(current_pos_, real_target);
     magnitude_true = SteeringBehavior::VectorUtility::magnitude(vector_true);
 
+    // Calculate two points: one at 0.4 of the shortest path to the real target, one at 0.6 of the shortest path to the fake target
     geometry_msgs::Vector3 vect1 = SteeringBehavior::VectorUtility::scalar_multiply(SteeringBehavior::VectorUtility::normalize(vector_true), magnitude_true*0.4);
     geometry_msgs::Vector3 vect2 = SteeringBehavior::VectorUtility::scalar_multiply(SteeringBehavior::VectorUtility::normalize(vector_fake), magnitude_fake*0.6);
 
@@ -210,21 +216,17 @@ std::vector<geometry_msgs::Point32> Action::ActionFactory::generateDeceptiveTarg
     p3 = real_target;
 
     std::vector<geometry_msgs::Point32> targets;
-    targets.resize(3);
-    targets[0] = p1;
-    targets[1] = p2;
-    targets[2] = p3;
+    // targets.resize(3);
+    // targets[0] = p1;
+    // targets[1] = p2;
+    // targets[2] = p3;
+    targets.resize(2);
+    targets[0] = p2;
+    targets[1] = p3;
+    // targets[2] = p3;
 
     return targets;
 }
-
-void Action::ActionFactory::updateCurrentPos(const geometry_msgs::Pose& msg){
-    // TODO get robot pose using ROS
-    current_pos_.x = msg.position.x;
-    current_pos_.y = msg.position.y;
-    current_pos_.z = msg.position.z;
-}
-
 
 void Action::ActionFactory::updateCurrentPos(){
         /**

@@ -1,7 +1,6 @@
 #include "steering_behavior/stop.h"
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Vector3.h>
-#include <ros/ros.h>
 
 geometry_msgs::Vector3 SteeringBehavior::Stop::calculate_desired_velocity(geometry_msgs::Point32 current_pos){
     geometry_msgs::Vector3 output;
@@ -16,6 +15,6 @@ geometry_msgs::Vector3 SteeringBehavior::Stop::calculate_steering_force(geometry
     return output;
 }
 
-float SteeringBehavior::Stop::evaluate(){
+float SteeringBehavior::Stop::evaluate(double player_model){
     return 0.0;
 }

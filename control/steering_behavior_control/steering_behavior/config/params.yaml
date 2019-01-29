@@ -1,7 +1,26 @@
-mass: 5.0 # mass of the vehicle
-max_force: 5.0 # maximum force the motor can apply to the vehicle
-max_speed: 0.7 # maximum speed of the vehicle
+slowing_radius: 1.5
+deception_target_change_distance: 0.3
 
+# EASY PARAMS
+# max_force: 5.5 # maximum force the motor can apply to the vehicle
+# max_speed: 0.5 # maximum speed of the vehicle
+
+# MEDIUM PARAMS
+min_mass: 5.0  # minimum mass of the vehicle
+base_mass: 7.0 # starting mass of the vehicle
+max_mass: 10.0 # maximum mass of the vehicle
+
+min_force: 4.0
+base_force: 5.0
+max_force: 6.0  # maximum force the motor can apply to the vehicle
+
+min_speed: 0.7  # minum speed of vehicle
+base_speed: 0.85 # starting speed of vehicle
+max_speed: 1.0  # maximum speed of the vehicle
+
+# DIFFICULT PARAMS
+# max_force: 5.5 # maximum force the motor can apply to the vehicle
+# max_speed: 1.0 # maximum speed of the vehicle
 
 # TOPICS FOR TURTLESIM
 # vel_topic_sub: "/turtle1/vel"
@@ -11,4 +30,3 @@ max_speed: 0.7 # maximum speed of the vehicle
 # TOPICS FOR TRISKAR
 vel_topic_sub: "/vel"
 vel_topic_pub: "/game_navigation/unsafe/cmd_vel"
-#pose_topic: "/turtle1/my_pose"

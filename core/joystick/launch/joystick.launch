@@ -18,6 +18,7 @@
 	</node>
 
 	<node pkg="joystick" type="joystick_node" name="joystick_node" output="screen" respawn="false">
+		<remap from="raw_cmd_vel" to="cmd_vel"/>
 	</node>
 
 </launch>

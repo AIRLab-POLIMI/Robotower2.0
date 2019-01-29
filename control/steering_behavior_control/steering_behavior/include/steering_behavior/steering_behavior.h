@@ -16,23 +16,44 @@
 
 namespace SteeringBehavior{
 
+
  class SteeringBehavior{
 	protected:
 		geometry_msgs::Point32 target_;
 		std::vector<geometry_msgs::Point32> targets_;
-		int current_target_index_;
+		int current_target_index_; // Index of current target in targets
+		int tower_target_index_;
+		float max_speed_;
+		float slowing_radius_;
+		float deception_target_change_distance_; // Distance according to which changing target
+
 
 	public:
+		
+		static std::vector<geometry_msgs::Point32> towers_;
+		
 		SteeringBehavior(){}
 
 		SteeringBehavior(geometry_msgs::Point32 target){
 			target_ = target;
 		}
 
+		SteeringBehavior(geometry_msgs::Point32 target, int tower_index){
+			target_ = target;
+			tower_target_index_ = tower_index;
+		}
+
 		SteeringBehavior(std::vector<geometry_msgs::Point32> targets){
 			current_target_index_ = 0;
 			target_ = targets[current_target_index_];
 			targets_ = targets;
+		}
+
+		SteeringBehavior(std::vector<geometry_msgs::Point32> targets, int tower_index){
+			current_target_index_ = 0;
+			target_ = targets[current_target_index_];
+			targets_ = targets;
+			tower_target_index_ = tower_index;
 		}
 
 		geometry_msgs::Point32 getTarget(){
@@ -42,25 +63,48 @@ namespace SteeringBehavior{
 		void setTarget(geometry_msgs::Point32 target){
 			target_ = target;
 		}
-
 		void setTargets(std::vector<geometry_msgs::Point32> targets){
 			targets_ = targets;
 			current_target_index_ = 0;
 			target_ = targets[current_target_index_]; 
 		}
 
-		virtual geometry_msgs::Vector3 calculate_steering_force(geometry_msgs::Vector3 current_vel, geometry_msgs::Vector3 desired_vel) = 0;
+		void setDeceptionTargetDistance(float distance){
+			deception_target_change_distance_ = distance;
+		}
+
+		void setMaxSpeed(float max_speed){
+			max_speed_ = max_speed;
+		}
+
+		void setSlowingRadius(float slowing_radius){
+			slowing_radius_ = slowing_radius;
+		}
+
+		// Updates the absolute position of the targetted tower due to noise
+		virtual void updateTargetPos(std::vector<geometry_msgs::Point32> towers) = 0;
 
 		// Calculates the velocity vector that would follow a straight path to the targert
 		virtual geometry_msgs::Vector3 calculate_desired_velocity(geometry_msgs::Point32 current_pos) = 0;
 		
+		// Calculate the force that is to be applied to the vehicle in oreder to reach the target
+		virtual geometry_msgs::Vector3 calculate_steering_force(geometry_msgs::Vector3 current_vel, geometry_msgs::Vector3 desired_vel) = 0;
+		
 		// Calculates the steering behavior score 
-		virtual float evaluate() = 0;
+		virtual float evaluate(double player_model) = 0;
 
+		// Returns the name of the behavior used to encode it in a message
 		virtual std::string getName() = 0;
+
+		// Returns the code of the behavior used to encode it in a message
 		virtual int getCode() = 0;
+
+		// Function that evaluates wheter we should change the target of the behavior. Returns wheter the change was necessary or not
 		virtual bool updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos, float current_rotation_wrt_map) = 0;
+
+		// Function to be called upon a change of target triggered by the updateTarget function
 		virtual std::vector<float> getUpdateWeights() = 0;
+
 	};
 
 	class Flee;

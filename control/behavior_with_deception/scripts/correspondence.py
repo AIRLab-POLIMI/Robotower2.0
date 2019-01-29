@@ -9,11 +9,17 @@ def correspondence(outcome_matrix_robot, outcome_matrix_player):
     avg_robot_actions = numpy.mean(outcome_matrix_robot, axis=0)
     avg_player_actions = numpy.mean(outcome_matrix_player, axis=1)
 
-    for index in range(4):
-        beta = beta + outcome_variation(outcome_matrix_robot[index][:], outcome_matrix_player[index][:], avg_robot_actions[index], numpy.sum(avg_robot_actions))
+    # for index in range(4):
+    #     beta = beta + outcome_variation(outcome_matrix_robot[index][:], outcome_matrix_player[index][:], avg_robot_actions[index], numpy.sum(avg_robot_actions))
+
+    # for index in range(4):
+    #     beta = beta + outcome_variation(outcome_matrix_robot[:][index], outcome_matrix_player[:][index], avg_player_actions[index], numpy.sum(avg_player_actions))
 
     for index in range(4):
-        beta = beta + outcome_variation(outcome_matrix_robot[:][index], outcome_matrix_player[:][index], avg_player_actions[index], numpy.sum(avg_player_actions))
+        beta = beta + outcome_variation(outcome_matrix_robot[:][index], outcome_matrix_player[:][index], avg_robot_actions[index], numpy.sum(avg_robot_actions))
+
+    for index in range(4):
+        beta = beta + outcome_variation(outcome_matrix_robot[index][:], outcome_matrix_player[index][:], avg_player_actions[index], numpy.sum(avg_player_actions))
 
     return beta/2
 

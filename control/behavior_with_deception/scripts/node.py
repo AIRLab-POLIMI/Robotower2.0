@@ -7,11 +7,12 @@ from social_analyzer import SocialAnalyzer
 def main():
     """ The main ros loop"""
     #Init node
-    social_analyzer = SocialAnalyzer()
-
     rospy.init_node('behavior_with_deception')
+    percentage_deception = rospy.get_param("/social_analyzer/percentage_deception")
 
-    rate = rospy.Rate(60)
+    social_analyzer = SocialAnalyzer(percentage_deception)
+
+    rate = rospy.Rate(30)
 
     while not rospy.is_shutdown():
 

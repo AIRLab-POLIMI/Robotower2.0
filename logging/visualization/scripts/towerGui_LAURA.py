@@ -9,7 +9,7 @@ from PyQt5.QtMultimedia import *
 
 import std_msgs.msg
 
-from game_manager.msg import Towers
+from game_manager.msg import Towers, TowerState
 from rosgraph_msgs.msg import TopicStatistics
 from behavior_with_deception.msg import Goal
 
@@ -42,11 +42,13 @@ style = """QGroupBox {
 class MainWindow(QMainWindow):
 	def __init__(self):
 		QMainWindow.__init__(self)
+		
 		self.setWindowTitle('Tower monitor')
 		cWidget = QWidget(self)
 		vbox = QVBoxLayout()#cWidget)
 
 		firstLoggerBox = QGroupBox(self)
+		firstLoggerBox.setFont(QFont('Courier', 20, weight=QFont.Bold))
 		firstLoggerBox.setTitle("1st TOWER")
 		firstLoggerBox.setStyleSheet(style)
 		firstLoggerGrid = QGridLayout(firstLoggerBox)
@@ -54,6 +56,7 @@ class MainWindow(QMainWindow):
 		firstLoggerGrid.setVerticalSpacing(10)
 
 		secondLoggerBox = QGroupBox(self)
+		secondLoggerBox.setFont(QFont('Courier', 20, weight=QFont.Bold))
 		secondLoggerBox.setTitle("2nd TOWER")
 		secondLoggerBox.setStyleSheet(style)
 		secondLoggerGrid = QGridLayout(secondLoggerBox)
@@ -61,6 +64,7 @@ class MainWindow(QMainWindow):
 		secondLoggerGrid.setVerticalSpacing(10)
 
 		thirdLoggerBox = QGroupBox(self)
+		thirdLoggerBox.setFont(QFont('Courier', 20, weight=QFont.Bold))
 		thirdLoggerBox.setTitle("3rd TOWER")
 		thirdLoggerBox.setStyleSheet(style)
 		thirdLoggerGrid = QGridLayout(thirdLoggerBox)
@@ -68,6 +72,7 @@ class MainWindow(QMainWindow):
 		thirdLoggerGrid.setVerticalSpacing(10)
 
 		fourthLoggerBox = QGroupBox(self)
+		fourthLoggerBox.setFont(QFont('Courier', 20, weight=QFont.Bold))
 		fourthLoggerBox.setTitle("4th TOWER")
 		fourthLoggerBox.setStyleSheet(style)
 		fourthLoggerGrid = QGridLayout(fourthLoggerBox)
@@ -76,6 +81,7 @@ class MainWindow(QMainWindow):
 
 		# Target
 		fifthLoggerBox = QGroupBox(self)
+		fifthLoggerBox.setFont(QFont('Courier', 20, weight=QFont.Bold))
 		fifthLoggerBox.setTitle("Target")
 		fifthLoggerBox.setStyleSheet(style)
 		fifthLoggerGrid = QGridLayout(fifthLoggerBox)
@@ -86,6 +92,7 @@ class MainWindow(QMainWindow):
 
 		#Game's state
 		sixthLoggerBox = QGroupBox(self)
+		sixthLoggerBox.setFont(QFont('Courier', 20, weight=QFont.Bold))
 		sixthLoggerBox.setTitle("Game info")
 		sixthLoggerBox.setStyleSheet(style)
 		sixthLoggerGrid = QGridLayout(sixthLoggerBox)
@@ -110,9 +117,9 @@ class MainWindow(QMainWindow):
 
 
 		# LEDS
-		pixmap_red = QPixmap("/home/airlab/catkin_ws/src/visualization/scripts/resources/circle_red.png")
+		pixmap_red = QPixmap("/home/airlab/catkin_ws/src/phd_robogame/logging/visualization/resources/circle_red.png")
 		pixmap_red = pixmap_red.scaled(48, 48,Qt.KeepAspectRatio)
-		pixmap_green = QPixmap("/home/airlab/catkin_ws/src/visualization/scripts/resources/circle_green.png")
+		pixmap_green = QPixmap("/home/airlab/catkin_ws/src/phd_robogame/logging/visualization/resources/circle_green.png")
 		pixmap_green = pixmap_green.scaled(48, 48,Qt.KeepAspectRatio)
 		self.Led_state = {0: pixmap_red, 1: pixmap_green}
 
@@ -138,18 +145,33 @@ class MainWindow(QMainWindow):
 		fst_tower_state = QLabel("Captured?", cWidget)
 		fst_led_status = QLabel("LED state:", cWidget)
 
+		fst_tower_state.setFont(QFont('Courier', 17))
+		fst_led_status.setFont(QFont('Courier', 17))
+
 		sec_tower_state = QLabel("Captured?", cWidget)
 		sec_led_status = QLabel("LED state:", cWidget)
+
+		sec_tower_state.setFont(QFont('Courier', 17))
+		sec_led_status.setFont(QFont('Courier', 17))
 
 		thd_tower_state = QLabel("Captured?", cWidget)
 		thd_led_status = QLabel("LED state:", cWidget)
 
+		thd_tower_state.setFont(QFont('Courier', 17))
+		thd_led_status.setFont(QFont('Courier', 17))
+
 		fth_tower_state = QLabel("Captured?", cWidget)
 		fth_led_status = QLabel("LED state:", cWidget)
 
-		target_label = QLabel("Tower number:", cWidget)
+		fth_tower_state.setFont(QFont('Courier', 17))
+		fth_led_status.setFont(QFont('Courier', 17))
+
+		# target_label = QLabel("Tower number:", cWidget)
 		
 		game_difficulty_label = QLabel("Current difficulty:", cWidget)
+
+		# target_label.setFont(QFont('Courier', 17))
+		game_difficulty_label.setFont(QFont('Courier', 17))
 
 
 		# Statistics setAlignment
@@ -162,7 +184,7 @@ class MainWindow(QMainWindow):
 		thd_led_status.setAlignment(Qt.AlignCenter)
 		fth_led_status.setAlignment(Qt.AlignCenter)
 		
-		target_label.setAlignment(Qt.AlignCenter)
+		# target_label.setAlignment(Qt.AlignCenter)
 		game_difficulty_label.setAlignment(Qt.AlignCenter)
 
 		# Tower status variable
@@ -193,6 +215,9 @@ class MainWindow(QMainWindow):
 		
 		self.difficulty_state = QLabel(self.game_difficulty, cWidget)
 		self.difficulty_state.setAlignment(Qt.AlignCenter)
+
+		self.target_state.setFont(QFont('Courier', 17))
+		self.difficulty_state.setFont(QFont('Courier', 17))
 
 		# add widgets
 		firstLoggerGrid.addWidget(fst_tower_state, 0, 0)
@@ -228,8 +253,8 @@ class MainWindow(QMainWindow):
 		fourthLoggerGrid.addWidget(self.tw4_leds[2], 1, 3)
 		fourthLoggerGrid.addWidget(self.tw4_leds[3], 1, 4)
 
-		fifthLoggerGrid.addWidget(target_label, 0 , 0)
-		fifthLoggerGrid.addWidget(self.target_state, 0 , 1)
+		# fifthLoggerGrid.addWidget(target_label, 0 , 0)
+		fifthLoggerGrid.addWidget(self.target_state)
 		sixthLoggerGrid.addWidget(game_difficulty_label, 0, 0)
 		sixthLoggerGrid.addWidget(self.difficulty_state, 0, 1)
 
@@ -248,30 +273,48 @@ class MainWindow(QMainWindow):
 		self.tw4.setText(Node_state[self.tw4_status_val])
 		self.tw4.setPalette(Node_state_color[self.tw4_status_val])
 		
-		self.target_state.setText(str(self.target))
+		self.target_state.setText('Tower {}'.format(str(self.target)))
 		self.difficulty_state.setText(self.game_difficulty)
 
 		for i in range(4):
 			self.tw1_leds[i].setPixmap(self.Led_state[self.tw1_leds_vals[i]])
 			self.tw2_leds[i].setPixmap(self.Led_state[self.tw2_leds_vals[i]])
 			self.tw3_leds[i].setPixmap(self.Led_state[self.tw3_leds_vals[i]])
-			self.tw4_leds[i].setPixmap(self.Led_state[self.tw4_leds_vals[i]])
+			#self.tw4_leds[i].setPixmap(self.Led_state[self.tw4_leds_vals[i]])
 
 
 def state_update(data):	
 	global main
-	if (data.id == 1):
-		main.tw1_leds_vals = charge_leds
-		main.tw1_status_val = True if status_led_color == [0, 1] else False
-	elif (data.id == 2):
-		main.tw2_leds_vals = charge_leds
-		main.tw2_status_val = True if status_led_color == [0, 1] else False
-	elif (data.id == 3):
-		main.tw3_leds_vals = charge_leds
-		main.tw3_status_val = True if status_led_color == [0, 1] else False
-	elif (data.id == 4):
-		main.tw4_leds_vals = charge_leds
-		main.tw4_status_val = True if status_led_color == [0, 1] else False
+
+	num_char_led = len(data.tw1.leds) + 1
+
+	main.tw1_status_val = data.tw1.status == TowerState.TYPE_TOWER_CAPTURED
+	if main.tw1_status_val:
+		main.tw1_leds_vals = [True for i in range(num_char_led)]
+	else:
+		main.tw1_leds_vals = data.tw1.leds
+
+	main.tw2_status_val = data.tw2.status == TowerState.TYPE_TOWER_CAPTURED
+
+	if main.tw2_status_val:
+		main.tw2_leds_vals = [True for i in range(num_char_led)]
+	else:
+		main.tw2_leds_vals = data.tw2.leds
+
+	main.tw3_status_val = data.tw3.status == TowerState.TYPE_TOWER_CAPTURED
+
+	if main.tw3_status_val:
+		main.tw3_leds_vals = [True for i in range(num_char_led)]
+	else:
+		main.tw3_leds_vals = data.tw3.leds
+
+
+	main.tw4_status_val = data.tw4.status == TowerState.TYPE_TOWER_CAPTURED
+
+	if main.tw4_status_val:
+		main.tw4_leds_vals = [True for i in range(num_char_led)]
+	else:
+		main.tw4_leds_vals = data.tw4.leds
 
 	main.update_GUI()
 	
@@ -283,10 +326,13 @@ def goal_update(msg):
 def Draw_GUI():
 	global main
 	app = QApplication(sys.argv)
+	screen_resolution = app.desktop().screenGeometry()
+	width, height = screen_resolution.width(), screen_resolution.height()
 	main = MainWindow()
+	main.resize(width/2, height)
 	main.show()
 	rospy.init_node('GUI', anonymous=True)
-	rospy.Subscriber("game_manager/Towers", Towers, state_update)
+	rospy.Subscriber("game_manager/towers/State", Towers, state_update)
 	rospy.Subscriber("game/goal", Goal, goal_update)
 	sys.exit(app.exec_())
 	rospy.spin()

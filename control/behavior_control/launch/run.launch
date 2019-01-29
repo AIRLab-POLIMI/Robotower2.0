@@ -6,6 +6,7 @@
 	<arg name="block_timeout"		default='3.0'/>
 	<arg name="robot_base"			default='/base_link'/>
 	<arg name="player_base"			default='/player_filtered_link'/>
+	<arg name="is_service"			default='false'/>
 	
 	
 	<node name="planner_node" pkg="behavior_control" type="planner_node" output="screen" respawn="true"> <!-- launch-prefix="xterm -e gdb -args" -->
@@ -16,6 +17,7 @@
 		 <param name="block_timeout" 	 type="double" value="$(arg block_timeout)"/>
 		 <param name="robot_base" 	 	 type="str" value="$(arg robot_base)"/>
 		 <param name="player_base" 	 	 type="str" value="$(arg player_base)"/>
+		 <param name="is_service"		 type="bool" value="$(arg is_service)"/>
 	</node>
 
 </launch>

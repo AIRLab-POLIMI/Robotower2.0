@@ -55,6 +55,7 @@ add_message_files(
   Goal.msg
   Deception.msg
   DeceptionCommandMsg.msg
+  Idle.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -108,7 +109,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES behavior_with_deception
-#  CATKIN_DEPENDS geometry_msgs rospy sensor_msgs std_msgs tf
+  CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 
@@ -122,6 +123,7 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
 )
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

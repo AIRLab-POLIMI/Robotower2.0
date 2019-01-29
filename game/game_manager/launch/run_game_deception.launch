@@ -1,6 +1,7 @@
 <launch>
 
 <!-- Parameters -->
+	<param name="steering_mode" value="false" />
     <rosparam command="load" file="$(find behavior_control)/config/config.yaml" />
     <rosparam command="load" file="$(find game_manager)/params/velocity_config.yaml" />
     <rosparam command="load" file="$(find game_manager)/params/game.yaml" />
@@ -57,7 +58,7 @@
    
 
     <!-- player and tower game information -->
-    <node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />
+    <!--<node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />-->
     <node pkg="tower_manager" type="tower_manager_node" name="tower_manager" output="screen" respawn="true" />
     
     <!-- player classification module
@@ -72,12 +73,14 @@
     
     <!-- Player Tracking  -->
 	<include file="$(find player_tracker)/launch/run.launch"/>
-    <include file="$(find radial_tracking)/launch/run.launch"/>
+    <!--<include file="$(find radial_tracking)/launch/run.launch"/>-->
 
 	<!-- Onboard camera  
     <include file="$(find onboard_camera)/launch/run.launch"/>-->
 
     <!-- Deception (Behavior node) -->
-    <node pkg="behavior_with_deception" type="node.py" name="social_analyzer" output="screen" respawn="true" />
+    <node pkg="behavior_with_deception" type="node.py" name="social_analyzer" output="screen" respawn="true">
+		<rosparam command="load" file="$(find behavior_with_deception)/config/config.yaml"/>
+	</node>
 
 </launch>

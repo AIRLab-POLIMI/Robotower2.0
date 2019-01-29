@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(steering_behavior)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -12,6 +12,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   tf
   visualization_msgs
+  activity_monitor
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -48,11 +50,10 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+  FILES
+  KinematicUpdate.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -69,10 +70,10 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs  # Or other packages containing msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -128,9 +129,8 @@ add_library(${PROJECT_NAME}_LIB
    src/seek.cpp
    src/stop.cpp
    src/arrival.cpp
-   src/vehicle.cpp
-   #src/steering_factory.cpp
    src/deception.cpp
+   src/vehicle.cpp
 )
 
 #add_library(${PROJECT_NAME}_LIB
@@ -144,7 +144,7 @@ add_library(${PROJECT_NAME}_LIB
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/main.cpp)
+# add_executable(${PROJECT_NAME}_tower_update_node src/towerListener.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -154,13 +154,13 @@ add_executable(${PROJECT_NAME}_node src/main.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(${PROJECT_NAME}_tower_update_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_node
-   ${PROJECT_NAME}_LIB
-   ${catkin_LIBRARIES}
-)
+# target_link_libraries(#${PROJECT_NAME}_tower_update_node
+#    ${PROJECT_NAME}_LIB
+#    ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -177,7 +177,7 @@ target_link_libraries(${PROJECT_NAME}_node
 # )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS ${PROJECT_NAME}_LIB ${PROJECT_NAME}_node
+install(TARGETS ${PROJECT_NAME}_LIB
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

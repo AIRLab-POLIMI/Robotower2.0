@@ -13,7 +13,7 @@ class Stop: public SteeringBehavior {
 		geometry_msgs::Vector3 calculate_desired_velocity(geometry_msgs::Point32 current_pos);
         geometry_msgs::Vector3 calculate_steering_force(geometry_msgs::Vector3 current_vel, geometry_msgs::Vector3 desired_vel);
 
-		float evaluate();
+		float evaluate(double player_model);
 
 		std::string getName(){
 			return "stop";
@@ -33,4 +33,8 @@ class Stop: public SteeringBehavior {
 			output[2] = 1;
             return output;
         }
+
+		void updateTargetPos(std::vector<geometry_msgs::Point32> towers){
+			return;
+		}
 };

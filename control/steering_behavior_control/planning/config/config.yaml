@@ -7,11 +7,12 @@ tower_pos_topic: "/tower_position"
 safety_topic: "/safety"
 scan_topic: "/scan_player_tracking"
 tower_rectangle_topic: "/tower_rectangle"
-deception_topic: "/deception"
+deception_topic: "/game/is_deceiving"
+deception_command_topic: "/action/deception_command"
 
 number_sections_safety: 8
 safety_treshold: 1
-safety_treshold_flee: 0.7
+safety_treshold_flee: 0.6
 collision_angle_treshold: 1.57079632
 window_width: 1.57079632
 speed_thd: 0.1

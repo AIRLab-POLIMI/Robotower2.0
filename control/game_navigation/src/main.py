@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 from behavior_control.msg import Goal
-from kinect_tracker.msg import PlayerInfo
 from geometry_msgs.msg import Twist
 from player_tracker.msg import TowerArray
 from sensor_msgs.msg import LaserScan
@@ -69,6 +68,7 @@ def main():
     vel_sub         = rospy.Subscriber('/vel', Twist, navigation.velCallback)
     laser_obstc_sub = rospy.Subscriber('/scan_obstacles', LaserScan, navigation.scan_obstacle_callback)
     laser_sub       = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)
+    laser_scan_sub  = rospy.Subscriber('/scan_player_tracking', LaserScan, navigation.scanPlayerCallback)
     laser_tower_sub = rospy.Subscriber('/estimated_tower_positions', TowerArray, navigation.tpos_callback)
     tower_rectangle_sub = rospy.Subscriber('/tower_rectangle', PolygonStamped, navigation.tower_rectangle_callback)
     safety_sub = rospy.Subscriber('/safety', SafetyMsg, navigation.safety_callback)

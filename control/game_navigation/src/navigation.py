@@ -1,5 +1,6 @@
 from behavior_control.msg import Goal
-from kinect_tracker.msg import PlayerInfo
+from behavior_control.srv import GoalService, GoalServiceRequest, GoalServiceResponse
+# from game_navigation.msg import PlayerInfo
 from player_tracker.msg import TowerArray
 from geometry_msgs.msg import Twist, PointStamped
 from sensor_msgs.msg import LaserScan
@@ -43,11 +44,12 @@ class Navigation:
         self.current_vel = Twist()
         self.current_goal = 1
         self.current_angle_diff = 0
-        self.current_player_info = PlayerInfo()
+        #self.current_player_info = PlayerInfo()
         self.current_tower_positions = TowerArray()
         self.time_stamp = 0
         self.current_scan = LaserScan()
         self.current_scan_obstacles = LaserScan()
+        self.current_scan_player = LaserScan()
         
         self.br = tf.TransformBroadcaster()
         self.tf_listener = tf.TransformListener()
@@ -69,6 +71,13 @@ class Navigation:
         self.safety_evaluator = SafetyEvaluator(self.DONTCARE)
         self.lock_rotation = False
         
+        # rospy.loginfo('Waiting for service..')
+        # rospy.wait_for_service('/planning/goal_service')
+        # rospy.loginfo('Service ready lets go')
+        # self.goal_service_server = rospy.ServiceProxy('/planning/goal_service', GoalService)
+        # res = self.goal_service_server(1)
+        # self.current_goal = res.tower_id - 1
+        # self.safety_count = 0
 
 
     def set_max_speed(self,value):
@@ -101,6 +110,9 @@ class Navigation:
     def scan_obstacle_callback(self, msg):
         self.current_scan_obstacles = copy.deepcopy(msg) #msg.ranges
 
+    def scanPlayerCallback(self, msg):
+        self.current_scan_player = copy.deepcopy(msg)
+
     def scanCallback(self,msg):
         """
         Gets distance measurements from the deployed lasers. These information are taken from /scan topic.
@@ -114,12 +126,6 @@ class Navigation:
         Updates current camera off-center player angle
         """
         self.current_angle_diff = msg.data
-        
-    def playerInfoCallback(self,msg):
-        """
-        Updates current camera-player distance
-        """
-        self.current_player_info = copy.deepcopy(msg)
 
     def tpos_callback(self, msg):
         """Laser estimated tower position callback"""
@@ -312,30 +318,40 @@ class Navigation:
 
     def evaluateColision(self):
         """Set is_safe variable"""
-        self.is_safe = self.current_safety
+        # self.is_safe = self.current_safety
         # check if an obstacle is detected below the proximity threeshold
-        # proximity = False
-        # for values in self.current_scan_obstacles.ranges:
-        #     if values < self.PROXIMITY_THREESHOLD:
-        #         proximity = True
-        #         break
 
-        # # NOTE:  Why do we have proximity and dontcare as well thersholds? I think Davide meant to use 'proximity'
-        # # as a way to start reducing the efect of inertia in case we have to suddenly stop because of a 'dontcare'
-        # # condition.  Thus, 'proximity' is use just to start reducing the robot action and preparing it to a possible
-        # # obstacle avoidance.
 
-        # # perform a safety check (NOTE: Does not care for direction of movement)
-        # # dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
+        # NOTE:  Why do we have proximity and dontcare as well thersholds? I think Davide meant to use 'proximity'
+        # as a way to start reducing the efect of inertia in case we have to suddenly stop because of a 'dontcare'
+        # condition.  Thus, 'proximity' is use just to start reducing the robot action and preparing it to a possible
+        # obstacle avoidance.
 
-        # #dontcare_condition = self.dontcare_condition_evaluation()
-        # #dontcare_condition = self.dontcare()
+        # perform a safety check (NOTE: Does not care for direction of movement)
+        # dontcare_condition = np.array(self.current_scan.ranges) < self.DONTCARE
 
-        # filtered_scan = self.filter_scan(self.current_scan_obstacles.ranges)
+        #dontcare_condition = self.dontcare_condition_evaluation()
+        #dontcare_condition = self.dontcare()
+
+        # check if an obstacle is detected below the proximity threeshold
+        proximity = False
+        for values in self.current_scan_player.ranges:
+            if values < self.PROXIMITY_THREESHOLD:
+                proximity = True
+                break
+
+        # perform a safety check
+        dontcare_condition = np.array(self.current_scan_player.ranges) < self.DONTCARE
+        new_is_safe = True
+        if proximity and (all(dontcare_condition) == False) and (len(dontcare_condition) != 0):
+            new_is_safe = False
+        self.is_safe = new_is_safe
+
+        # filtered_scan = self.filter_scan(self.current_scan_player.ranges)
        
         # self.set_evaluator_mode()
-        # self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan, self.current_scan_obstacles)
-        # # rospy.loginfo("Safety condition: {}".format(self.is_safe))
+        # self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan, self.current_scan_player)
+        # rospy.loginfo("Safety condition: {}".format(self.is_safe))
 
     
     def laserScanManager(self):
@@ -517,24 +533,75 @@ class Navigation:
         # updates is_safe and process /scan information
         rear_right, right, front_right, front_left, left, rear_left = (None,None,None,None,None,None)
         
-        if len(self.current_scan_obstacles.ranges) != 0:
+        # previous_safety = self.is_safe
+        if len(self.current_scan.ranges) != 0:
             self.evaluateColision()
+
+        # if self.is_safe:
+        #     self.safety_count += 1
+        # else:
+        #     self.safety_count = 0
+
+        # if self.safety_count == 5:
+        #     res = self.goal_service_server(1)
+        #     self.current_goal = res.tower_id - 1
 
         # Fuzzy
         if not self.is_safe:
             rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
-            smoothed_cmd_vel = self.fuzzy_avoider.avoidObstacle(rear_right, right, front_right, front_left, left, rear_left, is_near_goal)
+
+            try:
+                smoothed_cmd_vel = self.fuzzy_avoider.avoidObstacle(rear_right, right, front_right, front_left, left, rear_left, is_near_goal)
+            except Exception as e:
+                # sometimes the fuzzy system gives an error that nobody wants to investigate.
+                rospy.logerr(str(e))
+                self.last_cmd_vel =  Twist()
+                return unsafe_msg
 
         unsafe_msg = Twist()
-        unsafe_msg.linear.x = smoothed_cmd_vel[0]
-        unsafe_msg.linear.y = smoothed_cmd_vel[1]
-        unsafe_msg.angular.z = self.anglePController()
+        unsafe_msg.linear.x = smoothed_cmd_vel[0]#[0]
+        unsafe_msg.linear.y = smoothed_cmd_vel[1]#[0]
+        unsafe_msg.angular.z = 0.0#self.anglePController()
+
+
+        v1 = np.array([unsafe_msg.linear.x, unsafe_msg.linear.y])
+        v2 = np.array([self.last_cmd_vel.linear.x, self.last_cmd_vel.linear.y])
+
+        
+        # angle = np.rad2deg(self.angle_between(v1,v2))
+
+        # print "Angle: {}".format(angle)
+
+        # if np.abs(angle) > 120:
+        #     unsafe_msg = Twist()
 
         # save last cmd given
         self.last_cmd_vel = unsafe_msg;
 
         return unsafe_msg
 
+    import numpy as np
+
+    def unit_vector(self, vector):
+        """ Returns the unit vector of the vector.  """
+        norm = np.linalg.norm(vector)
+        if norm == 0:
+            np.zeros(vector.shape)
+        return vector / float(norm)
+
+    def angle_between(self, v1, v2):
+        """ Returns the angle in radians between vectors 'v1' and 'v2'::
+
+                >>> angle_between((1, 0, 0), (0, 1, 0))
+                1.5707963267948966
+                >>> angle_between((1, 0, 0), (1, 0, 0))
+                0.0
+                >>> angle_between((1, 0, 0), (-1, 0, 0))
+                3.141592653589793
+        """
+        v1_u = self.unit_vector(v1)
+        v2_u = self.unit_vector(v2)
+        return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
     def convert_to_map(self, point, header):
         rospy.loginfo("Converting..")

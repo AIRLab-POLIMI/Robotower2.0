@@ -37,7 +37,7 @@ name(name), insistence(insistence), change_per_time(change_per_time) {}
 
 
 float gob::Goal::getChange(){
-    return 0;
+    return 1;
 }
 
 float gob::Goal::getDiscontentment(float new_value){
@@ -74,7 +74,7 @@ float gob::Action::getGoalChange(std::string goal){
 }
 
 float gob::Action::getDuration(){
-    return 0;
+    return duration;
 }
 
 std::string gob::Action::getName(){
@@ -93,10 +93,10 @@ float gob::calculateDiscontentment(Action * action, std::vector<Goal*> & goals){
         float new_value = goals[i]->getInsistence() + action->getGoalChange(goals[i]->getName());
 
         // Calculate the change due to time alone
-        new_value += action->getDuration() * goals[i]->getChange();
+        // new_value *= action->getDuration() * goals[i]->getChange();
 
         // Get the discontentment of this value
-        discontentment += goals[i]->getDiscontentment(new_value);
+        discontentment += new_value; // goals[i]->getDiscontentment(new_value);
     }
     
     return discontentment;

@@ -16,7 +16,7 @@ class DeceptionMovementManager(object):
         self.fake_target = self.real_target = 0
         self.fake_target_coordinates = self.real_target_coordinates = self.robot_coordinates = numpy.zeros(2)
 
-        self.traslations_xy = numpy.zeros(2)
+        self.playground_xy = numpy.zeros(2)
 
         self.type_deception = -1
 
@@ -38,8 +38,8 @@ class DeceptionMovementManager(object):
     def set_robot_coordinates(self, robot_coordinates):
         self.robot_coordinates = robot_coordinates
 
-    def set_traslation_robot_playground(self,traslations_xy):
-        self.traslations_xy = traslations_xy
+    def set_playground_center(self,traslations_xy):
+        self.playground_xy = traslations_xy
 
     def trajectory_planner(self):
         '''
@@ -47,16 +47,24 @@ class DeceptionMovementManager(object):
         '''
         self.check_type_deception()
 
-        rospy.loginfo("Deception type:{} fake target:{} real_target:{}".format(self.type_deception, self.fake_target, self.real_target))
+        # rospy.loginfo("Deception type:{} fake target:{} real_target:{}".format(self.type_deception, self.fake_target, self.real_target))
 
         if self.type_deception == 1 or self.type_deception == 2:
             
             points_trajectory_array = self.trajectory_array_generator_deception_1()
 
-        else:
-            if self.type_deception == 3:
+        elif self.type_deception == 3:
 
                 points_trajectory_array = self.trajectory_array_generator_deception_3_1slope()
+        
+        elif self.type_deception == -1:
+            points_trajectory_array = []
+            points_trajectory_array.append(self.playground_xy)
+
+        else:
+            points_trajectory_array = []
+            points_trajectory_array.append(self.robot_coordinates)
+            rospy.loginfo(points_trajectory_array)
 
         return points_trajectory_array
         

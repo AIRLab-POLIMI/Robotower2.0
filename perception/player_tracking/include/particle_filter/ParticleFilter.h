@@ -66,7 +66,7 @@ protected:
 
 public:
     
-    ParticleFilter(int num_particles=100);
+    ParticleFilter(int num_particles=10);
     ParticleFilter(const ParticleFilter &that);
     ~ParticleFilter();
 

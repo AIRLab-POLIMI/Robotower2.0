@@ -1,4 +1,6 @@
 #include "steering_behavior/steering_behavior.h"
+#include <ros/ros.h>
+#include <tf/transform_listener.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Vector3.h>
 #include <sensor_msgs/LaserScan.h>
@@ -10,17 +12,13 @@ class Flee: public SteeringBehavior {
 		float safety_distance_;
 		sensor_msgs::LaserScan current_scan_;
 		bool to_update_;
-
+		tf::TransformListener listener_;
+		int randomized_center_index_;
+		bool change_randomized_center_index_;
+		
 	public:
 		Flee():SteeringBehavior(){}
 		Flee(geometry_msgs::Point32 target_):SteeringBehavior(target_){
-			to_update_ = true;
-		}
-		Flee(std::vector<geometry_msgs::Point32> targets_):SteeringBehavior(targets_){
-			to_update_ = true;
-		}
-		Flee(geometry_msgs::Point32 target_, sensor_msgs::LaserScan scan):SteeringBehavior(target_){
-			current_scan_ = scan;
 			to_update_ = true;
 		}
 
@@ -28,7 +26,7 @@ class Flee: public SteeringBehavior {
         geometry_msgs::Vector3 calculate_steering_force(geometry_msgs::Vector3 current_vel, geometry_msgs::Vector3 desired_vel);
 
 		bool evaluateSafety(geometry_msgs::Point32 current_pos);
-		float evaluate();
+		float evaluate(double player_model);
 
 		std::string getName(){
 			return "flee";
@@ -40,14 +38,9 @@ class Flee: public SteeringBehavior {
 
 		bool updateTarget(sensor_msgs::LaserScan scan, geometry_msgs::Point32 current_pos, float current_rotation_wrt_map);
 
-		std::vector<float> getUpdateWeights(){
-            std::vector<float> output;
+		std::vector<float> getUpdateWeights();
 
-			output.resize(3);
-			output[0] = 2.0;
-			output[1] = 2.0;
-			output[2] = 2.0;
-			
-            return output;
-        }
+		void updateTargetPos(std::vector<geometry_msgs::Point32> towers){
+			return;
+		}
 };

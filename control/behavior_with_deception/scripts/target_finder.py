@@ -18,7 +18,8 @@ def check_for_negative_values(target_preferences):
     if len(negative_values) > 0:
         max_neg = numpy.min(negative_values)
         for i in range(4):
-            target_preferences[i] = abs(target_preferences[i] - max_neg) + 1
+            if not target_preferences[i] == 0:
+                target_preferences[i] = abs(target_preferences[i] - max_neg) + 1
 
     return target_preferences
 

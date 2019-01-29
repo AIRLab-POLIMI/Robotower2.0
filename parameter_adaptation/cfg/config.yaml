@@ -1,0 +1,19 @@
+######################################
+# Location for data logging
+######################################
+trueskill_database_path: "/home/airlab/catkin_ws/src/phd_robogame/parameter_adaptation/data/trueskill"
+microgame_db_path: "/home/airlab/catkin_ws/src/phd_robogame/parameter_adaptation/data/microgame.db"
+
+######################################
+# Topics for relevant ROS messages
+######################################
+microgame_outcome_topic: "/microgame_outcome"
+parameter_set_topic: "/parameter_id"
+reset_topic: "/game_manager/reset"
+change_player_topic: "/change_player"
+
+######################################
+# Name and surname for current player
+######################################
+player_name: "Ciccio"
+player_surname: "Pasticcio"

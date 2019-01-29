@@ -1,0 +1,4 @@
+database: "/home/airlab/catkin_ws/src/phd_robogame/control/bayesian_skill_learning/db/robotower.db"
+
+name: "Luca"
+surname: "Dondoni"

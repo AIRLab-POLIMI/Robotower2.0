@@ -27,8 +27,9 @@ class Deceive: public AbstractAction {
     	// 	meaningful_behaviors_.push_back(new Arrival());
 		// 	meaningful_behaviors_.push_back(new Seek());
 		// }
-        Deceive(std::vector<geometry_msgs::Point32> targets):AbstractAction(){
+        Deceive(std::vector<geometry_msgs::Point32> targets, int tower_target):AbstractAction(){
 			targets_ = targets;
+			tower_target_ = tower_target;
     		meaningful_behaviors_.push_back(new Deception());
 		}
 		

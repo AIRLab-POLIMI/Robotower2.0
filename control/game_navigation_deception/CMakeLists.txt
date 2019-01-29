@@ -10,7 +10,6 @@ project(game_navigation_deception)
 find_package(catkin REQUIRED COMPONENTS
   behavior_control
   geometry_msgs
-  kinect_tracker
   rospy
   std_msgs
   tf

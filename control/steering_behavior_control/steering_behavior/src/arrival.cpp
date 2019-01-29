@@ -1,7 +1,6 @@
 #include "steering_behavior/arrival.h"
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Vector3.h>
-#include <ros/ros.h>
 
 geometry_msgs::Vector3 SteeringBehavior::Arrival::calculate_desired_velocity(geometry_msgs::Point32 current_pos){
     geometry_msgs::Vector3 output;
@@ -12,7 +11,7 @@ geometry_msgs::Vector3 SteeringBehavior::Arrival::calculate_desired_velocity(geo
 
     ramped_speed = max_speed_ * (distance_from_target / slowing_radius_);
     clipped_speed = std::min(ramped_speed, max_speed_);
-    // ROS_ERROR("Clipped speed: %.2f", clipped_speed);
+    
     output = VectorUtility::vector_difference(current_pos, target_);
     output = VectorUtility::scalar_multiply(output, (clipped_speed / distance_from_target));
 
@@ -26,7 +25,6 @@ geometry_msgs::Vector3 SteeringBehavior::Arrival::calculate_steering_force(geome
     return output;
 }
 
-float SteeringBehavior::Arrival::evaluate(){
-    silly_counter_--;
-    return silly_counter_;
+float SteeringBehavior::Arrival::evaluate(double player_model){
+    return 4;
 }

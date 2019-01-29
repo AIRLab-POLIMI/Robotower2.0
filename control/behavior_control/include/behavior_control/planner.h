@@ -58,11 +58,15 @@
 #include <behavior_control/Goal.h>
 #include <behavior_control/InvBlockInfo.h>
 #include <behavior_control/BehaviorParams.h>
+#include <game_manager/Towers.h>
+#include <game_manager/TowerState.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Point.h>
+#include <geometry_msgs/PointStamped.h>
 
 #include "gob/gob.h"
-
+#include "behavior_control/GoalService.h"
+#include <std_msgs/Bool.h>
 
 #define MOVE_BASE "move_base"
 #define FUZZY "fuzzy"
@@ -76,8 +80,15 @@ class Planner{
 private:
     ros::NodeHandle nh_;
     ros::Subscriber tower_state_sub_;
+    ros::Subscriber player_sub_;
+    ros::Subscriber reset_sub_;
     ros::Publisher goal_pub_;
     ros::Publisher inv_block_pub_;
+
+    std::vector<bool> was_last_target_;
+    std::vector<bool> was_recent_target_;
+    std::vector<float> utilities_;
+    int towers_left_;
 
     // A service for allowing changing the general behavior upon request of other nodes.
     ros::ServiceServer behavior_server_;
@@ -106,6 +117,7 @@ private:
     gob::Action* decision;
 
     int previous_decision_;
+    int recent_decision_;
     int target_tower_ID_;
     int num_towers_;
     int num_charg_leds_;
@@ -125,11 +137,16 @@ private:
     std::string robot_base_;
     std::string player_base_;
 
+    geometry_msgs::PointStamped player_pos_;
+
     float euclideanDistance(tf::StampedTransform t);
+    float euclideanDistance(float delta_x, float delta_y);
     float calculateBlockingFactor(tf::StampedTransform player_transform,
                                   tf::StampedTransform tower_robot_transform);
     bool getTransform(std::string target, std::string source, ros::Time &time, tf::StampedTransform &result);
     void getActionIndex(std::string action_name);
+    int countLeds(game_manager::TowerState state);
+    std::vector<int> sortTowerIndexes();
 
 public:
 
@@ -137,9 +154,14 @@ public:
 
     ~Planner(void);
     
-    void towerStateCallback(const arduino_publisher::TowerState::ConstPtr& msg);
+    // void towerStateCallback(const arduino_publisher::TowerState::ConstPtr& msg);
+    void towerStateCallback(const game_manager::Towers::ConstPtr& msg);
 
     void odomCallback(const nav_msgs::Odometry::ConstPtr& msg);
+
+    void playerCallback(const geometry_msgs::PointStamped position);
+
+    void resetCallback(const std_msgs::Bool reset);
 
     bool changeGameBehavior(behavior_control::BehaviorParams::Request &req,
                             behavior_control::BehaviorParams::Response &resp);
@@ -164,6 +186,8 @@ public:
     bool checkBlockTimeout();
 
     bool isCancelGoal(int newID);
+
+    bool goalRequestHandler(behavior_control::GoalService::Request &req, behavior_control::GoalService::Response &res);
 };
 
 }   // end of namespace

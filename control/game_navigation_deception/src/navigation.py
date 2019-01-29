@@ -2,7 +2,7 @@ from deception_movement_manager import DeceptionMovementManager
 from behavior_with_deception.srv import DeceptiveCommandResponse, DeceptiveCommandRequest, DeceptiveCommand
 from behavior_with_deception.msg import Deception
 
-from kinect_tracker.msg import PlayerInfo
+# from game_navigation.msg import PlayerInfo
 from player_tracker.msg import TowerArray
 from geometry_msgs.msg import Twist, PointStamped
 from sensor_msgs.msg import LaserScan
@@ -49,10 +49,11 @@ class Navigation:
         self.current_vel = Twist()
         self.current_goal = 1
         self.current_angle_diff = 0
-        self.current_player_info = PlayerInfo()
+        # self.current_player_info = PlayerInfo()
         self.current_tower_positions = TowerArray()
         self.time_stamp = 0
         self.current_scan = LaserScan()
+        self.current_scan_player = LaserScan()
         self.current_scan_obstacles = LaserScan()
         
         self.br = tf.TransformBroadcaster()
@@ -115,26 +116,36 @@ class Navigation:
         robot_coordinates = self.getRobotPose()
 
         self.deception_navigation_manager.set_robot_coordinates(np.array([robot_coordinates[0], robot_coordinates[1]]))
-        self.deception_navigation_manager.set_traslation_robot_playground(self.get_robot_center_traslation())
+        self.deception_navigation_manager.set_playground_center(self.get_playground_center())
        
         points_trajectory = self.deception_navigation_manager.trajectory_planner()
 
         id_count = 0
 
-        for i in list(points_trajectory):
-            
+        # For managing the idle when playing
+        if self.deception_navigation_manager.type_deception == -2:
             starting_time = rospy.get_rostime()
-            self.unsafe_cmd_pub.publish(self.navigate(i))
-            deception_status = self.checking_trajectory_status(i, starting_time)
-            self.markerArray.markers.append(self.create_marker(i, id_count))
-            id_count+=1
-            
-            if not deception_status:
-                response = DeceptiveCommandRequest.FAILED
-                rospy.logwarn("Aborting deception..")
-                return DeceptiveCommandResponse(response)
+            while( ( rospy.get_rostime() - starting_time ).to_sec() < 2):
+                pass
+                
+        else:
+            rospy.loginfo("Deception type:{} fake target:{} real_target:{}".format(self.deception_navigation_manager.type_deception, self.deception_navigation_manager.fake_target, self.deception_navigation_manager.real_target))
 
-        self.pub_markers.publish(self.markerArray)
+            for i in list(points_trajectory):
+                
+                starting_time = rospy.get_rostime()
+                self.unsafe_cmd_pub.publish(self.navigate(i))
+                deception_status = self.checking_trajectory_status(i, starting_time)
+                self.markerArray.markers.append(self.create_marker(i, id_count))
+                
+                id_count+=1
+                
+                if not deception_status:
+                    response = DeceptiveCommandRequest.FAILED
+                    rospy.logwarn("Aborting deception..")
+                    return DeceptiveCommandResponse(response)
+
+            self.pub_markers.publish(self.markerArray)
 
         response = DeceptiveCommandRequest.SUCCEEDED
         return DeceptiveCommandResponse(response)
@@ -149,6 +160,9 @@ class Navigation:
         @ current_range: a numpy array of length 1000 containing the measurements from each laser ray.
         """
         self.current_scan = copy.deepcopy(msg) #msg.ranges
+        
+    def scanPlayerCallback(self,msg):
+        self.current_scan_player = copy.deepcopy(msg);
 
     def angleCallback(self,msg):
         """
@@ -156,11 +170,11 @@ class Navigation:
         """
         self.current_angle_diff = msg.data
         
-    def playerInfoCallback(self,msg):
-        """
-        Updates current camera-player distance
-        """
-        self.current_player_info = copy.deepcopy(msg)
+    # def playerInfoCallback(self,msg):
+    #     """
+    #     Updates current camera-player distance
+    #     """
+    #     self.current_player_info = copy.deepcopy(msg)
 
     def tpos_callback(self, msg):
         """Laser estimated tower position callback"""
@@ -170,39 +184,39 @@ class Navigation:
     def tower_rectangle_callback(self, msg):
         self.update_tower_positions(msg.polygon.points)
 
-    def anglePController(self):
-        """
-        The proportional controller callback to adjust robot 
-        orientation in order to track the human player
-        OUTPUT:
-        @ U3: output of the proportional controller, opportunely clamped, that will be sent to ROS as a
-                angular.cmd.vel that will allows the robot to rotate in order to track the player during
-                the game. 
-                PLEASE NOTICE: this comand does NOT require any change of coordinates, during the code we 
-                may refer to it also as "bar_u3" or "bar_u3R" for consistency reasons but in fact we are 
-                always considering the output value of this function. 
-        """
-        if(self.lock_rotation):
-            return 0
-        # Dead zone (Jerk-smother) used in order to eliminate angular
-        # jerking while tracking
-        if abs(self.current_angle_diff) < self.ANGLE_DEADZONE:
-            self.current_angle_diff = 0
+    # def anglePController(self):
+    #     """
+    #     The proportional controller callback to adjust robot 
+    #     orientation in order to track the human player
+    #     OUTPUT:
+    #     @ U3: output of the proportional controller, opportunely clamped, that will be sent to ROS as a
+    #             angular.cmd.vel that will allows the robot to rotate in order to track the player during
+    #             the game. 
+    #             PLEASE NOTICE: this comand does NOT require any change of coordinates, during the code we 
+    #             may refer to it also as "bar_u3" or "bar_u3R" for consistency reasons but in fact we are 
+    #             always considering the output value of this function. 
+    #     """
+    #     if(self.lock_rotation):
+    #         return 0
+    #     # Dead zone (Jerk-smother) used in order to eliminate angular
+    #     # jerking while tracking
+    #     if abs(self.current_angle_diff) < self.ANGLE_DEADZONE:
+    #         self.current_angle_diff = 0
             
-        # Proportional Controller
-        dot_theta = self.KP*self.current_angle_diff
-        if (self.current_player_info.distance < 1) and (abs(self.current_player_info.header.stamp.to_sec() - rospy.Time.now().to_sec()) < 1.5): 
-            # the condition is activated when the player is within 1 meter from the camera and when the received
-            # message is no older than 1.5 sec. The more the player is close the more the angular rotation command is smoothed
-            dot_theta = dot_theta * self.current_player_info.distance
+    #     # Proportional Controller
+    #     dot_theta = self.KP*self.current_angle_diff
+    #     if (self.current_player_info.distance < 1) and (abs(self.current_player_info.header.stamp.to_sec() - rospy.Time.now().to_sec()) < 1.5): 
+    #         # the condition is activated when the player is within 1 meter from the camera and when the received
+    #         # message is no older than 1.5 sec. The more the player is close the more the angular rotation command is smoothed
+    #         dot_theta = dot_theta * self.current_player_info.distance
 
-        # Angular velocity clamping (max angular velocity in rad/sec)
-        if dot_theta >= self.MAX_DOT_THETA:
-            return self.MAX_DOT_THETA
-        elif dot_theta <= -self.MAX_DOT_THETA:
-            return -self.MAX_DOT_THETA
-        else:
-            return dot_theta
+    #     # Angular velocity clamping (max angular velocity in rad/sec)
+    #     if dot_theta >= self.MAX_DOT_THETA:
+    #         return self.MAX_DOT_THETA
+    #     elif dot_theta <= -self.MAX_DOT_THETA:
+    #         return -self.MAX_DOT_THETA
+    #     else:
+    #         return dot_theta
 
     def velocity_smoother(self, robot_unsmoothed_cmd_vel, robot_vel):
         """
@@ -355,7 +369,7 @@ class Navigation:
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             rospy.logerr("Navigation node: " + str(e))
 
-    def get_robot_center_traslation(self):
+    def get_playground_center(self):
         """
         Gets robot global position. That is, performs a TF transformation from /base_link to /map and returns
         x,y and theta.
@@ -363,8 +377,8 @@ class Navigation:
         @ a 3D-numpy array defined as: [x, y, theta] w.r.t /map.
         """
         try:
-            self.tf_listener.waitForTransform('/playground_center','/base_link', rospy.Time(0), rospy.Duration(1.0))
-            trans, rot = self.tf_listener.lookupTransform('/playground_center','/base_link', rospy.Time(0))
+            self.tf_listener.waitForTransform('/map','/playground_center', rospy.Time(0), rospy.Duration(1.0))
+            trans, rot = self.tf_listener.lookupTransform('/map','/playground_center', rospy.Time(0))
  
             return np.array([trans[0], trans[1]])   # [xR,yR]
 
@@ -397,7 +411,7 @@ class Navigation:
        
         self.set_evaluator_mode(goal = goal)
         self.is_safe = self.safety_evaluator.evaluate_safety(filtered_scan, self.current_scan_obstacles)
-        # rospy.loginfo("Safety condition: {}".format(self.is_safe))
+        rospy.loginfo("Safety condition: {}".format(self.is_safe))
 
     
     def laserScanManager(self):
@@ -420,8 +434,32 @@ class Navigation:
             @ left
             @ rear_left 
         """
+        
+        '''
+        DAVIDE OBSTACLE AVOIDANCE
+         # check if an obstacle is detected below the proximity threeshold in the player scan
+        if(self.is_safe):
+            # If we come from a safe condition check only player
+            scan_to_check_for_safety = self.current_scan_player
+        else:
+            # Check all scan
+        	scan_to_check_for_safety = self.current_scan
+        	
+        	
+        proximity = False
+        for values in scan_to_check_for_safety.ranges:
+            if values < self.PROXIMITY_THREESHOLD:
+                proximity = True
+                break
 
-        # Generate sensing areas: rear right, right, front right, front left, left, rear left
+        # perform a safety check
+        dontcare_condition = np.array(scan_to_check_for_safety.ranges) < self.DONTCARE
+        new_is_safe = True
+        if proximity and (all(dontcare_condition) == False) and (len(dontcare_condition) != 0):
+            new_is_safe = False
+	    self.is_safe = new_is_safe
+        '''
+        # Generate sensing areas: rear right, right, front right, front left, left, rear left in the WHOLE SCAN
         rear_right_sec  = self.current_scan.ranges[0:149]
         right_sec       = self.current_scan.ranges[150:309]
         front_right_sec = self.current_scan.ranges[310:499]
@@ -600,12 +638,15 @@ class Navigation:
         rear_right, right, front_right, front_left, left, rear_left = (None,None,None,None,None,None)
         
         if len(self.current_scan_obstacles.ranges) != 0:
-            if goal is None:
-                self.evaluateColision()
-            else:
-                self.evaluateColision(goal = goal)
+           if goal is None:
+               self.evaluateColision()
+           else:
+               self.evaluateColision(goal = goal)
 
         # Fuzzy
+        if len(self.current_scan_player.ranges) != 0 and len(self.current_scan.ranges) != 0:
+            rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
+            
         if not self.is_safe:
             rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
             smoothed_cmd_vel = self.fuzzy_avoider.avoidObstacle(rear_right, right, front_right, front_left, left, rear_left, is_near_goal)
@@ -613,7 +654,7 @@ class Navigation:
         unsafe_msg = Twist()
         unsafe_msg.linear.x = smoothed_cmd_vel[0]
         unsafe_msg.linear.y = smoothed_cmd_vel[1]
-        unsafe_msg.angular.z = self.anglePController()
+        unsafe_msg.angular.z = 0#self.anglePController()
 
         # save last cmd given
         self.last_cmd_vel = unsafe_msg;
@@ -678,7 +719,7 @@ class Navigation:
         delta_y = robot_position[1] - point[1]
         distance = (delta_x**2 + delta_y**2)**0.5
         estimated_time = distance / vel_estimated
-        return estimated_time + 10
+        return estimated_time + 5
 
     def create_marker(self, point, id_count):
         marker = Marker()

@@ -8,7 +8,7 @@ planning::SteeringBehaviorEncoded Action::Escape::generateSteeringMsg(int behavi
     msg.behavior = name;
     msg.behavior_code = meaningful_behaviors_[behavior_index]->getCode();
     msg.target = target_;
-    msg.tower_target = 0;
+    msg.tower_target = -1;
     msg.priority = 1.0;
     return msg;
 }

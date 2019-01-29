@@ -6,40 +6,15 @@
 using SteeringBehavior::Arrival;
 
 class Arrival: public SteeringBehavior {
-    private:
-        float slowing_radius_;
-        float max_speed_;
-
-        // TODO REMOVE
-        int silly_counter_;
 	public:
-        Arrival():SteeringBehavior(){
-            slowing_radius_ = 2.0;
-            max_speed_ = 1.0;
-
-            //TODO REMOVE
-            silly_counter_ = 10;
-        }
-		Arrival(geometry_msgs::Point32 target_):SteeringBehavior(target_){
-            slowing_radius_ = 2.0;
-            max_speed_ = 1.0;
-
-            //TODO REMOVE
-            silly_counter_ = 10;
-        }
-
-        Arrival(std::vector<geometry_msgs::Point32> targets_):SteeringBehavior(targets_){
-            slowing_radius_ = 2.0;
-            max_speed_ = 1.0;
-
-            //TODO REMOVE
-            silly_counter_ = 10;
-        }
+        Arrival():SteeringBehavior(){}
+		Arrival(geometry_msgs::Point32 target_, int tower_index):SteeringBehavior(target_, tower_index){}
 
 		geometry_msgs::Vector3 calculate_desired_velocity(geometry_msgs::Point32 current_pos);
         geometry_msgs::Vector3 calculate_steering_force(geometry_msgs::Vector3 current_vel, geometry_msgs::Vector3 desired_vel);
+        
 
-        float evaluate();
+        float evaluate(double player_model);
 
         std::string getName(){
             return "arrival";
@@ -61,5 +36,9 @@ class Arrival: public SteeringBehavior {
 			output[2] = 1;
             return output;
         }
+
+        void updateTargetPos(std::vector<geometry_msgs::Point32> towers){
+			target_ = towers[tower_target_index_];
+		}
 
 };

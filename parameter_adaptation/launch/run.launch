@@ -1,0 +1,7 @@
+<launch>
+    <node name='trueskill' pkg='parameter_adaptation' type='main.py' respawn='True' output='screen'>
+        <rosparam command='load' file="$(find parameter_adaptation)/cfg/config.yaml"/>
+    </node>
+
+    <node name='outcome_generator' pkg='parameter_adaptation' type='outcome_generator_stub.py' respawn='True' output='screen'/>
+</launch>

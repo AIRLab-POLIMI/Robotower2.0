@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   steering_behavior
+  behavior_with_deception
+  # activity_monitor
   tf
   roscpp
 )
@@ -54,6 +56,7 @@ add_message_files(
   ActionEncoded.msg
   SteeringBehaviorEncoded.msg
   SafetyMsg.msg
+  TowerPositions.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -165,7 +168,8 @@ add_executable(${PROJECT_NAME}_testing_node src/testing_node.cpp
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_action_node ${PROJECT_NAME}_generate_messages_cpp)
-add_dependencies(${PROJECT_NAME}_steering_node ${PROJECT_NAME}_generate_messages_cpp)
+add_dependencies(${PROJECT_NAME}_steering_node ${PROJECT_NAME}_generate_messages_cpp )
+# add_dependencies(your_executable ${catkin_EXPORTED_TARGETS})
 add_dependencies(${PROJECT_NAME}_locomotion_node ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(${PROJECT_NAME}_safety_node ${PROJECT_NAME}_generate_messages_cpp)
 add_dependencies(${PROJECT_NAME}_testing_node ${PROJECT_NAME}_generate_messages_cpp)

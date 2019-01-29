@@ -1,5 +1,4 @@
 <launch>
-
     <group ns="game_navigation">
         <rosparam 
             command="load"

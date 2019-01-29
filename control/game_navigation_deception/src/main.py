@@ -2,9 +2,10 @@
 from deception_movement_manager import DeceptionMovementManager
 from behavior_with_deception.srv import DeceptiveCommandResponse, DeceptiveCommandRequest, DeceptiveCommand
 from behavior_with_deception.msg import Deception
+from behavior_with_deception.msg import Idle
 
 from behavior_with_deception.msg import Goal
-from kinect_tracker.msg import PlayerInfo
+# from kinect_tracker.msg import PlayerInfo
 from geometry_msgs.msg import Twist
 from player_tracker.msg import TowerArray
 from sensor_msgs.msg import LaserScan
@@ -21,10 +22,15 @@ from visualization_msgs.msg import Marker, MarkerArray
 # TODO: Change nomenclature of MAX_VEL param, which is better to be called MAX_SPEED.
 
 is_deceiving = False
+is_idle = False
 
 def deceivingCallback(msg):
     global is_deceiving
     is_deceiving = msg.being_deceptive
+
+def idleCallback(msg):
+    global is_idle
+    is_idle = msg.being_idle
 
 def main():
     """ The main ros loop"""
@@ -83,9 +89,11 @@ def main():
     vel_sub         = rospy.Subscriber('/vel', Twist, navigation.velCallback)
     laser_obstc_sub = rospy.Subscriber('/scan_obstacles', LaserScan, navigation.scan_obstacle_callback)
     laser_sub       = rospy.Subscriber('/scan', LaserScan, navigation.scanCallback)
+    laser_player_sub       = rospy.Subscriber('/scan_player_tracking', LaserScan, navigation.scanPlayerCallback)
     laser_tower_sub = rospy.Subscriber('/estimated_tower_positions', TowerArray, navigation.tpos_callback)
     tower_rectangle_sub = rospy.Subscriber('/tower_rectangle', PolygonStamped, navigation.tower_rectangle_callback)
     deceiving_sub   = rospy.Subscriber('/game/is_deceiving', Deception, deceivingCallback)
+    idle_sub   = rospy.Subscriber('/game/is_idle', Idle, idleCallback)
 
     # TODO adjust this subscriber: move to another location, ask Ewerton
     angle_sub = rospy.Subscriber('/angle', Float32, navigation.angleCallback)
@@ -105,7 +113,7 @@ def main():
         previous_diff = cur_difficulty
 
         # publish vel commands in /unsafe/cmd_vel topic
-        if not is_deceiving:
+        if not is_deceiving :
             pub.publish(navigation.navigate())
         
         rate.sleep()

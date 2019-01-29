@@ -7,7 +7,7 @@ planning::SteeringBehaviorEncoded Action::Deceive::generateSteeringMsg(int behav
     msg.behavior = name;
     msg.behavior_code = meaningful_behaviors_[behavior_index]->getCode();
     msg.targets = targets_;
-    msg.tower_target = 0;
+    msg.tower_target = tower_target_;
     msg.priority = 1.0;
     return msg;
 }

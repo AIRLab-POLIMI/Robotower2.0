@@ -10,9 +10,9 @@ project(game_navigation)
 find_package(catkin REQUIRED COMPONENTS
   behavior_control
   geometry_msgs
-  kinect_tracker
   rospy
   std_msgs
+  message_generation
   tf
 )
 
@@ -50,11 +50,10 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+   FILES
+   PlayerInfo.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -108,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES game_navigation
-#  CATKIN_DEPENDS behavior_manager geometry_msgs kinect_tracker numpy rospy serial_node std_msgs tf
+  CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 

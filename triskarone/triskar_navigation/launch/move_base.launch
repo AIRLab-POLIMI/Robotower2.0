@@ -8,7 +8,7 @@
 	
 	<!-- Run the map server -->
 
-	<node name="map_server" pkg="map_server" type="map_server" args="$(find triskar)/config/playground2.yaml" />
+	<node name="map_server" pkg="map_server" type="map_server" args="$(find triskar)/config/maker_faire3_1.yaml" />
 
 	
 	<!-- Run AMCL -->

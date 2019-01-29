@@ -31,6 +31,16 @@
  /people_tracked
  /kf_fusion_marker
  /target_steering
+ /pf_cloud
+ /scan_player_tracking
+ /player_target
+ /player_activity
+ /player_model
+ /start_attack
+ /end_attack
+ /microgame_outcome
+ /parameter_id
+ /safety
 " />
 	<arg name="file_name"  	default=""/>
 

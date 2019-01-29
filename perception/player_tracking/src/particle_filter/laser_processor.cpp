@@ -93,6 +93,18 @@ std::vector<geometry_msgs::Point32> SampleSet::getSamples(){
     return points;
 }
 
+std::vector<int> SampleSet::getSamplesIndexes(){
+    std::vector<int> indexes;
+    for (iterator i = begin(); i != end(); ++i){
+        // geometry_msgs::Point32 point;
+        // point.x = (*i)->x;
+        // point.y = (*i)->y;
+        // point.z = 0.0;
+        indexes.push_back((*i)->index);
+    }
+    return indexes;
+}
+
 ScanProcessor::ScanProcessor(const sensor_msgs::LaserScan& scan)
 {
   scan_ = scan;

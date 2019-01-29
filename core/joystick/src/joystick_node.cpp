@@ -40,6 +40,7 @@ tf::TransformListener* tfListener;
 		ros::Subscriber unsafeCmdVelSub;
         ros::Subscriber pixelPosSub;
 		ros::Publisher twistPub;
+		ros::Publisher smoothTwistPub;
 		ros::Timer timeout;
 		ros::Time unsafe_cmd_vel_time;
 };
@@ -48,6 +49,7 @@ JoyTeleop::JoyTeleop() {
 	joySub = nh.subscribe("/joy", 10, &JoyTeleop::joyCallback, this);
 	unsafeCmdVelSub = nh.subscribe("/game_navigation/unsafe/cmd_vel", 10, &JoyTeleop::unsafeCmdVelCallback, this);
 	twistPub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
+	smoothTwistPub = nh.advertise<geometry_msgs::Twist>("/raw_cmd_vel", 10);
 	updateParameters();
 }
 
@@ -134,7 +136,9 @@ void JoyTeleop::joyCallback(const sensor_msgs::Joy::ConstPtr &msg) {
 		
         twistMsg.linear.x = linearScale*msg->axes[linearXAxis];
         twistMsg.linear.y = linearScale*msg->axes[linearYAxis];
-		twistPub.publish(twistMsg);
+		// ROLLBACK
+		// twistPub.publish(twistMsg);
+		smoothTwistPub.publish(twistMsg);
 
 	}else{
 		publishZeroMessage();

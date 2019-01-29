@@ -195,7 +195,7 @@ private:
       // Iterate through all clusters
       for (std::list<laser_processor::SampleSet*>::iterator cluster = processor.getClusters().begin();
        cluster != processor.getClusters().end();
-       cluster++){   
+       cluster++){
         // Get position of cluster in laser frame
         tf::Stamped<tf::Point> position((*cluster)->getPosition(), tf_time, scan->header.frame_id);
         float rel_dist = pow(position[0]*position[0] + position[1]*position[1], 1./2.);
@@ -234,6 +234,7 @@ private:
               new_leg.position.y = position[1];
               new_leg.confidence = probability_of_leg;
               new_leg.points = (*cluster)->getSamples();
+              new_leg.point_indexes = (*cluster)->getSamplesIndexes();//reconstructLaserIndexes((*cluster)->getSamples());
               leg_set.insert(new_leg);
             }
           }else{
@@ -317,6 +318,22 @@ private:
 
     detected_leg_clusters_pub_.publish(detected_leg_clusters);
     cvReleaseMat(&tmp_mat);
+  }
+
+  std::vector<int> reconstructLaserIndexes(std::vector<geometry_msgs::Point32> points){
+    std::vector<int> output;
+    int i;
+
+    for(i=0; i<points.size(); i++){
+      double angle = atan2(points[i].y, points[i].x) + M_PI;
+      double angle_increment = 2*M_PI / 1000.0;
+
+      int index = angle / angle_increment;
+
+      output.push_back(index);
+    }
+
+    return output;    
   }
 
 

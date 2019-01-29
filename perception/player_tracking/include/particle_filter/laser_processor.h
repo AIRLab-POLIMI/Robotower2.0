@@ -106,6 +106,7 @@ public:
   void clear();
 
   std::vector<geometry_msgs::Point32> getSamples();
+  std::vector<int> getSamplesIndexes();
 
   /**
   * @brief Get the centroid of the sample points

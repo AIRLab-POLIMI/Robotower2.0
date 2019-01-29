@@ -5,7 +5,7 @@
 
 num_towers: 4                   # number of towers
 num_charge_leds_per_tower: 4    # number of charging leds per tower
-charging_time: 2.5              # charging time for a led
+charging_time: 2              # charging time for a led
 led_feedback_duration: 0.25      # blink duration for the tower status led when
                                 #  feedbacking button presses
 
@@ -13,13 +13,13 @@ tilt_sensor_topic_name: tower/tilt_sensor
 button_topic_name: tower/button_state
 behavior_service_name: change_behavior
 
-# XY position of towers (SHOULD BE UPDATEd FOR EACH NEW GAME ENVIRONMENT):
+# XY position of towers (SHOULD BE UPDATED FOR EACH NEW GAME ENVIRONMENT):
 
 # for AIRlab
-tower_1: [-0.375873476267, -1.73176705837] 
-tower_2: [-0.0357848182321, 1.63595640659]
-tower_3: [3.42944264412, 1.23735296726]
-tower_4: [3.02523159981, -2.09340715408]
+tower_1: [-0.224783793092, 2.62721538544] 
+tower_2: [3.14728069305, 2.2900121212]
+tower_3: [2.82575845718, -1.19964659214]
+tower_4: [-0.436518073082,-0.987914502621]
 
 ##########################################################################
 ##                         DIFFICULTY SETTINGS                          ##
@@ -46,7 +46,7 @@ difficulties: {
                        
                 hard: {max_speed: 1.,
                        min_speed: 0.7,
-                       max_acc: 0.1,
+                       max_acc: 0.2,
                        ks: 50., 
                        bf_exponent: 1}
                }

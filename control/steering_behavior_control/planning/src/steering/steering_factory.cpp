@@ -16,56 +16,13 @@ SteeringBehavior::SteeringBehavior* LocomotionPlanning::SteeringFactory::generat
 		case STOP:
 			return new Stop(steering_msg.target);
 		case ARRIVAL:
-			return new Arrival(steering_msg.target);
+			// Needs to know which tower is the target
+			return new Arrival(steering_msg.target, steering_msg.tower_target);
 		case SEEK:
-			return new Seek(steering_msg.target);
+			// Needs to know which tower is the target
+			return new Seek(steering_msg.target, steering_msg.tower_target);
 		case DECEPTION:
 			// Accepting multiple targets
-			return new Deception(steering_msg.targets);
-	}
-}
-
-SteeringBehavior::SteeringBehavior* LocomotionPlanning::SteeringFactory::generateSteeringBehavior(int steering_code, geometry_msgs::Point32 target){
-	switch(steering_code){
-		case FLEE:
-			return new Flee(target);
-		case STOP:
-			return new Stop(target);
-		case ARRIVAL:
-			return new Arrival(target);
-		case SEEK:
-			return new Seek(target);
-		case DECEPTION:
-			return new Deception(target);
-	}
-}
-
-SteeringBehavior::SteeringBehavior* LocomotionPlanning::SteeringFactory::generateSteeringBehavior(int steering_code, std::vector<geometry_msgs::Point32> targets){
-	switch(steering_code){
-		case FLEE:
-			return new Flee(targets[0]);
-		case STOP:
-			return new Stop(targets[0]);
-		case ARRIVAL:
-			return new Arrival(targets[0]);
-		case SEEK:
-			return new Seek(targets[0]);
-		case DECEPTION:
-			return new Deception(targets);
-	}
-}
-
-SteeringBehavior::SteeringBehavior* LocomotionPlanning::SteeringFactory::generateSteeringBehavior(int steering_code){
-	switch(steering_code){
-		case FLEE:
-			return new Flee();
-		case STOP:
-			return new Stop();
-		case ARRIVAL:
-			return new Arrival();
-		case SEEK:
-			return new Seek();
-		case DECEPTION:
-			return new Deception();
+			return new Deception(steering_msg.targets, steering_msg.tower_target);
 	}
 }
