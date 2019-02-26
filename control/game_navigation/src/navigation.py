@@ -71,12 +71,13 @@ class Navigation:
         self.safety_evaluator = SafetyEvaluator(self.DONTCARE)
         self.lock_rotation = False
         
-        # rospy.loginfo('Waiting for service..')
-        # rospy.wait_for_service('/planning/goal_service')
-        # rospy.loginfo('Service ready lets go')
-        # self.goal_service_server = rospy.ServiceProxy('/planning/goal_service', GoalService)
-        # res = self.goal_service_server(1)
-        # self.current_goal = res.tower_id - 1
+        rospy.loginfo('Waiting for service..')
+        rospy.wait_for_service('/planning/goal_service')
+        rospy.loginfo('Service ready lets go')
+        self.goal_service_server = rospy.ServiceProxy('/planning/goal_service', GoalService)
+        res = self.goal_service_server(1)
+        self.current_goal = res.tower_id - 1
+        self.player_angle = None
         # self.safety_count = 0
 
 
@@ -112,6 +113,12 @@ class Navigation:
 
     def scanPlayerCallback(self, msg):
         self.current_scan_player = copy.deepcopy(msg)
+
+    def player_callback(self, msg):
+        self.player_pos = msg.point
+        self.player_angle = np.arctan2(self.player_pos.y, self.player_pos.x)
+        
+        
 
     def scanCallback(self,msg):
         """
@@ -272,6 +279,20 @@ class Navigation:
 
         # generates the direction of the motion based on the euclidian distance from goal
         alpha = np.arctan2(delta_y, delta_x)
+
+        if self.player_angle != None:
+            delta_angle = abs(self.player_angle - alpha)
+
+            if delta_angle > (np.pi / 2):
+                delta_angle = (2*np.pi) - delta_angle
+
+            if delta_angle < (20 * (np.pi / 180)):
+                rospy.loginfo("NOT SAFE")
+                rospy.loginfo("player angle {}, vel angle {}".format(self.player_angle, alpha))
+                rospy.loginfo("delta angle {}".format(delta_angle))
+                res = self.goal_service_server(1)
+                self.current_goal = res.tower_id - 1
+
 
         # check if the robot is near its goal (this will change in obstacle avoidance behaviour)
         goal_distance = (delta_x**2 + delta_y**2)**0.5
@@ -521,6 +542,7 @@ class Navigation:
         self.pubRobotFilteredPose(self.robot_estimated_pose)
         self.ekf.update(robot_pose, robot_world_vel)
 
+
         # use the global planner (TOWER NAVIGATION)
         is_near_goal = self.towerNavigation()
         
@@ -534,8 +556,8 @@ class Navigation:
         rear_right, right, front_right, front_left, left, rear_left = (None,None,None,None,None,None)
         
         # previous_safety = self.is_safe
-        if len(self.current_scan.ranges) != 0:
-            self.evaluateColision()
+        # if len(self.current_scan.ranges) != 0:
+        #     self.evaluateColision()
 
         # if self.is_safe:
         #     self.safety_count += 1
@@ -547,16 +569,19 @@ class Navigation:
         #     self.current_goal = res.tower_id - 1
 
         # Fuzzy
-        if not self.is_safe:
-            rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
+        # if not self.is_safe:
+        #     # rear_right, right, front_right, front_left, left, rear_left = self.laserScanManager()
 
-            try:
-                smoothed_cmd_vel = self.fuzzy_avoider.avoidObstacle(rear_right, right, front_right, front_left, left, rear_left, is_near_goal)
-            except Exception as e:
-                # sometimes the fuzzy system gives an error that nobody wants to investigate.
-                rospy.logerr(str(e))
-                self.last_cmd_vel =  Twist()
-                return unsafe_msg
+        #     res = self.goal_service_server(1)
+        #     self.current_goal = res.tower_id - 1
+
+            # try:
+            #     smoothed_cmd_vel = self.fuzzy_avoider.avoidObstacle(rear_right, right, front_right, front_left, left, rear_left, is_near_goal)
+            # except Exception as e:
+            #     # sometimes the fuzzy system gives an error that nobody wants to investigate.
+            #     rospy.logerr(str(e))
+            #     self.last_cmd_vel =  Twist()
+            #     return unsafe_msg
 
         unsafe_msg = Twist()
         unsafe_msg.linear.x = smoothed_cmd_vel[0]#[0]

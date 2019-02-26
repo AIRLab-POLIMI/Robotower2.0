@@ -7,6 +7,7 @@ from navigation import Navigation
 from std_msgs.msg import Float32
 from planning.msg import SafetyMsg
 from geometry_msgs.msg import PolygonStamped
+from geometry_msgs.msg import PointStamped
 import numpy as np
 import rospy
 import copy
@@ -64,6 +65,7 @@ def main():
     # Subscribers 
     #player_dist_sub = rospy.Subscriber('/kinect2/player_filtered_info',PlayerInfo, navigation.playerInfoCallback)
     #player_info_sub = rospy.Subscriber('/playground_center', Float32, navigation.angleCallback)
+    player_pos_sub = rospy.Subscriber('/player_filtered', PointStamped, navigation.player_callback)
     game_goal_sub   = rospy.Subscriber('/game/goal', Goal, navigation.goalCallback)
     vel_sub         = rospy.Subscriber('/vel', Twist, navigation.velCallback)
     laser_obstc_sub = rospy.Subscriber('/scan_obstacles', LaserScan, navigation.scan_obstacle_callback)
@@ -71,7 +73,7 @@ def main():
     laser_scan_sub  = rospy.Subscriber('/scan_player_tracking', LaserScan, navigation.scanPlayerCallback)
     laser_tower_sub = rospy.Subscriber('/estimated_tower_positions', TowerArray, navigation.tpos_callback)
     tower_rectangle_sub = rospy.Subscriber('/tower_rectangle', PolygonStamped, navigation.tower_rectangle_callback)
-    safety_sub = rospy.Subscriber('/safety', SafetyMsg, navigation.safety_callback)
+    # safety_sub = rospy.Subscriber('/safety', SafetyMsg, navigation.safety_callback)
 
     # TODO adjust this subscriber: move to another location, ask Ewerton
     angle_sub = rospy.Subscriber('/angle', Float32, navigation.angleCallback)

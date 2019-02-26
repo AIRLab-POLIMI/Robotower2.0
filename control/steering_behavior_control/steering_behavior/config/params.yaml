@@ -6,16 +6,17 @@ deception_target_change_distance: 0.3
 # max_speed: 0.5 # maximum speed of the vehicle
 
 # MEDIUM PARAMS
-min_mass: 5.0  # minimum mass of the vehicle
-base_mass: 7.0 # starting mass of the vehicle
+min_mass: 6.0  # minimum mass of the vehicle
+base_mass: 8.0 # starting mass of the vehicle
 max_mass: 10.0 # maximum mass of the vehicle
 
 min_force: 4.0
 base_force: 5.0
 max_force: 6.0  # maximum force the motor can apply to the vehicle
 
-min_speed: 0.7  # minum speed of vehicle
-base_speed: 0.85 # starting speed of vehicle
+min_speed: 0.6  # minum speed of vehicle
+# base_speed: 0.85 # starting speed of vehicle
+base_speed: 0.7
 max_speed: 1.0  # maximum speed of the vehicle
 
 # DIFFICULT PARAMS

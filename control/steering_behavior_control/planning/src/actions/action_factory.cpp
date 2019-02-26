@@ -29,6 +29,7 @@ Action::ActionFactory::ActionFactory(){
     start_attack_pub_ = nh_.advertise<std_msgs::Int8>("/start_attack", 1);
     end_attack_pub_ = nh_.advertise<std_msgs::Int8>("/end_attack", 1);
 
+    parameter_id_ = 1;
     goal_service_client_ = nh_.serviceClient<behavior_control::GoalService>("goal_service");
     ready_ = false;
 

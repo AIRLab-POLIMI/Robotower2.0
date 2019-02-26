@@ -141,16 +141,16 @@ VehicleModel::PointVehicle::PointVehicle(){
 
 void VehicleModel::PointVehicle::initDifficulties(){
     std::map<std::string, float> easy;
-    easy.insert({SPEED_KEY, 0.5});
-    easy.insert({MASS_KEY, 10});
+    easy.insert({SPEED_KEY, min_speed_});
+    easy.insert({MASS_KEY, max_mass_});
 
     std::map<std::string, float> medium;
-    medium.insert({SPEED_KEY, 0.75});
-    medium.insert({MASS_KEY, 8});
+    medium.insert({SPEED_KEY, base_speed_});
+    medium.insert({MASS_KEY, base_mass_});
 
     std::map<std::string, float> hard;
-    hard.insert({SPEED_KEY, 1.0});
-    hard.insert({MASS_KEY, 6});
+    hard.insert({SPEED_KEY, max_speed_});
+    hard.insert({MASS_KEY, min_mass_});
 
     difficulties_.push_back(easy);
     difficulties_.push_back(medium);
@@ -160,6 +160,7 @@ void VehicleModel::PointVehicle::initDifficulties(){
 void VehicleModel::PointVehicle::setDifficulty(int level){
     current_speed_ = difficulties_[level].at(SPEED_KEY);
     current_mass_ = difficulties_[level].at(MASS_KEY);
+    ROS_INFO_STREAM("Setting current speed " << current_speed_);
 }
 
 void VehicleModel::PointVehicle::difficultyCallback(std_msgs::Int8 difficulty){
@@ -268,11 +269,16 @@ void VehicleModel::PointVehicle::changeParams(std::vector<float> update_weights)
 
 	if(steering_behavior_ != nullptr){
         steering_behavior_ -> setSlowingRadius(getSlowingRadius());
-        steering_behavior_ -> setMaxSpeed(current_speed_ * update_weights[1]);
+        if(current_speed_ * update_weights[1] > 1.05){
+            steering_behavior_ -> setMaxSpeed(1.05);
+        }
+        else{
+            steering_behavior_ -> setMaxSpeed(current_speed_ * update_weights[1]);
+        }
         steering_behavior_ -> setDeceptionTargetDistance(getDeceptionChangeTargetDistance());
     }
 
-    ROS_INFO("NEW PARAMS [mass = %.2f, max_speed = %.2f, max_force = %.2f]", current_mass_, current_speed_, current_force_);
+    ROS_INFO("NEW PARAMS [mass = %.2f, max_speed = %.2f, max_force = %.2f]", current_mass_, current_speed_ * update_weights[1], current_force_);
 }
 
 void VehicleModel::PointVehicle::updateKinematicProperties(activity_monitor::PlayerModel model){

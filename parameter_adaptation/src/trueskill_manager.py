@@ -52,7 +52,7 @@ class TrueskillManager(object):
 
         new_opponent_index = np.argmax(draw_probabilities)
         
-        if self.baseline or self.player.games_played < 5:
+        if self.baseline or self.player.games_played < 4:
             # Take greedy decision
             self.opponent_index = new_opponent_index
         else:
@@ -87,11 +87,6 @@ class TrueskillManager(object):
         return best_level
 
 
-    def are_close(self, p1, p2, treshold=0.1):
-        if abs(p1 - p2) < treshold:
-            return True
-        return False
-
     def win_probability(self, player, opponent):
         delta_mu = player.mu - opponent.mu
         sum_sigma = player.sigma ** 2 + opponent.sigma ** 2
@@ -102,13 +97,18 @@ class TrueskillManager(object):
 
     def handle_game_outcome(self, outcome):
         # Updates Trueskill rankings
+
+        self.player.games_played = self.player.games_played + 1
+        if(self.player.games_played < 2):
+            # Do not update first game, the player still has to learn the game
+            return
+
         opp = self.parameter_sets[self.opponent_index]
 
         p_rating, opp_rating = self.update_ratings(self.player.rating, opp.rating, outcome)
         
         self.parameter_sets[self.opponent_index].rating = opp_rating
         self.player.rating = p_rating
-        self.player.games_played = self.player.games_played + 1
         
         if not self.baseline:
             games_played = self.player.games_played

@@ -1,0 +1,12 @@
+tolerance_delta: 25
+tolerance_speed: 0.05
+tolerance_speed_collision: 0.1
+collision_distance_treshold: 0.5
+
+max_speed: 0.7
+acceleration: 0.05
+
+player_topic: '/player_filtered'
+tower_rectangle_topic: '/tower_rectangle'
+vel_topic: '/vel'
+vel_pub_topic: '/game_navigation/unsafe/cmd_vel'

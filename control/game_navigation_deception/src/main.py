@@ -12,6 +12,7 @@ from sensor_msgs.msg import LaserScan
 from navigation import Navigation
 from std_msgs.msg import Float32
 from geometry_msgs.msg import PolygonStamped
+from geometry_msgs.msg import PointStamped
 import numpy as np
 import rospy
 import copy
@@ -94,6 +95,7 @@ def main():
     tower_rectangle_sub = rospy.Subscriber('/tower_rectangle', PolygonStamped, navigation.tower_rectangle_callback)
     deceiving_sub   = rospy.Subscriber('/game/is_deceiving', Deception, deceivingCallback)
     idle_sub   = rospy.Subscriber('/game/is_idle', Idle, idleCallback)
+    player_sub = rospy.Subscriber('/player_filtered', PointStamped, navigation.player_pos_callback)
 
     # TODO adjust this subscriber: move to another location, ask Ewerton
     angle_sub = rospy.Subscriber('/angle', Float32, navigation.angleCallback)

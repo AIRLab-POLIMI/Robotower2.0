@@ -56,6 +56,10 @@
 	<include file="$(find behavior_control)/launch/run.launch" />
    -->
    <include file="$(find behavior_control)/launch/run_service.launch" />
+   <group ns="planning">
+        <rosparam command="load" file="$(find planning)/config/config.yaml"/>
+        <node name="planning_safety_node" pkg="planning" type="planning_safety_node" output="screen" respawn="true"/>
+    </group>
 
     <!-- player and tower game information -->
     <!--<node pkg="player_feature" type="player_feature_node" name="player_feature" output="screen" respawn="true" />-->

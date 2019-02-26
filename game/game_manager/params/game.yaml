@@ -5,9 +5,9 @@
 
 num_towers: 4                   # number of towers
 num_charge_leds_per_tower: 4    # number of charging leds per tower
-charging_time: 2              # charging time for a led
-led_feedback_duration: 0.25      # blink duration for the tower status led when
-                                #  feedbacking button presses
+charging_time: 1.8              # charging time for a led
+led_feedback_duration: 0.25     # blink duration for the tower status led when
+                                # feedbacking button presses
 
 tilt_sensor_topic_name: tower/tilt_sensor
 button_topic_name: tower/button_state
@@ -37,8 +37,8 @@ difficulties: {
                        ks: 50., 
                        bf_exponent: 1},
                        
-                medium: {max_speed: 0.7,
-                         min_speed: 0.5,
+                medium: {max_speed: 0.6,
+                         min_speed: 0.3,
                          max_acc: 0.5,
                          ks: 50., 
                          bf_exponent: 2},

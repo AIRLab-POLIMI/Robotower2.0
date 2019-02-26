@@ -322,7 +322,7 @@ class SocialAnalyzer(object):
     def check_for_deception(self):
         if self.beta < -0.6 and self.alpha_r > 0.6:
             
-            if random.randint(1, 100)/100 > 2: #self.percentage_deception : # put 2 to avoid deception
+            if random.randint(1, 100)/100 > self.percentage_deception : # put 2 to avoid deception
                 self.real_target = self.target
                 self.fake_target = deception.get_fake_target(self.outcome_matrix_robot, self.outcome_matrix_player, self.real_target)
                 self.type_deception = deception.get_type_deception(self.fake_target, self.real_target, self.robot_xy, self.player_xy)

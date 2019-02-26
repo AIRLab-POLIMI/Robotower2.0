@@ -1,0 +1,6 @@
+<launch>
+    <group ns='navigation'>
+        <rosparam command="load" file="$(find basic_navigation)/cfg/config.yaml"/>
+        <node name="basic_navigation_node" pkg="basic_navigation" type="basic_navigation_node" output="screen" respawn="true"/>
+    </group>
+</launch>

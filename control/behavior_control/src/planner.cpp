@@ -149,6 +149,10 @@ Behavior::Planner::Planner(){
 
 void Behavior::Planner::resetCallback(const std_msgs::Bool reset){
     towers_left_ = num_towers_;
+
+    for(int i=0; i<num_towers_; i++){
+        leds_on_[i] = 0;
+    }
 }
 
 bool Behavior::Planner::calcInvBlockFreq(behavior_control::InvBlockInfo::Request &req, behavior_control::InvBlockInfo::Response &resp){
@@ -327,13 +331,13 @@ void Behavior::Planner::updateDecisionVariables(){
                 // utility = -tower_player_distances_[i] * pow(blocking_factor_[i], bf_exponent_) - (leds_on_[i]*1000) * (leds_on_[i] == 4); //1000 is a larger weight associated with the number of leds.
                 utility = - (tower_robot_distances_[i] - tower_player_distances_[i]) - /** pow(blocking_factor_[i], bf_exponent_)*/ 
                             (leds_on_[i]*1000) * (leds_on_[i] == 4) -
-                            (was_recent_target_[i] == true) * (((double)rand()/(RAND_MAX)) < (2.0/3.0)) * (towers_left_ > 3)*1000 -
+                            (was_recent_target_[i] == true) * (((double)rand()/(RAND_MAX)) < (2.0/3.0)) * (towers_left_ > 2)*1000 -
                             (was_last_target_[i] == true)*(towers_left_ > 1)*1000; //1000 is a larger weight associated with the number of leds.
             }else{
                 // utility = -tower_player_distances_[i] - (leds_on_[i]*1000) * (leds_on_[i] == 4); // 1000 is a larger weight associated with the number of leds.
                 utility = - (tower_player_distances_[i]) - 
                             (leds_on_[i]*1000) * (leds_on_[i] == 4) - 
-                            (was_recent_target_[i] == true)*(towers_left_ > 3)*1000 -
+                            (was_recent_target_[i] == true)* (((double)rand()/(RAND_MAX)) < (2.0/3.0)) * (towers_left_ > 2)*1000 -
                             (was_last_target_[i] == true)*(towers_left_ > 1)*1000; // 1000 is a larger weight associated with the number of leds.
             }
             utilities_[i] = utility;
@@ -526,7 +530,7 @@ bool Behavior::Planner::goalRequestHandler(behavior_control::GoalService::Reques
             ROS_WARN_STREAM(std::to_string(i+1) + ": " + std::to_string(utilities_[i]));
         }
 
-        if(towers_left_ < 2){
+        if(towers_left_ <= 2){
             target_tower_ID_ = sorted_indexes[sorted_indexes.size() - 1];
         }
         else if(req.parameter_id > 1){

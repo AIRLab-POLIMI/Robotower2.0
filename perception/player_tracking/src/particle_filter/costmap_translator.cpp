@@ -67,9 +67,7 @@ public:
 
 	laserScanSubscriber_ = nh_.subscribe(scan_topic, 1, &OccupancyGridMapping::laserCallback, this);
 	detected_leg_sub_ = nh_.subscribe("/detected_leg_clusters", 1, &OccupancyGridMapping::detectedClusterCallback, this);
-	// cloud_pub_isteff_ = nh_.advertise<sensor_msgs::PointCloud>( "test_cloud_isteff", 1);
-	// cloud_pub_obstacles_ = nh_.advertise<sensor_msgs::PointCloud>( "cloud_obstacles", 1);
-	// scan_player_pub_tmp_ = nh_.advertise<sensor_msgs::LaserScan>( "scan_player_tracking_tmp", 1);
+	player_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>( "player_cloud", 1);
 	scan_player_pub_ = nh_.advertise<sensor_msgs::LaserScan>( "scan_player_tracking", 1);
 	map_sub_ = nh.subscribe("map", 10, &OccupancyGridMapping::mapCallback, this);
 
@@ -90,11 +88,8 @@ private:
 	ros::Subscriber detected_leg_sub_;
 	ros::Subscriber map_sub_;
 
-	// ros::Publisher cloud_pub_obstacles_;
 	ros::Publisher scan_player_pub_;
-	// ros::Publisher scan_player_pub_tmp_;
-
-	// ros::Publisher cloud_pub_isteff_;
+	ros::Publisher player_cloud_pub_;
 
 	nav_msgs::OccupancyGridPtr last_map_;
 
@@ -126,21 +121,6 @@ private:
 		}
 	}
 
-	// sensor_msgs::LaserScan filterObstacles(sensor_msgs::LaserScan scan_obstacles){
-	// 	// Removes evidences outside the static map that are not legs
-	// 	int i;
-	// 	for(i=0; i<scan_obstacles.ranges.size(); i++){
-	// 		if(scan_obstacles.ranges[i] != std::numeric_limits<double>::infinity()){
-	// 			if(!detected_leg_mask_[i]){
-	// 				// If the index does not correspond to a leg cluster
-	// 				scan_obstacles.ranges[i] = std::numeric_limits<double>::infinity();
-	// 			}
-	// 		}
-	// 	}
-
-	// 	return scan_obstacles;
-	// }
-
 	void laserCallback(const sensor_msgs::LaserScan::ConstPtr &scanMsg){
 		// do nothing in case we do not receive a map;
 		if (last_map_ == nullptr){
@@ -150,12 +130,10 @@ private:
 		updateCurrentPos();
 		double angle_increment = 2*M_PI / scanMsg->ranges.size();
 		sensor_msgs::LaserScan output_scan;
-		// sensor_msgs::LaserScan output_scan_tmp;
-		sensor_msgs::PointCloud cloud_wrt_map;
+		sensor_msgs::PointCloud player_cloud;
 		sensor_msgs::PointCloud cloud_obstacle;
 		std::vector<geometry_msgs::Point32> points_wrt_map;
 		std::vector<geometry_msgs::Point32> obstacles;
-		points_wrt_map.resize(scanMsg->ranges.size());
 		obstacles.resize(scanMsg->ranges.size());
 
 		output_scan.header = scanMsg->header;
@@ -168,25 +146,11 @@ private:
 		output_scan.range_min = scanMsg->range_min;
 		output_scan.range_max = scanMsg->range_max;
 
-		// Scan to get an image for my thesis [ISTEFF]
-		// output_scan_tmp.header = scanMsg->header;
-		// output_scan_tmp.ranges.resize(scanMsg->ranges.size());
-		// output_scan_tmp.angle_min = scanMsg->angle_min;
-		// output_scan_tmp.angle_max = scanMsg->angle_max;
-		// output_scan_tmp.angle_increment = scanMsg->angle_increment;
-		// output_scan_tmp.time_increment = scanMsg->time_increment;
-		// output_scan_tmp.scan_time = scanMsg->scan_time;
-		// output_scan_tmp.range_min = scanMsg->range_min;
-		// output_scan_tmp.range_max = scanMsg->range_max;
-
-		// ROS_INFO("ORGIN X:%.2f, Y:%.2f", last_map_->info.origin.position.x, last_map_->info.origin.position.y);
-		//ROS_INFO("RESOLUTION X:%.2f", last_map_->info.resolution);
 		unsigned int cellX_map = - last_map_->info.origin.position.x / last_map_->info.resolution;
 		unsigned int cellY_map = - last_map_->info.origin.position.y / last_map_->info.resolution;
 
-		cloud_wrt_map.header.frame_id = "/map";
-		cloud_obstacle.header.frame_id = "/map";
-		cloud_obstacle.header.stamp = ros::Time::now();
+		player_cloud.header.frame_id = "/map"; // Point cloud with points associated to the player position
+		player_cloud.header.stamp = ros::Time::now();
 
 		for (unsigned int i=0; i < scanMsg->ranges.size(); i++){
 
@@ -203,60 +167,43 @@ private:
 				geometry_msgs::PointStamped point_wrt_map;
 				geometry_msgs::Point32 my_point_wrt_map;
 
-				try {
-					// tfl_.waitForTransform(fixed_frame_, scanMsg->header.frame_id, ros::Time(0), ros::Duration(10.0));
-					// tfl_.transformPoint(fixed_frame_, point_wrt_robot, point_wrt_map);
-					point_wrt_map.point.x = point_wrt_robot.point.x + current_pos_.x;
-					point_wrt_map.point.y = point_wrt_robot.point.y + current_pos_.y;
+				geometry_msgs::Point32 my_point; // PointCloud wants a Point32
+				my_point.x = point_wrt_robot.point.x + current_pos_.x;
+				my_point.y = point_wrt_robot.point.y + current_pos_.y;
 
-					geometry_msgs::Point32 my_point; // PointCloud wants a Point32
-					my_point.x = point_wrt_map.point.x;
-					my_point.y = point_wrt_map.point.y;
+				unsigned int cellX_wrt_map = (my_point.x) / last_map_->info.resolution;
+				unsigned int cellY_wrt_map = (my_point.y) / last_map_->info.resolution;
 
-					unsigned int cellX_wrt_map = (my_point.x) / last_map_->info.resolution;
-					unsigned int cellY_wrt_map = (my_point.y) / last_map_->info.resolution;
-
-					unsigned int grid_x = (unsigned int)((my_point.x - last_map_->info.origin.position.x) / last_map_->info.resolution);
-					unsigned int grid_y = (unsigned int)((my_point.y - last_map_->info.origin.position.y) / last_map_->info.resolution);
-
-					int cellX = cellX_wrt_map + cellX_map;
-					int cellY = cellY_wrt_map + cellY_map;
-					
-					if(checkContour(cellX, cellY)){
-						// There's something on the map at this position
-						//ROS_ERROR("OBSTACLE");
-						obstacles[i] = my_point;
-						output_scan.ranges[i] = std::numeric_limits<double>::infinity();
-						// output_scan_tmp.ranges[i] = std::numeric_limits<double>::infinity();
+				int cellX = cellX_wrt_map + cellX_map;
+				int cellY = cellY_wrt_map + cellY_map;
+				
+				if(checkContour(cellX, cellY)){
+					// There's something on the a priori map, either a wall or a tower
+					obstacles[i] = my_point;
+					output_scan.ranges[i] = std::numeric_limits<double>::infinity();
+				}
+				else{
+					// Nothing was found in that position in the a priori map
+					// This correspond to a possible player
+					if(detected_leg_mask_[i]){
+						// A leg was detected in that scan index, therefore it's a player
+						points_wrt_map.push_back(my_point);
+						output_scan.ranges[i] = scanMsg->ranges[i];
 					}
 					else{
-						// NOT AN OBSTACLE ADD TO VISUALIZATION
-						points_wrt_map[i] = my_point;
-						// output_scan_tmp.ranges[i] = scanMsg->ranges[i];
-						if(detected_leg_mask_[i]){
-							// A leg was detected in that scan index
-							output_scan.ranges[i] = scanMsg->ranges[i];
-						}
-						else{
-							output_scan.ranges[i] = std::numeric_limits<double>::infinity();
-						}
+						// There was no leg, therefore it's NOT a player
+						output_scan.ranges[i] = std::numeric_limits<double>::infinity();
 					}
-
-				} catch (tf::TransformException ex) {
-					// ROS_ERROR("Local map: No tf available. Details: %s", ex.what());
 				}
+
 			}
 			else{
 				output_scan.ranges[i] = std::numeric_limits<double>::infinity();
-				// output_scan_tmp.ranges[i] = std::numeric_limits<double>::infinity();
 			}
 		}
-		// cloud_wrt_map.points = points_wrt_map;
-		// cloud_obstacle.points = obstacles;
-		// cloud_pub_isteff_.publish(cloud_wrt_map); // Publishes player as PointCloud
-		// cloud_pub_obstacles_.publish(cloud_obstacle);
+		player_cloud.points = points_wrt_map;
+		player_cloud_pub_.publish(player_cloud);
 		scan_player_pub_.publish(output_scan);
-		// scan_player_pub_tmp_.publish(output_scan_tmp);
 	}
 
 	bool checkContour(unsigned int cellX, unsigned int cellY){
@@ -329,7 +276,6 @@ private:
             tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
             
             current_rotation_wrt_map_ = yaw;
-            //ROS_INFO("Current rotation: %.2f", current_rotation_wrt_map_);
         }
         catch (tf::TransformException ex){
             ROS_ERROR("%s",ex.what());

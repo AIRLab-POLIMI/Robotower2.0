@@ -1,4 +1,4 @@
-<!-- Launch file to play Robotower using ADAPTIVE Steering Behaviors-->
+<!-- Launch file to play Robotower using Steering Behaviors-->
 <launch>
 
 	<!-- Parameters 
@@ -7,6 +7,7 @@
 	<param name="steering_mode" value="true" />
     <rosparam command="load" file="$(find game_manager)/params/velocity_config.yaml" />
     <rosparam command="load" file="$(find game_manager)/params/game.yaml" />
+	<rosparam command="load" file="$(find trueskill)/config/config.yaml" />
     <!-- -->	
     
     <!--<param name="enable_statistics" value="true" /> -->
@@ -48,6 +49,7 @@
         <param name="autorepeat_rate" value="60" />
 	</node>
 
+
 	<node pkg="joystick" type="joystick_node" name="joystick_node" output="screen" respawn="false">
 		<!--<remap from="cmd_vel" to="raw_cmd_vel"/>-->
 	</node>
@@ -74,17 +76,21 @@
 
 	<include file="$(find player_tracker)/launch/run.launch"/>
 
-	<!-- Deception (Behavior node) -->
+	<!-- Deception (Behavior node) 
     <node pkg="behavior_with_deception" type="node.py" name="social_analyzer" output="screen" respawn="true">
 		<rosparam command="load" file="$(find behavior_with_deception)/config/config.yaml"/>
 	</node>
-
-    <!-- Activity Recognition nodes -->
-    <node pkg="activity_monitor" type="player_activity_monitor" name="player_activity_monitor" output="screen" respawn="true">
-		<param name="base_speed" value="0.75" />
-	</node>
-	<node pkg="activity_monitor" type="player_model_manager" name="player_model_manager" output="screen" respawn="true"/>
+	-->
+	<include file="$(find behavior_control)/launch/run_service.launch" />
 	<node pkg="activity_monitor" type="microgame_manager_node" name="microgame_manager_node" output="screen" respawn="true"/>
+	<!--
+	<node pkg="trueskill" type="test_node.py" name="test_node" output="screen" respawn="true"/>
+	-->
+	
+    <node name='trueskill' pkg='parameter_adaptation' type='main.py' respawn='True' output='screen'>
+        <rosparam command='load' file="$(find parameter_adaptation)/cfg/config.yaml"/>
+    </node>
+	
 
 
 </launch>

@@ -6,7 +6,7 @@ ks: 50.                     # Gain factor of the velocity smoother
 angle_deadzone: 0.2         # DeadZone range (in rad/sec), values in this range are considered zero
 max_vel: 0.7                #(rosparam_get max_vel) Maximum desired velocity
 near_goal_distance: 0.50       # distance robot-tower below which near_goal condition is activated
-proximity_threeshold: 0.75  # If an obstacle is sensed below this threeshold the navigation start to be performed by fuzzy obstacle avoidance
+proximity_threeshold: 0.6  # If an obstacle is sensed below this threeshold the navigation start to be performed by fuzzy obstacle avoidance
 dontcare: 0.64              # Obstacle in proximity condition but if above this threeshold still don't affect the navigation trajectory
 rr_lower_bound: 1           # Rear Right laser sector lower bound
 r_lower_bound: 150          # Right laser sector lower bound

@@ -8,6 +8,9 @@ Microgame::Microgame::Microgame(){
         ROS_ERROR("MODEL MANAGER: could not read 'charging_time' from rosparam!");
         exit(-1);
     }
+    else{
+        chargingTime_ = chargingTime_ * 1000;
+    }
 
     startAttackSub_ = nh_.subscribe("/start_attack", 1, &Microgame::Microgame::startAttackCallback, this);
     endAttackSub_ = nh_.subscribe("/end_attack", 1, &Microgame::Microgame::endAttackCallback, this);
@@ -73,8 +76,11 @@ void Microgame::Microgame::endAttackCallback(std_msgs::Int8 message){
 }
 
 void Microgame::Microgame::pressTimeCallback(std_msgs::Float64 pressTimeMsg){
+    ROS_WARN("Press time %f", pressTimeMsg.data);
+    ROS_WARN("Charging time %f", chargingTime_);
     float ledLightedUp = pressTimeMsg.data / chargingTime_;
 
+    ROS_WARN("ledLightedUp time %f", ledLightedUp);
     if(ledLightedUp >= 1){
         ROS_WARN("PROGRESSING...");
         hasProgressed_ = true;

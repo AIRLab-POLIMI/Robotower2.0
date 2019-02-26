@@ -21,9 +21,6 @@
  /game_manager/isGameON
  /game_manager/towers/ChangeLEDs
  /game_manager/towers/State
- /game_navigation/estimated_tower
- /game_navigation/danger_zone
- /game_navigation/closest_point
  /game_navigation/trajectory_marker_array
  /game_navigation/single_marker_trajectory
  /player_filtered
@@ -41,6 +38,7 @@
  /microgame_outcome
  /parameter_id
  /safety
+ /navigation/target
 " />
 	<arg name="file_name"  	default=""/>
 
