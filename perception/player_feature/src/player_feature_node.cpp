@@ -2,7 +2,6 @@
 #include <tower_manager/TowerButtonPressInfo.h>
 #include <signal.h>
 #include <std_msgs/Float32.h>
-#include <heartbeat/HeartbeatClient.h>
 #include <stdlib.h>
 #include <vector>
 #include <map>
@@ -76,12 +75,6 @@ int main (int argc, char** argv){
     // This must be set after the first NodeHandle is created.
     signal(SIGINT, onShutdown);
 
-    // HeartbeatClient Initialize.
-    HeartbeatClient hb(nh, 0.2);
-	hb.start();
-    heartbeat::State::_value_type state = heartbeat::State::INIT;
-    hb.setState(state);
-
     // Loop at 100Hz until the node is shutdown.
     ros::Rate rate(10);
 
@@ -92,20 +85,10 @@ int main (int argc, char** argv){
     pub_mean    = nh.advertise<std_msgs::Float32>("/tower_button_press_mean", 10);
     pub_var     = nh.advertise<std_msgs::Float32>("/tower_button_press_var", 10);
     pub_entropy = nh.advertise<std_msgs::Float32>("/tower_button_press_entropy", 10);
-    
-    // set heartbeat node state to started
-    state = heartbeat::State::STARTED;
-    bool success = hb.setState(state);
 
     while(ros::ok() && !isExit){
-        // Issue heartbeat.
-        hb.alive();
         // Wait until it's time for another iteration.
         rate.sleep() ;
         ros::spinOnce();
     }
-    success = hb.setState(heartbeat::State::STOPPED);
-    // Issue heartbeat.
-    hb.alive();
-    hb.stop();
 }

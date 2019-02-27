@@ -14,8 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
   tower_manager
 )
 
-find_package(heartbeat REQUIRED)
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 

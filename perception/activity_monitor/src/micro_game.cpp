@@ -29,7 +29,9 @@ void Microgame::Microgame::run(){
     if(attackNumber_ == ATTACK_WINDOW){
         int winner = getWinner();
         if(winner != INVALID){
-            gameOutcomePub_.publish(winner);
+            std_msgs::Int8 data;
+            data.data = winner;
+            gameOutcomePub_.publish(data);
         }
         reset();
     }

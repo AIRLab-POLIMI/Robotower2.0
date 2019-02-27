@@ -5,7 +5,6 @@
 #include <cstdlib>
 #include <time.h>
 #include <signal.h>
-#include <heartbeat/HeartbeatClient.h>
 #include "SerialPort.h"
 
 /* Pipe indexes*/
@@ -54,13 +53,6 @@ int main (int argc, char** argv){
     // This must be set after the first NodeHandle is created.
     signal(SIGINT, onShutdown);
 
-    // HeartbeatClient Initialize.
-    HeartbeatClient hb(nh, 0.5);
-	hb.start();
-
-    heartbeat::State::_value_type state = heartbeat::State::INIT;
-    hb.setState(state);
-
     std::vector<std::string> formatVector;
     nh.getParam("/format", formatVector);
 
@@ -77,15 +69,10 @@ int main (int argc, char** argv){
     
     // delimeter used for tagging the end of arduino string.
     const char* SERIAL_COM_DELIMITER = "\n";
-    
-    // set heartbeat node state to started
-    state = heartbeat::State::STARTED;
-    bool success = hb.setState(state);
+
 
     while(ros::ok() && !isExit){
-        // Issue heartbeat.
-        hb.alive();
-
+    
         std::stringstream buffer;
 
         // read port
@@ -178,9 +165,5 @@ int main (int argc, char** argv){
         rate.sleep() ;
         ros::spinOnce();
     }
-    success = hb.setState(heartbeat::State::STOPPED);
-    // Issue heartbeat.
-    hb.alive();
-    hb.stop();
     return 0;
 }

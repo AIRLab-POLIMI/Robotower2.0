@@ -4,7 +4,6 @@
 #include <std_msgs/Float64.h>
 #include <tf/transform_broadcaster.h>
 #include <tower_manager/TowerInfo.h>
-#include <heartbeat/HeartbeatClient.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <time.h>
@@ -172,22 +171,10 @@ int main (int argc, char** argv){
 
     TowerManager tower_manager;
 
-    // HeartbeatClient Initialize.
-    HeartbeatClient hb(tower_manager.nh, 0.2);
-	hb.start();
-    heartbeat::State::_value_type state = heartbeat::State::INIT;
-    hb.setState(state);
-
     // Loop at 10Hz until the node is shutdown.
     ros::Rate rate(10);
-    
-    // set heartbeat node state to started
-    state = heartbeat::State::STARTED;
-    bool success = hb.setState(state);
 
      while(ros::ok()){
-        // Issue heartbeat.
-        hb.alive();
 
         tower_manager.publishTowerTF();
         tower_manager.calcAttackAccuracy();
@@ -196,8 +183,4 @@ int main (int argc, char** argv){
         rate.sleep();
         ros::spinOnce();
     }
-    success = hb.setState(heartbeat::State::STOPPED);
-    // Issue heartbeat.
-    hb.alive();
-    hb.stop();
 }

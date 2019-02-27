@@ -39,7 +39,6 @@
   
   <run_depend>arduino_publisher</run_depend>
   <run_depend>message_runtime</run_depend>
-  <run_depend>heartbeat</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>roscpp</run_depend>
   

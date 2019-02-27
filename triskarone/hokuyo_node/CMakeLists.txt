@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(hokuyo_node)
 
 find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(driver_base REQUIRED)
 
 # Utilities that use log4cxx - getID and getFirmwareVersion
 find_library(LOG4CXX_LIBRARY log4cxx)
@@ -22,7 +23,7 @@ find_package(catkin REQUIRED
 )
 
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${driver_base_INCLUDE_DIRS})
 
 # Dynamic reconfigure support
 generate_dynamic_reconfigure_options(cfg/Hokuyo.cfg)
@@ -30,32 +31,47 @@ generate_dynamic_reconfigure_options(cfg/Hokuyo.cfg)
 # Export with catkin_package
 catkin_package(
     INCLUDE_DIRS include
-    CATKIN_DEPENDS rosconsole
+    CATKIN_DEPENDS rosconsole driver_base dynamic_reconfigure message_runtime
     LIBRARIES libhokuyo
 )
 
 # Hokuyo library
 add_library(libhokuyo src/hokuyo.cpp)
-target_link_libraries(libhokuyo ${rosconsole_LIBRARIES})
+target_link_libraries(libhokuyo ${rosconsole_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(libhokuyo ${PROJECT_NAME}_gencfg
+                           driver_base_EXPORTED_TARGETS
+                           ${PROJECT_NAME}_gencfg
+                           ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                           ${catkin_EXPORTED_TARGETS})
 
 # hokuyo_node
 add_executable(hokuyo_node src/hokuyo_node.cpp)
-add_dependencies(hokuyo_node ${PROJECT_NAME}_gencfg)
-target_link_libraries(hokuyo_node
-  libhokuyo
-  ${Boost_LIBRARIES}
-  ${catkin_LIBRARIES}
-)
+target_link_libraries(hokuyo_node libhokuyo ${Boost_LIBRARIES} ${catkin_LIBRARIES})
+add_dependencies(hokuyo_node driver_base_generate_messages_cpp 
+                             driver_base_gencpp
+                             ${PROJECT_NAME}_gencfg
+                             ${driver_base_EXPORTED_TARGETS} 
+                             ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                             ${catkin_EXPORTED_TARGETS})
+
 
 add_executable(getID src/getID.cpp)
 target_link_libraries(getID libhokuyo ${LOG4CXX_LIBRARY} ${catkin_LIBRARIES})
+add_dependencies(getID driver_base_generate_messages_cpp 
+                       driver_base_gencpp
+                       ${driver_base_EXPORTED_TARGETS}
+                       ${PROJECT_NAME}_gencfg
+                       ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                       ${catkin_EXPORTED_TARGETS})
 
 add_executable(getFirmwareVersion src/getFirmwareVersion.cpp)
-target_link_libraries(getFirmwareVersion
-  libhokuyo
-  ${LOG4CXX_LIBRARY}
-  ${catkin_LIBRARIES}
-)
+target_link_libraries(getFirmwareVersion libhokuyo ${LOG4CXX_LIBRARY} ${catkin_LIBRARIES})
+add_dependencies(getFirmwareVersion driver_base_generate_messages_cpp 
+                                    driver_base_gencpp
+                                    ${driver_base_EXPORTED_TARGETS}
+                                    ${PROJECT_NAME}_gencfg
+                                    ${${PROJECT_NAME}_EXPORTED_TARGETS}
+                                    ${catkin_EXPORTED_TARGETS})
 
 # Install targets
 install(TARGETS libhokuyo DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})

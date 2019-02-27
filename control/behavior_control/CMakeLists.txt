@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   std_msgs
   message_generation
+  game_manager
 )
 
 find_package(sim_arduino_publisher REQUIRED)
@@ -79,6 +80,7 @@ generate_messages(
   DEPENDENCIES
   std_msgs
   arduino_publisher
+  game_manager
 )
 
 ################################################
@@ -100,7 +102,6 @@ generate_messages(
 #   cfg/DynReconf1.cfg
 #   cfg/DynReconf2.cfg
 # )
-
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -138,16 +139,15 @@ add_library(${PROJECT_NAME}_LIB
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_LIB ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 
 # planner_node is a pure ros node. No behavior tree involved
-add_executable(planner_node src/main.cpp )
-target_link_libraries(planner_node ${PROJECT_NAME}_LIB ${catkin_LIBRARIES})
-add_dependencies(planner_node ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencpp ${PROJECT_NAME}_EXPORTED_TARGETS ${catkin_EXPORTED_TARGETS})
+add_executable(planner_node src/main.cpp)
+add_dependencies(planner_node ${PROJECT_NAME}_LIB ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NAME}_gencpp ${PROJECT_NAME}_EXPORTED_TARGETS ${catkin_EXPORTED_TARGETS})
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -159,6 +159,7 @@ add_dependencies(planner_node ${PROJECT_NAME}_generate_messages_cpp ${PROJECT_NA
 ## same as for the library above
 
 ## Specify libraries to link a library or executable target against
+target_link_libraries(planner_node ${PROJECT_NAME}_LIB ${catkin_LIBRARIES})
 
 #############
 ## Install ##

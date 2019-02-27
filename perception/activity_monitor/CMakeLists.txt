@@ -203,22 +203,6 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(player_activity_monitor
-  src/player_activity_monitor.cpp
-)
-add_dependencies(player_activity_monitor ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(player_activity_monitor
-  ${catkin_LIBRARIES}
-)
-
-add_executable(player_model_manager
-  src/player_model_manager.cpp
-)
-add_dependencies(player_model_manager ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(player_model_manager
-  ${catkin_LIBRARIES}
-)
-
 add_executable(microgame_manager_node
   src/micro_game.cpp
 )

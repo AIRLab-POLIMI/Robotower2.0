@@ -10,7 +10,6 @@
 #include <geometry_msgs/Twist.h>
 #include <tf/transform_listener.h>
 #include <sensor_msgs/Joy.h>
-#include <heartbeat/HeartbeatClient.h>
 
 
 // Global tf listener pointer
@@ -191,13 +190,6 @@ void JoyTeleop::publishZeroMessage() {
 int main(int argc, char** argv) {
 	ros::init(argc, argv, "teleop_node");
 	JoyTeleop teleop;
-
-	// This must be set after the first NodeHandle is created.
-	// HeartbeatClient Initialize.
-	HeartbeatClient hb(teleop.nh, 0.2);
-	hb.start();
-	heartbeat::State::_value_type state = heartbeat::State::INIT;
-	hb.setState(state);
 	
 	double maxLinearScale, maxAngularScale;
 	
@@ -210,21 +202,13 @@ int main(int argc, char** argv) {
 	tfListener = new tf::TransformListener();
   	// Loop at 100Hz until the node is shutdown.
     ros::Rate rate(100);
-	// set heartbeat node state to started
-    state = heartbeat::State::STARTED;
-    bool success = hb.setState(state);
 	
 	while(ros::ok()){
-        // Issue heartbeat.
-        hb.alive();
+       
 		ros::spinOnce();
         // Wait until it's time for another iteration.
         rate.sleep() ;
     }
 
-    success = hb.setState(heartbeat::State::STOPPED);
-    // Issue heartbeat.
-    hb.alive();
-    hb.stop();
 	return 0;
 }
