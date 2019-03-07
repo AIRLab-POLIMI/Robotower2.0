@@ -83,7 +83,7 @@ The ecosystem depends on some ROS standard packages, such as `amcl` and `gmappin
 Credits
 =======
 
-RoboTower was invented by [Ewerton Lopes](https://github.com/ewerlopes) during his PhD thesis at Politecnico di Milano (Milan, Italy) under supervision of Professor [Andrea Bonarini](https://github.com/andybon). Several other collaborators and master students joined the project, among those: [Davide Orrù](), [Enrico Piazza](https://github.com/Enri2077), [Stefano Boriero](https://github.com/StefanoBoriero), [Gabriele Oliaro](https://github.com/gabrieleoliaro), [Laura Donadoni](), [Ruchik Mishra]() and [Lesly Zerna](https://github.com/l3s777).
+RoboTower 2.0 was invented by [Ewerton Lopes](https://github.com/ewerlopes) during his PhD thesis at Politecnico di Milano (Milan, Italy) under supervision of Professor [Andrea Bonarini](https://github.com/andybon). Several other collaborators and master students joined the project, among those: [Davide Orrù](), [Enrico Piazza](https://github.com/Enri2077), [Stefano Boriero](https://github.com/StefanoBoriero), [Gabriele Oliaro](https://github.com/gabrieleoliaro), [Laura Donadoni](), [Ruchik Mishra]() and [Lesly Zerna](https://github.com/l3s777).
 
 Papers
 ======
