@@ -133,8 +133,7 @@ add_library(${PROJECT_NAME}_LIB
    src/vehicle.cpp
 )
 
-#add_library(${PROJECT_NAME}_LIB
-#  #)
+add_dependencies(${PROJECT_NAME}_LIB ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
