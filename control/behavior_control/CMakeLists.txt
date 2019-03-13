@@ -19,7 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   game_manager
 )
 
-find_package(sim_arduino_publisher REQUIRED)
+#find_package(sim_arduino_publisher REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -79,7 +79,7 @@ add_service_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
-  arduino_publisher
+  #arduino_publisher
   game_manager
 )
 
@@ -114,7 +114,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   #LIBRARIES robogame_behavior_tree
-  CATKIN_DEPENDS actionlib move_base_msgs roscpp message_runtime arduino_publisher
+  CATKIN_DEPENDS actionlib move_base_msgs roscpp message_runtime #arduino_publisher
   DEPENDS system_lib
 )
 
@@ -127,7 +127,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${arduino_publisher_INCLUDE_DIRS}
+  #${arduino_publisher_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library

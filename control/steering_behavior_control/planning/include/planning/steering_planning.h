@@ -3,7 +3,6 @@
 
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Vector3.h>
-#include <activity_monitor/PlayerModel.h>
 #include "planning/ActionEncoded.h"
 #include "action/action_lib.h"
 
@@ -18,8 +17,7 @@ namespace SteeringPlanning{
     private:
         ros::NodeHandle nh_;
         ros::Subscriber action_sub_;
-        ros::Subscriber player_model_sub_;
-        
+
         ros::Publisher steering_pub_;
 
 
@@ -41,7 +39,6 @@ namespace SteeringPlanning{
         void actionCallback(const planning::ActionEncoded& msg);
         int selectTower();
         int getBestBehaviorIndex(Action::AbstractAction* action);
-        void playerModelCallback(activity_monitor::PlayerModel model);
 
  };
 

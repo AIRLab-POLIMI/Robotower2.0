@@ -133,7 +133,9 @@ Action::AbstractAction* Action::ActionFactory::generateEscapeAction(planning::Ac
 
     std_msgs::Int8 interaction_msg;
     abort_interaction_pub_.publish(interaction_msg);
-    end_attack_pub_.publish(0);
+    std_msgs::Int8 end_attack_msg;
+    end_attack_msg.data = 0;
+    end_attack_pub_.publish(end_attack_msg);
     
     return new Action::Escape(target);
 }

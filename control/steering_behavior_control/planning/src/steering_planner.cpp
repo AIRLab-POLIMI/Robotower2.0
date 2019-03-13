@@ -1,5 +1,4 @@
 #include <ros/ros.h>
-#include <activity_monitor/PlayerModel.h>
 #include "planning/steering_planning.h"
 #include "action/action_lib.h"
 #include "planning/SteeringBehaviorEncoded.h"
@@ -24,7 +23,6 @@ SteeringPlanning::SteeringPlanner::SteeringPlanner(){
     current_action_msg.priority = -1; // Can't be negative by defintion
     
     action_sub_ = nh_.subscribe(action_topic_, 1, &SteeringPlanning::SteeringPlanner::actionCallback, this);
-    player_model_sub_ = nh_.subscribe("/player_hyperparam", 1, &SteeringPlanning::SteeringPlanner::playerModelCallback, this);
     steering_pub_ = nh_.advertise<planning::SteeringBehaviorEncoded>(steering_topic_, 1);
 }
 
@@ -88,10 +86,6 @@ int SteeringPlanning::SteeringPlanner::getBestBehaviorIndex(Action::AbstractActi
     }
 
     return best_index;
-}
-
-void SteeringPlanning::SteeringPlanner::playerModelCallback(activity_monitor::PlayerModel model){
-    player_model_ = model.cumulative_hyperparam;
 }
 
 int main(int argc, char** argv){
