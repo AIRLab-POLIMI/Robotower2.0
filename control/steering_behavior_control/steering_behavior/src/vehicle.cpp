@@ -8,8 +8,6 @@
 #include <geometry_msgs/Pose.h>
 #include <tf/transform_listener.h>
 
-#include "steering_behavior/KinematicUpdate.h"
-
 #define MIN_PLAYER_PARAM 0.0
 #define MAX_PLAYER_PARAM 5.0
 #define MAX_PERTURBATION 0.1
@@ -100,8 +98,6 @@ VehicleModel::PointVehicle::PointVehicle(){
     initDifficulties();
     setDifficulty(1);
 
-    // current_speed_ = base_speed_;
-    // current_mass_ = base_mass_;
     current_force_ = base_force_;
 
     baseline_speed_ = base_speed_;
@@ -110,7 +106,6 @@ VehicleModel::PointVehicle::PointVehicle(){
     custom_mass_ = base_mass_;
 
     scan_sub_ = nh_.subscribe("/scan", 1, &VehicleModel::PointVehicle::laserCallback, this);
-    kinematic_update_pub_ = nh_.advertise<steering_behavior::KinematicUpdate>("kinematic_update", 1);
 
     if(on_simulation){
         // We should get the initial position from simulation params
@@ -281,58 +276,6 @@ void VehicleModel::PointVehicle::changeParams(std::vector<float> update_weights)
     ROS_INFO("NEW PARAMS [mass = %.2f, max_speed = %.2f, max_force = %.2f]", current_mass_, current_speed_ * update_weights[1], current_force_);
 }
 
-void VehicleModel::PointVehicle::updateKinematicProperties(activity_monitor::PlayerModel model){
-    steering_behavior::KinematicUpdate msg;
-    float model_domain = MAX_PLAYER_PARAM - MIN_PLAYER_PARAM;
-    float model_percentage = (model.cumulative_hyperparam - MIN_PLAYER_PARAM) / model_domain;
-
-    ROS_INFO("Receiving a new estimate param:%.2f, press:%.2f", model.cumulative_hyperparam, model.average_led_per_press);
-
-    float new_speed;
-    float new_mass;
-
-    msg.old_baseline = baseline_speed_;
-    msg.old_mass = current_mass_;
-    msg.old_speed = current_speed_;
-
-    float baseline_update_percentage;
-
-    float new_baseline_speed = min_speed_ + (max_speed_ - min_speed_) * model.expertise;
-    float perturbation = MAX_PERTURBATION * (model.last_led_per_press - 1);
-
-    baseline_speed_ = (baseline_speed_ + new_baseline_speed) / 2.0;
-    current_speed_ = baseline_speed_ + perturbation;
-
-    // if(model.average_led_per_press > 1){
-    //     baseline_update_percentage = model.average_led_per_press - 1;
-    //     float room_for_update = (max_speed_ - baseline_speed_);
-    //     float update_magnitude = room_for_update * baseline_update_percentage;
-    //     float new_baseline = baseline_speed_ + update_magnitude;
-    //     baseline_speed_ = new_baseline;
-    // }
-    // else{
-    //     baseline_update_percentage = (1 - model.average_led_per_press);
-    //     float room_for_update = (baseline_speed_ - min_speed_);
-    //     float update_magnitude = room_for_update * baseline_update_percentage;
-    //     float new_baseline = baseline_speed_ - update_magnitude;
-    //     baseline_speed_ = new_baseline;
-    // }
-
-    // current_speed_ = baseline_speed_;
-
-
-    msg.current_baseline = baseline_speed_;
-    msg.current_mass = current_mass_;
-    msg.current_speed = current_speed_;
-
-    kinematic_update_pub_.publish(msg);
-
-    ROS_INFO("NEW SPEED %.2f", current_speed_);
-    ROS_INFO("NEW MASS %.2f", current_mass_);
-
-}
-
-
 void VehicleModel::PointVehicle::resetParams(){
     is_custom_ = false;
     custom_mass_ = base_mass_;
@@ -340,12 +283,6 @@ void VehicleModel::PointVehicle::resetParams(){
     current_speed_ = base_speed_;
     current_force_ = base_force_;
     baseline_speed_ = base_speed_;
-
-    steering_behavior::KinematicUpdate msg;
-    msg.current_baseline = baseline_speed_;
-    msg.current_mass = current_mass_;
-    msg.current_speed = current_speed_;
-    kinematic_update_pub_.publish(msg);
 }
 
 void VehicleModel::PointVehicle::initBehavior(){

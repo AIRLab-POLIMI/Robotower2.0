@@ -129,11 +129,6 @@ void LocomotionPlanning::LocomotionPlanner::updateLoop(){
     }
 }
 
-void LocomotionPlanning::LocomotionPlanner::playerModelCallback(activity_monitor::PlayerModel model){
-    player_model_ = model.cumulative_hyperparam;
-    vehicle_.updateKinematicProperties(model);
-}
-
 void LocomotionPlanning::LocomotionPlanner::resetCallback(std_msgs::Bool reset){
     vehicle_.resetParams();
 }

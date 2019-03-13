@@ -8,7 +8,6 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include "planning/SteeringBehaviorEncoded.h"
 
-#include <activity_monitor/PlayerModel.h>
 #include <steering_behavior/vehicle_model.h>
 #include <steering_behavior/steering_behavior.h>
 #include <visualization_msgs/Marker.h>
@@ -60,7 +59,6 @@ namespace LocomotionPlanning{
 			void updateTowerPositions(std::vector<geometry_msgs::Point32> points);
 			int matchTowerIndex(geometry_msgs::Point32 point);
 			void publishTowerPositions();
-			void playerModelCallback(activity_monitor::PlayerModel model);
 			void resetCallback(std_msgs::Bool reset);
  };
 

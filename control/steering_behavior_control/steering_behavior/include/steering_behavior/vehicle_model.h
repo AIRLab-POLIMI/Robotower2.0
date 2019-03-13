@@ -8,7 +8,6 @@
 #include <tf/transform_listener.h>
 #include <std_msgs/Int8.h>
 
-#include <activity_monitor/PlayerModel.h>
 #include "steering_behavior/steering_behavior.h"
 
 #define SPEED_KEY "speed"
@@ -56,8 +55,6 @@ namespace VehicleModel
             ros::Subscriber scan_sub_;
             ros::Subscriber difficulty_sub_;
 
-            ros::Publisher kinematic_update_pub_;
-
             sensor_msgs::LaserScan current_scan_;
             tf::TransformListener listener;
 
@@ -102,8 +99,6 @@ namespace VehicleModel
                 steering_behavior_ = steering_behavior;
                 initBehavior();
             }
-
-            void updateKinematicProperties(activity_monitor::PlayerModel model);
 
 			void changeParams(std::vector<float> update_weights);
             void resetParams();

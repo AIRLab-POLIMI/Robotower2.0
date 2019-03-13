@@ -59,6 +59,7 @@ public:
 	legArraySubscriber_ = nh_.subscribe("/detected_leg_clusters", 1, &OccupancyGridMapping::legArrayCallback, this);
 	playerPointCloudPublisher = nh_.advertise<sensor_msgs::PointCloud>( "player_cloud", 1);
 	scanPlayerPublisher_ = nh_.advertise<sensor_msgs::LaserScan>( "scan_player_tracking", 1);
+	// centroid_marker = nh_.advertise<visualization_msgs::Marker>("centroid_marker", 1);
 	mapSubscriber_ = nh.subscribe("map", 10, &OccupancyGridMapping::mapCallback, this);
 
 	legMask_.resize(1000, false);
@@ -79,6 +80,7 @@ private:
 
 	ros::Publisher scanPlayerPublisher_;
 	ros::Publisher playerPointCloudPublisher;
+	ros::Publisher centroid_marker;
 
 	nav_msgs::OccupancyGridPtr lastMap_;
 
@@ -170,15 +172,46 @@ private:
 					else{
 						playerLaserScan.ranges[i] = std::numeric_limits<double>::infinity();
 					}
+					
 				}
 			}
 			else{
 				playerLaserScan.ranges[i] = std::numeric_limits<double>::infinity();
 			}
 		}
+		//centroid try from here
+		// geometry_msgs::Point32 centroid;
+		// int x = 0, y = 0, i;
+		// for (i = 0; i < playerPoints.size(); i++)
+		// {
+		// 	x += playerPoints[i].x;
+		// 	y += playerPoints[i].y;
+		// }
+		// centroid.x = x / playerPoints.size();
+		// centroid.y = y / playerPoints.size();
+
+		// visualization_msgs::Marker m;
+		// m.ns = "CENTROID";
+		// m.type = m.SPHERE;
+		// m.pose.position.x = centroid.x ;
+		// m.pose.position.y = centroid.y;
+		// m.pose.position.z = 0.2;
+		// m.scale.x = 0.13;
+		// m.scale.y = 0.13;
+		// m.scale.z = 0.13;
+		// m.color.a = 1;
+		// m.color.r = 0;
+		// m.color.g = 0;
+		// m.color.b = 0;
+		// centroid_marker.publish(m);
+		//to here
+
+
 		playerPointCloud.points = playerPoints;
 		playerPointCloudPublisher.publish(playerPointCloud);
 		scanPlayerPublisher_.publish(playerLaserScan);
+
+		
 	}
 
 	bool checkContour(unsigned int cellXCoordinateAbsolut, unsigned int cellYCoordinateAbsaolut){
