@@ -78,7 +78,7 @@ To run the game choose a given launch file in the `game_manager` launch folder.
 
 Dependencies
 ============
-The ecosystem depends on some ROS standard packages, such as `amcl` and `gmapping`. A full installation of ROS may be enough for compiling the code. Some deprecated packages are known to depend on libraries, such as: `OpenCV`, `LibFreenect2` and `IAI Kinect2` (all available on Github).
+The ecosystem depends on some ROS standard packages, most of which are provided by a full installation of ROS, such as `amcl` and `gmapping`. In order to compile correctly the project, you need to install the `move_base` and `ecl_threads` packages, which are not included in the aforementioned installation . Some deprecated packages are known to depend on libraries, such as: `OpenCV`, `LibFreenect2` and `IAI Kinect2` (all available on Github).
 
 Credits
 =======

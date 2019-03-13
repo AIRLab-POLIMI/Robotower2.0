@@ -1,5 +1,6 @@
 #include "steering_behavior/steering_behavior.h"
 #include <ros/ros.h>
+#include <random>
 #include <tf/transform_listener.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Vector3.h>
