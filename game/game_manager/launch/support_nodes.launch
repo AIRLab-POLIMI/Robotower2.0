@@ -11,8 +11,9 @@
 	<!-- For TCP connection to the towers -->
     <include file="$(find rosserial_server)/launch/socket.launch"/>
 
-	<!-- Launch heartbeat-->
+	<!-- Launch heartbeat
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
+	-->
 
 	<!-- Launch heartbeat-->
 	<node pkg="player_tracker" type="random_sample_consensus" name="random_sample_consensus" respawn="true" output="screen"/>

@@ -1,5 +1,14 @@
 #Udev rules needed by the triskar 
-#Hokuyo sensor
-SUBSYSTEMS=="usb", KERNEL=="ttyACM[0-9]*", ACTION=="add", ATTRS{idVendor}=="15d1", ATTRS{idProduct}=="0000", PROGRAM="/home/airlab/ros/devel/lib/hokuyo_node/getID /dev/%k q", SYMLINK+="sensors/hokuyo_%c", GROUP="dialout"
+
 #Nova core
-SUBSYSTEMS=="usb", KERNEL=="ttyACM[0-9]*", ACTION=="add" , ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", SYMLINK+="novaCore", GROUP="dialout"
+SUBSYSTEMS=="usb", KERNEL=="ttyACM[0-9]*", ACTION=="add" , ATTRS{idVendor}=="0483", ATTRS{idProduct}=="5740", MODE="0666", SYMLINK+="novaCore", GROUP="dialout"
+
+# Hokuyo sensors up to date
+SUBSYSTEMS=="usb", KERNEL=="ttyACM[0-9]*", ACTION=="add", ATTRS{idVendor}=="15d1", ATTRS{idProduct}=="0000", MODE="0666", PROGRAM="/bin/sh -c '$(find /opt/ros -name env.sh | sort -r | head -1) rosrun urg_node getID /dev/%k --'", SYMLINK+="sensors/hokuyo_%c", GROUP="dialout"
+
+# Arduino board
+SUBSYSTEMS=="usb", KERNEL=="ttyACM[0-9]*", ACTION=="add", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", MODE="0666", SYMLINK+="arduino", GROUP="dialout"
+
+
+#Hokuyo sensor DEPRECATED
+#SUBSYSTEMS=="usb", KERNEL=="ttyACM[0-9]*", ACTION=="add", ATTRS{idVendor}=="15d1", ATTRS{idProduct}=="0000", MODE="0666", PROGRAM="/bin/sh -c '$(find /opt/ros -name env.sh | sort -r | head -1) rosrun hokuyo_node getID %k q'", SYMLINK+="sensors/hokuyo_%c", GROUP="dialout"
