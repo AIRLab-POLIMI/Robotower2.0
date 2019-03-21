@@ -8,7 +8,7 @@ project(triskar_navigation)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  hokuyo_node
+  urg_node
   move_base
   odometry_publisher
   tf
