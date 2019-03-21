@@ -52,14 +52,17 @@
 		<arg name="port" value="/dev/arduino" />
 	</include>
 	
-	<!-- Launch heartbeat-->
+	<!-- Launch heartbeat
 	<node pkg="heartbeat" type="server_node" name="heartbeat" respawn="true"/>
+	-->
 
 	<!-- Data logger -->
 	<include file="$(find data_collection)/launch/game_data_recorder.launch"/>
 
 	<!-- triskar odometry node -->
 	<node pkg="odometry_publisher" type="odometry_publisher" name="odometry_publisher"/>
+
+	<include file="$(find triskar)/launch/hokuyo_nodes.launch"/>
 	
 	
 	

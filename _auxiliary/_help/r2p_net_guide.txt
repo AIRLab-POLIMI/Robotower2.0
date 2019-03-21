@@ -2,6 +2,6 @@ r2p network configuration:
 
 	static ip
 	method manual
-	address ip 10.0.0.11
+	address ip 10.0.0.122
 	netmask 255.255.255.240
 	gateway 0.0.0.0
