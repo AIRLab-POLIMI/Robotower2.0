@@ -35,7 +35,7 @@
         --clock 
         --rate=1
         -s 0
-        $(find player_tracker)/rosbags/_2018-09-24-19-23-58.bag" />
+        home/airlab/Documents/bags/game/_2019-03-21-17-33-13.bag" />
     <param name="use_sim_time" value="true" />
 
 </launch>

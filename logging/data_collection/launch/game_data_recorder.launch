@@ -38,6 +38,7 @@
  /microgame_outcome
  /parameter_id
  /safety
+ /player_cloud
  /navigation/target
 " />
 	<arg name="file_name"  	default=""/>

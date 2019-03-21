@@ -179,33 +179,6 @@ private:
 				playerLaserScan.ranges[i] = std::numeric_limits<double>::infinity();
 			}
 		}
-		//centroid try from here
-		// geometry_msgs::Point32 centroid;
-		// int x = 0, y = 0, i;
-		// for (i = 0; i < playerPoints.size(); i++)
-		// {
-		// 	x += playerPoints[i].x;
-		// 	y += playerPoints[i].y;
-		// }
-		// centroid.x = x / playerPoints.size();
-		// centroid.y = y / playerPoints.size();
-
-		// visualization_msgs::Marker m;
-		// m.ns = "CENTROID";
-		// m.type = m.SPHERE;
-		// m.pose.position.x = centroid.x ;
-		// m.pose.position.y = centroid.y;
-		// m.pose.position.z = 0.2;
-		// m.scale.x = 0.13;
-		// m.scale.y = 0.13;
-		// m.scale.z = 0.13;
-		// m.color.a = 1;
-		// m.color.r = 0;
-		// m.color.g = 0;
-		// m.color.b = 0;
-		// centroid_marker.publish(m);
-		//to here
-
 
 		playerPointCloud.points = playerPoints;
 		playerPointCloudPublisher.publish(playerPointCloud);
