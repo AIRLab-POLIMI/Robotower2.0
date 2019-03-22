@@ -40,6 +40,9 @@
  /safety
  /player_cloud
  /navigation/target
+ /player_leg_array
+ /player
+ /filtered_legs
 " />
 	<arg name="file_name"  	default=""/>
 

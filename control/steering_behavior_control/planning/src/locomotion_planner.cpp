@@ -142,7 +142,7 @@ void LocomotionPlanning::LocomotionPlanner::publishTarget(geometry_msgs::Point32
     
     marker.scale.x = 0.2;
     marker.scale.y = 0.2;
-    marker.scale.z = 0.0;
+    marker.scale.z = 0.2;
     
     marker.color.r = 0.0f;
     marker.color.g = 1.0f;

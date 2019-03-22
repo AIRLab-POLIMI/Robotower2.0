@@ -75,7 +75,7 @@ public:
     if (!nh_.getParam("forest_file", forest_file))
       ROS_ERROR("ERROR! Could not get random forest filename");
     nh_.param("scan_topic", scan_topic, std::string("scan"));
-    nh_.param("fixed_frame", fixed_frame_, std::string("odom"));
+    nh_.param("fixed_frame", fixed_frame_, std::string("map"));
     nh_.param("detection_threshold", detection_threshold_, -1.0);
     nh_.param("cluster_dist_euclid", cluster_dist_euclid_, 0.13);
     nh_.param("min_points_per_cluster", min_points_per_cluster_, 3);                

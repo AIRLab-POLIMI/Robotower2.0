@@ -19,6 +19,7 @@
 
 #include <visualization_msgs/Marker.h>
 #include <player_tracker/LegArray.h>
+#include <player_tracker/Leg.h>
 
 // Custom messages
 #include <cstddef>
@@ -59,7 +60,7 @@ public:
 	legArraySubscriber_ = nh_.subscribe("/detected_leg_clusters", 1, &OccupancyGridMapping::legArrayCallback, this);
 	playerPointCloudPublisher = nh_.advertise<sensor_msgs::PointCloud>( "player_cloud", 1);
 	scanPlayerPublisher_ = nh_.advertise<sensor_msgs::LaserScan>( "scan_player_tracking", 1);
-	// centroid_marker = nh_.advertise<visualization_msgs::Marker>("centroid_marker", 1);
+	playerLegArrayPublisher = nh_.advertise<player_tracker::LegArray>("player_leg_array", 1);
 	mapSubscriber_ = nh.subscribe("map", 10, &OccupancyGridMapping::mapCallback, this);
 
 	legMask_.resize(1000, false);
@@ -80,7 +81,7 @@ private:
 
 	ros::Publisher scanPlayerPublisher_;
 	ros::Publisher playerPointCloudPublisher;
-	ros::Publisher centroid_marker;
+	ros::Publisher playerLegArrayPublisher;
 
 	nav_msgs::OccupancyGridPtr lastMap_;
 
@@ -88,6 +89,7 @@ private:
 	float currentRotationWrtMapFrame_;
 
 	std::vector<bool> legMask_;
+	player_tracker::LegArray lastLegArray_;
 
 	tf::TransformListener tfl_;
 
@@ -97,9 +99,11 @@ private:
 
 	void legArrayCallback(const player_tracker::LegArray legs){
 		// Builds a mask to filter scan indexes where we found something of a shape of cylinder
+		lastLegArray_ = legs;
 		legMask_.clear();
 		legMask_.resize(1000, false);
 		for(int i=0; i<legs.legs.size(); i++){
+
 			for(int j=0; j<legs.legs[i].point_indexes.size(); j++){
 				legMask_[legs.legs[i].point_indexes[j]] = true;
 			}
@@ -118,6 +122,10 @@ private:
 		newScanMsg.scan_time = scanMsg.scan_time;
 		newScanMsg.range_min = scanMsg.range_min;
 		newScanMsg.range_max = scanMsg.range_max;
+
+		for(int i=0; i<newScanMsg.ranges.size(); i++){
+			newScanMsg.ranges[i] = std::numeric_limits<double>::infinity();
+		}
 
 		return newScanMsg;
 	}
@@ -151,10 +159,21 @@ private:
 		playerPointCloud.header.frame_id = "/map"; // Point cloud with points associated to the player position
 		playerPointCloud.header.stamp = ros::Time::now();
 
-		for (unsigned int i=0; i < scanMsg.ranges.size(); i++){
-			if(legMask_[i]){
+		player_tracker::LegArray playerLegs;
+		// for (unsigned int i=0; i < scanMsg.ranges.size(); i++){
+			// if(legMask_[i]){
+		for(int j=0; j<lastLegArray_.legs.size(); j++){
+			int countPlayerPoints = 0;
+			int countObstaclePoints = 0;
+			player_tracker::Leg currentLeg = lastLegArray_.legs[j];
+			player_tracker::Leg currentLegToMapFrame;
+			currentLegToMapFrame.position = currentLeg.position;
+			currentLegToMapFrame.point_indexes = currentLeg.point_indexes;
+			bool isPlayerLeg = false;
+			for(int k=0; k<currentLeg.point_indexes.size(); k++){
+				int i = currentLeg.point_indexes[k];
 				// A leg was detected in that scan index, it could be a player
-				if (scanMsg.ranges[i] < 6.6){
+				if (scanMsg.ranges[i] < 5.6){
 					double scan_angle = (i * angleIncrement) - M_PI;
 					geometry_msgs::Point32 pointInMapFrame = transformPointToMapFrame(scan_angle, scanMsg.ranges[i]);
 					
@@ -166,25 +185,32 @@ private:
 				
 					bool isFixedObstaclePresent = checkContour(cellXCoordinateAbsolut, cellYCoordinateAbsolut);
 					if(!isFixedObstaclePresent){
+						countPlayerPoints++;
+						isPlayerLeg = true;
+						currentLegToMapFrame.points.push_back(pointInMapFrame);
 						playerPoints.push_back(pointInMapFrame);
 						playerLaserScan.ranges[i] = scanMsg.ranges[i];
 					}
 					else{
+						countObstaclePoints++;
 						playerLaserScan.ranges[i] = std::numeric_limits<double>::infinity();
 					}
 					
 				}
+				else{
+					playerLaserScan.ranges[i] = std::numeric_limits<double>::infinity();
+				}
 			}
-			else{
-				playerLaserScan.ranges[i] = std::numeric_limits<double>::infinity();
+			if(isPlayerLeg && countPlayerPoints>countObstaclePoints){
+				currentLegToMapFrame.confidence = countPlayerPoints / (countPlayerPoints+countObstaclePoints);
+				playerLegs.legs.push_back(currentLegToMapFrame);
 			}
 		}
 
+		playerLegArrayPublisher.publish(playerLegs);
 		playerPointCloud.points = playerPoints;
 		playerPointCloudPublisher.publish(playerPointCloud);
 		scanPlayerPublisher_.publish(playerLaserScan);
-
-		
 	}
 
 	bool checkContour(unsigned int cellXCoordinateAbsolut, unsigned int cellYCoordinateAbsaolut){
