@@ -161,6 +161,14 @@ target_link_libraries(
   player_position_estimation
   ${catkin_LIBRARIES}
 )
+add_executable(
+  player_ground_truth
+  src/particle_filter/player_ground_truth.cpp
+)
+target_link_libraries(
+  player_ground_truth
+  ${catkin_LIBRARIES}
+)
 ##########################
 # extract_positive_training_clusters
 ##########################

@@ -22,6 +22,6 @@
   <node pkg="player_tracker" type="tower_rectangle_creator.py" name="tower_rectangle_creator" output="screen" respawn="true"/>
 
   <!-- Run position filtering -->
-  <node pkg="player_tracker" name="player_position_estimation" type="player_position_estimation" respawn="true" launch-prefix="xterm -e gdb -args"/>
+  <node pkg="player_tracker" name="player_position_estimation" type="player_position_estimation" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
     
 </launch>

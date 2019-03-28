@@ -43,6 +43,7 @@
  /player_leg_array
  /player
  /filtered_legs
+ /player_ground_truth
 " />
 	<arg name="file_name"  	default=""/>
 
