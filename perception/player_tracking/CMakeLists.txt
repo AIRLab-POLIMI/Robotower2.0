@@ -169,6 +169,7 @@ target_link_libraries(
   player_ground_truth
   ${catkin_LIBRARIES}
 )
+
 ##########################
 # extract_positive_training_clusters
 ##########################

@@ -39,8 +39,6 @@ class PlayerPositionRepublisher{
 int main(int argc, char **argv) {
 	ros::init(argc, argv, "player_ground_truth");
 
-	/** @todo We need to get a param, scan_topic, which is needed for the initialization
-	list of OccupancyGridMapping. Is there a clearer way of doing this? */
 	ros::NodeHandle nh;
     ros::Rate r(20);
     PlayerPositionRepublisher repub;
