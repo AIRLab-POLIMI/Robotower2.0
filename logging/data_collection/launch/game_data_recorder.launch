@@ -44,6 +44,7 @@
  /player
  /filtered_legs
  /player_ground_truth
+ /tower_markers
 " />
 	<arg name="file_name"  	default=""/>
 

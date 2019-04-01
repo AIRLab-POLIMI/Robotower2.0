@@ -10,7 +10,7 @@ from scipy import spatial
 
 # Custom messages
 from player_tracker.msg import Person, PersonArray, Leg, LegArray, PersonEvidence, PersonEvidenceArray, TowerArray, Tower
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from geometry_msgs.msg import PolygonStamped, Point32, PointStamped, Point, Pose
 
 
@@ -33,6 +33,7 @@ class TowerRectCreator(object):
 
         # ROS publishers
         self.pub = rospy.Publisher('bounding_box', PolygonStamped, queue_size=1)
+        self.tower_markers_pub = rospy.Publisher('tower_markers', MarkerArray, queue_size=1)
 
         self.tower_positions, _ = self.get_tower_distances()
         self.tower_target_distances = set([])
@@ -173,6 +174,32 @@ class TowerRectCreator(object):
         It will try to match the newly detected clusters with tracked clusters from previous frames.
         """
         self.search_bounding_box(detected_clusters_msg)
+    
+    def publish_tower_markers(self, points):
+        tower_markers = MarkerArray()
+        i = 0
+        for point in points:
+            m = Marker()
+            m.id = i
+            m.header.stamp = rospy.Time.now()
+            m.header.frame_id = '/map'
+            m.type = Marker.SPHERE
+            m.pose.position.x = point.position.x
+            m.pose.position.y = point.position.y
+
+            m.scale.x = 0.15
+            m.scale.y = 0.15
+            m.scale.z = 0.15
+
+            m.color.a = 1.0
+            m.color.r = 0.0
+            m.color.g = 1.0
+            m.color.b = 0.0
+
+            tower_markers.markers.append(m)
+            i += 1
+        self.tower_markers_pub.publish(tower_markers)
+    
 
     def search_bounding_box(self, detected_clusters_msg):
         tower_array_msg = TowerArray()
@@ -210,6 +237,7 @@ class TowerRectCreator(object):
                             vertices = list(perm)
                             vertices.append(missing_vertex)
                             self.publish_poligon(vertices)
+                            self.publish_tower_markers(vertices)
                             
         if len(tower_array_msg.towers) != 0:
             self.pub_towers.publish(tower_array_msg)
