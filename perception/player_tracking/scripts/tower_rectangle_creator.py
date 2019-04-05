@@ -189,7 +189,7 @@ class TowerRectCreator(object):
 
             m.scale.x = 0.15
             m.scale.y = 0.15
-            m.scale.z = 0.15
+            m.scale.z = 0.15 
 
             m.color.a = 1.0
             m.color.r = 0.0

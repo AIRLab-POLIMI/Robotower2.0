@@ -170,6 +170,28 @@ target_link_libraries(
   ${catkin_LIBRARIES}
 )
 
+
+##############################
+# distances tracking
+#############################
+add_executable(
+  player_robot_distance
+  src/distance_tracking/player_robot_distance.cpp
+)
+target_link_libraries(
+  player_robot_distance
+  ${catkin_LIBRARIES}
+)
+add_executable(
+  player_tower_distance
+  src/distance_tracking/player_tower_distance.cpp
+)
+target_link_libraries(
+  player_tower_distance
+  ${catkin_LIBRARIES}
+)
+
+
 ##########################
 # extract_positive_training_clusters
 ##########################

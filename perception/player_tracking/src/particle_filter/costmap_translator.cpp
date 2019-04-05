@@ -61,6 +61,7 @@ public:
 	playerPointCloudPublisher = nh_.advertise<sensor_msgs::PointCloud>( "player_cloud", 1);
 	scanPlayerPublisher_ = nh_.advertise<sensor_msgs::LaserScan>( "scan_player_tracking", 1);
 	playerLegArrayPublisher = nh_.advertise<player_tracker::LegArray>("player_leg_array", 1);
+	robotPosePublisher_ = nh.advertise<geometry_msgs::Point32>("robot_pose", 1);
 	mapSubscriber_ = nh.subscribe("map", 10, &OccupancyGridMapping::mapCallback, this);
 
 	legMask_.resize(1000, false);
@@ -82,6 +83,7 @@ private:
 	ros::Publisher scanPlayerPublisher_;
 	ros::Publisher playerPointCloudPublisher;
 	ros::Publisher playerLegArrayPublisher;
+	ros::Publisher robotPosePublisher_;
 
 	nav_msgs::OccupancyGridPtr lastMap_;
 
@@ -146,6 +148,10 @@ private:
 		}
 
 		updateCurrentPos();
+
+		robotPosePublisher_.publish(currentPos_);
+
+
 		double angleIncrement = 2*M_PI / scanMsg.ranges.size();
 		sensor_msgs::LaserScan playerLaserScan = copyLaserScanInfo(scanMsg);
 

@@ -19,9 +19,12 @@
   <node pkg="player_tracker" type="local_occupancy_grid_mapping" name="local_occupancy_grid_mapping" output="screen"/>
 
   <!-- Run tower rectangle creator -->
-  <node pkg="player_tracker" type="tower_rectangle_creator.py" name="tower_rectangle_creator" output="screen" respawn="true"/>
+  <!--<node pkg="player_tracker" type="tower_rectangle_creator.py" name="tower_rectangle_creator" output="screen" respawn="true"/>-->
 
   <!-- Run position filtering -->
   <node pkg="player_tracker" name="player_position_estimation" type="player_position_estimation" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
+  <!-- Run distance tracking -->
+  <node pkg="player_tracker" name="player_robot_distance" type="player_robot_distance" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
+  <node pkg="player_tracker" name="player_tower_distance" type="player_tower_distance" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
     
 </launch>
