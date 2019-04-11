@@ -183,11 +183,11 @@ target_link_libraries(
   ${catkin_LIBRARIES}
 )
 add_executable(
-  player_tower_distance
-  src/distance_tracking/player_tower_distance.cpp
+  robot_tower_distance
+  src/distance_tracking/robot_tower_distance.cpp
 )
 target_link_libraries(
-  player_tower_distance
+  robot_tower_distance
   ${catkin_LIBRARIES}
 )
 

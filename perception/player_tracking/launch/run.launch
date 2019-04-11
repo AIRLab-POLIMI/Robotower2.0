@@ -25,6 +25,6 @@
   <node pkg="player_tracker" name="player_position_estimation" type="player_position_estimation" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
   <!-- Run distance tracking -->
   <node pkg="player_tracker" name="player_robot_distance" type="player_robot_distance" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
-  <node pkg="player_tracker" name="player_tower_distance" type="player_tower_distance" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
+  <node pkg="player_tracker" name="robot_tower_distance" type="robot_tower_distance" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
     
 </launch>
