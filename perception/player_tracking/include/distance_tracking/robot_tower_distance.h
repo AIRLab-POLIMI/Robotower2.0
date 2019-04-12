@@ -3,7 +3,8 @@
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/Point32.h>
 #include "std_msgs/Float32.h"
-#include "planning/TowerPositions.h"
+#include <player_tracker/TowerArray.h>
+#include <player_tracker/Tower.h>
 
 namespace player_tracking{
 
@@ -14,13 +15,13 @@ namespace player_tracking{
             ros::Subscriber towerPositionSub_;
             ros::Publisher robotTowerDistancePub_; 
             geometry_msgs::PointStamped robotPosition;
-            geometry_msgs::Point32 towerPosition;
+            geometry_msgs::Point towerPosition;
+            std::vector<geometry_msgs::Point> towers;
             std_msgs::Float32 distance;
 
             
         public:
             void playerPoseCallback(geometry_msgs::PointStamped robotPosition);
-            void towerPoseCallback(planning::TowerPositions positions);
  
 
              void publishDistance();

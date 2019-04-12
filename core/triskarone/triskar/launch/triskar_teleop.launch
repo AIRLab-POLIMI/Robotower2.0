@@ -11,7 +11,7 @@
 	
 	<!-- Triskar teleop node -->
 	<rosparam file="$(find triskar)/params/teleop_triskarone.yaml" command="load" ns="triskar_teleop" if="$(arg teleop)"/>
-	<node pkg="teleop_twist_joy" type="teleop_node" name="triskar_teleop" if="$(arg teleop)"/>
+	<node pkg="joystick" type="joystick_node" name="triskar_teleop" if="$(arg teleop)"/>
 
 	
 </launch> 
