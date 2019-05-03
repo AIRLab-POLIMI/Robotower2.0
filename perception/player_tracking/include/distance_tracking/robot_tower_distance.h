@@ -14,7 +14,7 @@ namespace player_tracking{
             ros::Subscriber robotPositionSub_;
             ros::Subscriber towerPositionSub_;
             ros::Publisher robotTowerDistancePub_; 
-            geometry_msgs::PointStamped robotPosition;
+            geometry_msgs::Point32 robotPosition;
             geometry_msgs::Point towerPosition;
             std::vector<geometry_msgs::Point> towers;
             std_msgs::Float32 distance;

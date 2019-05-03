@@ -46,6 +46,8 @@
  /player_ground_truth
  /tower_markers
  /player_robot_distance
+ /player_tower_distance
+ /robot_tower_distance
 " />
 	<arg name="file_name"  	default=""/>
 

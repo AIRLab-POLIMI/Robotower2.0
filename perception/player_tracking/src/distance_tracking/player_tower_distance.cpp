@@ -2,6 +2,7 @@
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/Point32.h>
+#include <visualization_msgs/Marker.h>
 #include "std_msgs/Float32.h"
 #include "distance_tracking/player_tower_distance.h"
 
@@ -23,8 +24,9 @@ class playerTowerDistance{
 
     playerTowerDistance(){
         playerPositionSub_ = nh_.subscribe("/player", 1, &playerTowerDistance::playerPoseCallback, this);
+        towerPositionSub_ = nh_.subscribe("/target_steering", 1, &playerTowerDistance::towerPoseCallback, this);
         playerTowerDistancePub_ = nh_.advertise<std_msgs::Float32>("player_tower_distance", 1);
-        
+        /*
         for (int i=0; i < 4; i++){
         std::string str = "/tower_" + std::to_string(i+1);
         
@@ -42,11 +44,17 @@ class playerTowerDistance{
     }
 
         towerPosition = towers[2];
+        */
 
     }
 
     void playerPoseCallback(geometry_msgs::PointStamped playerPosition_){
          playerPosition = playerPosition_;
+    }
+
+    void towerPoseCallback(visualization_msgs::Marker target){
+         towerPosition.x = target.pose.position.x;
+         towerPosition.y = target.pose.position.y;
     }
 
 
