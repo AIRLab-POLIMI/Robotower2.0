@@ -199,6 +199,18 @@ target_link_libraries(
   ${catkin_LIBRARIES}
 )
 
+##############################
+# time tracking
+#############################
+add_executable(
+  player_tower_time
+  src/time_tracking/player_tower_time.cpp
+)
+target_link_libraries(
+  player_tower_time
+  ${catkin_LIBRARIES}
+)
+
 
 ##########################
 # extract_positive_training_clusters

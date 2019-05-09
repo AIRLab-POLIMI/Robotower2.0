@@ -48,6 +48,7 @@
  /player_robot_distance
  /player_tower_distance
  /robot_tower_distance
+ /player_tower_time
 " />
 	<arg name="file_name"  	default=""/>
 

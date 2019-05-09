@@ -11,12 +11,11 @@
         --clock 
         --rate=1
         -s 0
-        /home/airlab/Documents/bags/game/_2019-03-22-17-11-37.bag" />
+        /home/airlab/Documents/bags/game/_2019-05-09-12-26-20.bag" />
     <param name="use_sim_time" value="true" />
 
-    <node pkg="player_tracker" name="player_position_estimation" type="player_position_estimation"/> <!-- launch-prefix="xterm -e gdb -args" /-->
-    <node pkg="player_tracker" name="player_robot_distance" type="player_robot_distance" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
-    <node pkg="player_tracker" name="player_tower_distance" type="player_tower_distance" respawn="true"/> <!--launch-prefix="xterm -e gdb -args"/-->
+    <node pkg="player_tracker" name="player_tower_time" type="player_tower_time"/> <!-- launch-prefix="xterm -e gdb -args" /-->
+
    
 
 </launch>
