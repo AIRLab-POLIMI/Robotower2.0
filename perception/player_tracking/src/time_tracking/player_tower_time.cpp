@@ -11,8 +11,9 @@ class playerTowerTime{
         std_msgs::Float32 playerTowerDistance;
         std_msgs::Float32  robotTowerDistance;
         std_msgs::Float32 previousPTDistance;
-        std_msgs::Float32 startTime;
-        std_msgs::Float32 endTime;
+        ros::Time startTime;
+        ros::Time endTime;
+        std_msgs::Float32 interval;
         bool trigger = false;
         ros::Publisher playerTowerTimePub_;
         
@@ -24,6 +25,7 @@ class playerTowerTime{
         playerTowerDistanceSub_ = nh_.subscribe("/player_tower_distance", 1, &playerTowerTime::playerTowerDistanceCallback, this);
         robotTowerDistanceSub_ = nh_.subscribe("/robot_tower_distance", 1, &playerTowerTime::robotTowerDistanceCallback, this);
         playerTowerTimePub_ = nh_.advertise<std_msgs::Float32>("player_tower_time", 1);
+        previousPTDistance = playerTowerDistance;
 
     }
 
@@ -37,18 +39,24 @@ class playerTowerTime{
 
 
     void publishAtTowerTime(){
-
-        if(playerTowerDistance.data - previousPTDistance.data > 2.0 && !trigger){
-            startTime.data = ros::Time::now().toSec();
+        if(!trigger){
+            if(playerTowerDistance.data - previousPTDistance.data > 1.0){
+            startTime = ros::Time::now();
             trigger = true;
-            playerTowerTimePub_.publish(startTime.data)
+            }
         }
-        if(playerTowerDistance.data - previousPTDistance.data > 0.3 && trigger){
-            endTime.data = ros::Time::now().toSec();
-            trigger = false;
-            playerTowerTimePub_.publish(endTime.data - startTime.data);
+       
+        else{
+            if(previousPTDistance.data - playerTowerDistance.data > 0.3){
+                endTime = ros::Time::now();
+                trigger = false;
+                interval.data = endTime.toSec() - startTime.toSec();
+                playerTowerTimePub_.publish(interval.data);
+            }
         }
+
         previousPTDistance = playerTowerDistance;
+
         
     }
 };
@@ -58,6 +66,7 @@ class playerTowerTime{
 
 	ros::NodeHandle nh;
     ros::Rate r(20);
+
     playerTowerTime playerTowerTimePub_;
     while(ros::ok()){
         playerTowerTimePub_.publishAtTowerTime();

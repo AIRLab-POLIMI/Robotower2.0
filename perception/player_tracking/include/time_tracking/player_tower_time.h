@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include "std_msgs/Float32.h"
+#include "std_msgs/Time.h"
 
 namespace player_tracking{
 
@@ -8,6 +9,7 @@ namespace player_tracking{
         ros::NodeHandle nh_;
         ros::Subscriber playerTowerDistanceSub_;
         ros::Subscriber robotTowerDistanceSub_;
+        ros::Subscriber clockSub_;        
         std_msgs::Float32 playerTowerDistance;
         std_msgs::Float32  robotTowerDistance;
         std_msgs::Float32 previousPTDistance;
