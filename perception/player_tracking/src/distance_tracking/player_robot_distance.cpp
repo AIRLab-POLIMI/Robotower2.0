@@ -36,7 +36,7 @@ class PlayerRobotDistance{
         distance.data = sqrt(pow(2, static_cast<float>(playerPosition.point.x) - robotPosition.x) + 
                             pow(2, static_cast<float>(playerPosition.point.y) - robotPosition.y));
          if(distance.data > 0)
-             playerRobotDistancePub_.publish(distance.data);
+             playerRobotDistancePub_.publish(distance);
       
     }
         

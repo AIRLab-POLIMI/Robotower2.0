@@ -11,10 +11,10 @@
         --clock
         --rate=1
         -s 0
-        /home/airlab/Documents/bags/game/_2019-05-03-11-48-37.bag" />
+        /home/airlab/Documents/bags/game/_2019-05-17-16-45-43.bag" />
     <param name="use_sim_time" value="true" />
 
-    <node pkg="player_tracker" name="player_tower_time" type="player_tower_time"/>  <!--launch-prefix="xterm -e gdb -args" /-->
+    <!--<node pkg="player_tracker" name="player_tower_time" type="player_tower_time"/>  launch-prefix="xterm -e gdb -args" /-->
 
    <!-->To test with an existing bag:
    - add in Cmake list the new source class

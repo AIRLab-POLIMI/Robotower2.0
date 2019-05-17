@@ -66,7 +66,7 @@ class RobotTowerDistance{
         distance.data = sqrt(pow(2, static_cast<float>(robotPosition.x) - static_cast<float>(towerPosition.x)) + 
                             pow(2, static_cast<float>(robotPosition.y) - static_cast<float>(towerPosition.y)));
          if(distance.data > 0)
-             robotTowerDistancePub_.publish(distance.data);
+             robotTowerDistancePub_.publish(distance);
       
     }
         

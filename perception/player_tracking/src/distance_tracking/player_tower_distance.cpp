@@ -63,7 +63,7 @@ class playerTowerDistance{
         distance.data = sqrt(pow(2, static_cast<float>(playerPosition.point.x) - static_cast<float>(towerPosition.x)) + 
                             pow(2, static_cast<float>(playerPosition.point.y) - static_cast<float>(towerPosition.y)));
          if(distance.data > 0)
-             playerTowerDistancePub_.publish(distance.data);
+             playerTowerDistancePub_.publish(distance);
       
     }
         

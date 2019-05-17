@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include "std_msgs/Float32.h"
 #include "std_msgs/Time.h"
+#include <geometry_msgs/Twist.h>
 
 namespace player_tracking{
 
@@ -17,6 +18,10 @@ namespace player_tracking{
         std_msgs::Float32 endTime;
         bool trigger = false;
         ros::Publisher playerTowerTimePub_;
+        bool isPlayerFar = false;
+        int counterFar = 0;
+        geometry_msgs::Twist twistVel;
+        geometry_msgs::Twist newTwistVel;
 
             
         public:
@@ -24,6 +29,8 @@ namespace player_tracking{
 
             void robotTowerDistanceCallback(std_msgs::Float32 robotTowerDistance_);
  
+
+            void velocityControllerCallback(geometry_msgs::Twist twistVel_);
 
              void publishAtTowerTime();
             
