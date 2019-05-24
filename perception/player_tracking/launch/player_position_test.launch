@@ -11,7 +11,7 @@
         --clock
         --rate=1
         -s 0
-        /home/airlab/Documents/bags/game/_2019-05-17-17-02-32.bag" />
+        /home/airlab/Documents/bags/game/speed_up_to_tower.bag" />
     <param name="use_sim_time" value="true" />
 
     <!--<node pkg="player_tracker" name="player_tower_time" type="player_tower_time"/>  launch-prefix="xterm -e gdb -args" /-->
