@@ -26,6 +26,9 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
         exit(-1);
     }
     
+    player_robot_distance_sub_ = nh_.subscribe("/player_robot_distance", 1, &ActionPlanning::ActionPlanner::playerRobotDistanceCallback, this);
+
+
     action_pub_ = nh_.advertise<planning::ActionEncoded>(action_topic_, 1);
     safety_sub_ = nh_.subscribe(safety_topic_, 1, &ActionPlanning::ActionPlanner::safetyCallback, this);
     deception_command_sub_ = nh_.subscribe(deception_command_topic_, 1, &ActionPlanning::ActionPlanner::deceptionCommandCallback, this);
@@ -40,6 +43,11 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
 
     
 }
+
+
+ void ActionPlanning::ActionPlanner::playerRobotDistanceCallback(std_msgs::Float32 playerRobotDistance_){
+         playerRobotDistance = playerRobotDistance_;
+    }
 
 void ActionPlanning::ActionPlanner::safetyCallback(const planning::SafetyMsg& msg){
     safety_msg_ = msg;
@@ -69,7 +77,16 @@ void ActionPlanning::ActionPlanner::deceptionCommandCallback(const behavior_with
 void ActionPlanning::ActionPlanner::updateLoop(){
     planning::ActionEncoded action_msg;
 
+
+
     bool is_safe = safety_count_ >= 5;
+
+    //////*
+    //if(playerRobotDistance.data > 2.0){
+    //    is_safe = false;
+    //}
+
+/////
     if(!is_safe){
         // ROS_WARN("ESCAPING");
         currently_being_deceptive_ = false;

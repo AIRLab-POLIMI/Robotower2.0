@@ -4,11 +4,14 @@ class cutPlayerOff {
 
 private:
 	ros::NodeHandle nh_;
-	ros::Subscriber playerRobotDistanceSub_;
+	ros::Subscriber playerTowerDistanceSub_;
+    ros::Subscriber robotTowerDistanceSub_;
 	ros::Subscriber robotBorderDistanceSub_;
 	ros::Subscriber velocityControllerSub_;
 	ros::Subscriber robotPositionSub_;
 	ros::Subscriber towerTargetSub_;
+	std_msgs::Float32 playerTowerDistance;
+	std_msgs::Float32 robotTowerDistance;
 	std_msgs::Float32 playerRobotDistance;
 	std_msgs::Float32  robotBorderDistance;
 	geometry_msgs::Point32 robotPosition;
@@ -22,17 +25,21 @@ public:
 
 	cutPlayerOff() {
 
-		playerRobotDistanceSub_ = nh_.subscribe("/player_robot_distance", 1, &cutPlayerOff::playerRobotDistanceCallback, this);
+		playerTowerDistanceSub_ = nh_.subscribe("/player_tower_distance", 1, &cutPlayerOff::playerTowerDistanceCallback, this);
+		robotTowerDistanceSub_ = nh_.subscribe("/robot_tower_distance", 1, &cutPlayerOff::playerTowerDistanceCallback, this);
 		robotBorderDistanceSub_ = nh_.subscribe("/tower_rectangle", 1, &cutPlayerOff::robotBorderDistanceCallback, this);
 		robotPositionSub_ = nh_.subscribe("/robot_pose", 1, &cutPlayerOff::robotPoseCallback, this);
 		towerTargetSub_ = nh_.subscribe("/start_attack", 1, &cutPlayerOff::towerTargetCallback, this);
 		velocityControllerPub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 	}
 
-	void playerRobotDistanceCallback(std_msgs::Float32 playerRobotDistance_) {
-	
-		playerRobotDistance = playerRobotDistance_;
-	}
+	void playerTowerDistanceCallback(std_msgs::Float32 playerTowerDistance_){
+         playerTowerDistance = playerTowerDistance_;
+    }
+
+    void robotTowerDistanceCallback(std_msgs::Float32 robotTowerDistance_){
+         robotTowerDistance = robotTowerDistance_;
+    }
 
 	void robotPoseCallback(geometry_msgs::Point32 robotPosition_) {
 		robotPosition = robotPosition_;
@@ -87,13 +94,33 @@ public:
 	/*Compute when the robot can safely cut the player off*/
 
 	void checkCutOffConditions() {
-		
-		if (playerRobotDistance.data > 0.7) {
-			ROS_INFO("OOOOOOOOKKKKKKKKKKKKKKKKKKK PREVIOUS %d CURRENT %d ROBOTPOSE %f BORDER %f", currentTarget.data, previousTarget.data,
-			robotPosition.x, borders[0]);
-			if(currentTarget.data == 3 && previousTarget.data == 0 && robotPosition.x > borders[0]){
+		playerRobotDistance.data = playerTowerDistance.data - robotTowerDistance.data;
+		if (playerRobotDistance.data > 1.7) {
+			if(((currentTarget.data == 3 && previousTarget.data == 0) || (currentTarget.data == 0 && previousTarget.data == 3)) 
+						&& robotPosition.x > borders[0]){
 				newTwistVel.linear.x = -0.2;
            	    newTwistVel.linear.y = 0;
+                velocityControllerPub_.publish(newTwistVel);
+			}
+
+			if(((currentTarget.data == 3 && previousTarget.data == 2) || (currentTarget.data == 2 && previousTarget.data == 3)) 
+						&& robotPosition.y > borders[3]){
+				newTwistVel.linear.x = 0;
+           	    newTwistVel.linear.y = -0.2;
+				
+                velocityControllerPub_.publish(newTwistVel);
+			}
+			if(((currentTarget.data == 1 && previousTarget.data == 2) || (currentTarget.data == 2 && previousTarget.data == 1)) 
+						&& robotPosition.x > borders[2]){
+				newTwistVel.linear.x = 0.2;
+           	    newTwistVel.linear.y = 0;
+				
+                velocityControllerPub_.publish(newTwistVel);
+			}
+			if(((currentTarget.data == 1 && previousTarget.data == 0) || (currentTarget.data == 0 && previousTarget.data == 1))
+			 			&& robotPosition.y > borders[1]){
+				newTwistVel.linear.x = 0;
+           	    newTwistVel.linear.y = 0.2;
 				
                 velocityControllerPub_.publish(newTwistVel);
 			}

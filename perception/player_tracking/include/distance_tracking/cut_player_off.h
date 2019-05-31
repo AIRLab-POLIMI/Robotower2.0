@@ -11,11 +11,14 @@ namespace player_tracking{
 
     private:
         ros::NodeHandle nh_;
-        ros::Subscriber playerRobotDistanceSub_;
+        ros::Subscriber playerTowerDistanceSub_;
+        ros::Subscriber robotTowerDistanceSub_;
         ros::Subscriber robotBorderDistanceSub_;
         ros::Subscriber velocityControllerSub_;
         ros::Subscriber robotPositionSub_;
         ros::Subscriber towerTargetSub_;
+        std_msgs::Float32 playerTowerDistance;
+        std_msgs::Float32  robotTowerDistance;
         std_msgs::Float32 playerRobotDistance;
         std_msgs::Float32  robotBorderDistance;
         geometry_msgs::Point32 robotPosition;

@@ -320,6 +320,8 @@ void Behavior::Planner::updateDecisionVariables(){
         }
     }
     
+
+
     // if (!all_transforms_available) return;
     for(int i=0; i < num_towers_; i++ ){
         /* update goal change for the corresponding action*/
@@ -340,6 +342,8 @@ void Behavior::Planner::updateDecisionVariables(){
                             (was_recent_target_[i] == true)* (((double)rand()/(RAND_MAX)) < (2.0/3.0)) * (towers_left_ > 2)*1000 -
                             (was_last_target_[i] == true)*(towers_left_ > 1)*1000; // 1000 is a larger weight associated with the number of leds.
             }
+
+            
             utilities_[i] = utility;
             float bad_value = -utility;
             actions_[i]->setGoalChange(goals_[j]->getName(), bad_value); // algorithm minimizes Goal Value, 

@@ -6,6 +6,7 @@
 
 #include <std_msgs/Bool.h>
 #include <geometry_msgs/Point32.h>
+#include "std_msgs/Float32.h"
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/LaserScan.h>
 
@@ -25,11 +26,14 @@ namespace ActionPlanning{
         ros::NodeHandle nh_;
         ros::Subscriber safety_sub_;
         ros::Subscriber deception_command_sub_;
+        ros::Subscriber player_robot_distance_sub_;
         ros::Publisher action_pub_;
 
         std::string action_topic_;
         std::string safety_topic_;
         std::string deception_command_topic_;
+
+        std_msgs::Float32 playerRobotDistance;
 
         planning::ActionEncoded last_action_;
 
@@ -41,6 +45,8 @@ namespace ActionPlanning{
 
         int priority_;
         int safety_count_;
+
+        void playerRobotDistanceCallback(std_msgs::Float32 playerRobotDistance_);
 
         void safetyCallback(const planning::SafetyMsg& msg);
 		void deceptionCallback(const behavior_with_deception::Deception& msg);

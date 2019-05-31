@@ -200,13 +200,22 @@ target_link_libraries(
 )
 
 add_executable(
-  cut_player_off
-  src/distance_tracking/cut_player_off.cpp
+  change_target
+  src/distance_tracking/change_target.cpp
 )
 target_link_libraries(
-  cut_player_off
+  change_target
   ${catkin_LIBRARIES}
 )
+
+##add_executable(
+#  cut_player_off
+#  src/distance_tracking/cut_player_off.cpp
+#)
+#target_link_libraries(
+#  cut_player_off
+#  ${catkin_LIBRARIES}
+#)
 
 ##############################
 # time tracking
