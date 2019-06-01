@@ -26,14 +26,18 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
         exit(-1);
     }
     
-    player_robot_distance_sub_ = nh_.subscribe("/player_robot_distance", 1, &ActionPlanning::ActionPlanner::playerRobotDistanceCallback, this);
-
+    playerRobotDistanceSub_ = nh_.subscribe("/player_robot_distance", 1, &ActionPlanning::ActionPlanner::playerRobotDistanceCallback, this);
+	playerTowerDistanceSub_ = nh_.subscribe("/player_tower_distance", 1, &ActionPlanning::ActionPlanner::playerTowerDistanceCallback, this);
+	intervalPub_ = nh_.advertise<std_msgs::Float32>("close_robot_interval", 1);
+	changeDecisionPub_ = nh_.advertise<std_msgs::Float32>("decision_changed", 1);
 
     action_pub_ = nh_.advertise<planning::ActionEncoded>(action_topic_, 1);
     safety_sub_ = nh_.subscribe(safety_topic_, 1, &ActionPlanning::ActionPlanner::safetyCallback, this);
     deception_command_sub_ = nh_.subscribe(deception_command_topic_, 1, &ActionPlanning::ActionPlanner::deceptionCommandCallback, this);
 
     is_first_deceptive_message_ = false;
+	trigger = false;
+	interval.data = 0.0;
 
     last_action_ = planning::ActionEncoded();
     last_action_.action_code = -1; // Initializing to invalid code
@@ -48,6 +52,10 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
  void ActionPlanning::ActionPlanner::playerRobotDistanceCallback(std_msgs::Float32 playerRobotDistance_){
          playerRobotDistance = playerRobotDistance_;
     }
+
+ void ActionPlanning::ActionPlanner::playerTowerDistanceCallback(std_msgs::Float32 playerTowerDistance_) {
+	 playerTowerDistance = playerTowerDistance_;
+ }
 
 void ActionPlanning::ActionPlanner::safetyCallback(const planning::SafetyMsg& msg){
     safety_msg_ = msg;
@@ -81,10 +89,31 @@ void ActionPlanning::ActionPlanner::updateLoop(){
 
     bool is_safe = safety_count_ >= 5;
 
-    //////*
-    //if(playerRobotDistance.data > 2.0){
-    //    is_safe = false;
-    //}
+
+
+	if (!trigger) {
+		if (playerRobotDistance.data < 1.5 && playerTowerDistance.data > 1.5) {
+			startTime = ros::Time::now();
+			trigger = true;
+		}
+	}
+
+	else {
+		if (playerTowerDistance.data > 1.5) {
+			endTime = ros::Time::now();
+			trigger = false;
+			interval.data = interval.data + (endTime.toSec() - startTime.toSec());
+			intervalPub_.publish(interval);
+			if (interval.data > 10.0) {
+				is_safe = false;
+				interval.data = 0.0;
+				changeDecisionPub_.publish(interval);
+			}
+				
+
+		}
+	}
+  
 
 /////
     if(!is_safe){
