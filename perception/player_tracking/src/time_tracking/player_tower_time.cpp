@@ -22,9 +22,9 @@ class playerTowerTime{
         int counterFar = 0;
         geometry_msgs::Twist twistVel;
         geometry_msgs::Twist newTwistVel;
-        double speedUp = 0.1;
-        double maxSpeedUp = 0.15; 
-        int timesAtTowerLimit = 2;  
+        double speedUp = 0.08;
+        double maxSpeedUp = 0.12; 
+        int timesAtTowerLimit = 3;  
         double rangeAtTower = 2.4;    
 
     public:

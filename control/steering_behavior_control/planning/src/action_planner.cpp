@@ -28,8 +28,8 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
     
     playerRobotDistanceSub_ = nh_.subscribe("/player_robot_distance", 1, &ActionPlanning::ActionPlanner::playerRobotDistanceCallback, this);
 	playerTowerDistanceSub_ = nh_.subscribe("/player_tower_distance", 1, &ActionPlanning::ActionPlanner::playerTowerDistanceCallback, this);
-	intervalPub_ = nh_.advertise<std_msgs::Float32>("close_robot_interval", 1);
-	changeDecisionPub_ = nh_.advertise<std_msgs::Float32>("decision_changed", 1);
+	intervalPub_ = nh_.advertise<std_msgs::Float32>("/close_robot_interval", 1);
+	changeDecisionPub_ = nh_.advertise<std_msgs::Float32>("/decision_changed", 1);
 
     action_pub_ = nh_.advertise<planning::ActionEncoded>(action_topic_, 1);
     safety_sub_ = nh_.subscribe(safety_topic_, 1, &ActionPlanning::ActionPlanner::safetyCallback, this);
@@ -92,7 +92,7 @@ void ActionPlanning::ActionPlanner::updateLoop(){
 
 
 	if (!trigger) {
-		if (playerRobotDistance.data < 1.5 && playerTowerDistance.data > 1.5) {
+		if (playerRobotDistance.data < 1.35 && playerTowerDistance.data > 1.5) {
 			startTime = ros::Time::now();
 			trigger = true;
 		}
@@ -104,7 +104,7 @@ void ActionPlanning::ActionPlanner::updateLoop(){
 			trigger = false;
 			interval.data = interval.data + (endTime.toSec() - startTime.toSec());
 			intervalPub_.publish(interval);
-			if (interval.data > 10.0) {
+			if (interval.data > 3.0) {
 				is_safe = false;
 				interval.data = 0.0;
 				changeDecisionPub_.publish(interval);

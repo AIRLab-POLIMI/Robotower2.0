@@ -11,13 +11,13 @@
         --clock
         --rate=1
         -s 0
-        /home/airlab/Documents/bags/game/speed_up_to_tower.bag" />
+        /home/airlab/Documents/bags/game/_2019-06-06-15-59-14.bag" />
     <param name="use_sim_time" value="true" />
 
-    <!--<node pkg="player_tracker" name="cut_player_off" type="cut_player_off"/>  --/>
-   <!-->To test with an existing bag:
+    <!--<node pkg="player_tracker" name="cut_player_off" type="cut_player_off"/>  -->
+   <!--To test with an existing bag:
    - add in Cmake list the new source class
    - add the node here
-   - let the test class publish on a new unused topic</-->
+   - let the test class publish on a new unused topic-->
 
 </launch>
