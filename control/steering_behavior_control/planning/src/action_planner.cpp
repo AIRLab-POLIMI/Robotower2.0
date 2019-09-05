@@ -90,7 +90,6 @@ void ActionPlanning::ActionPlanner::updateLoop(){
     bool is_safe = safety_count_ >= 5;
 
 
-
 	if (!trigger) {
 		if (playerRobotDistance.data < 1.35 && playerTowerDistance.data > 1.5) {
 			startTime = ros::Time::now();
@@ -113,7 +112,6 @@ void ActionPlanning::ActionPlanner::updateLoop(){
 
 		}
 	}
-  
 
 /////
     if(!is_safe){

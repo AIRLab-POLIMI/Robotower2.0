@@ -22,8 +22,8 @@ class playerTowerTime{
         int counterFar = 0;
         geometry_msgs::Twist twistVel;
         geometry_msgs::Twist newTwistVel;
-        double speedUp = 0.08;
-        double maxSpeedUp = 0.12; 
+        double speedUp = 0.10;
+        double maxSpeedUp = 0.14; 
         int timesAtTowerLimit = 3;  
         double rangeAtTower = 2.4;    
 
@@ -111,7 +111,7 @@ class playerTowerTime{
             velocityControllerPub_.publish(newTwistVel);
         }
         if(speedUp < maxSpeedUp)
-            speedUp += 0.01;
+            speedUp += 0.02;
     } 
 };
 

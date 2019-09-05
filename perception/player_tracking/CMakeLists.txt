@@ -199,14 +199,6 @@ target_link_libraries(
   ${catkin_LIBRARIES}
 )
 
-add_executable(
-  change_target
-  src/distance_tracking/change_target.cpp
-)
-target_link_libraries(
-  change_target
-  ${catkin_LIBRARIES}
-)
 
 ##add_executable(
 #  cut_player_off
