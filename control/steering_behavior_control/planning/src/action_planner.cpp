@@ -38,6 +38,9 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
     is_first_deceptive_message_ = false;
 	trigger = false;
 	interval.data = 0.0;
+    min_close_interval = 0.9;
+    initial_close_interval = 2.0;
+
 
     last_action_ = planning::ActionEncoded();
     last_action_.action_code = -1; // Initializing to invalid code
@@ -103,10 +106,13 @@ void ActionPlanning::ActionPlanner::updateLoop(){
 			trigger = false;
 			interval.data = interval.data + (endTime.toSec() - startTime.toSec());
 			intervalPub_.publish(interval);
-			if (interval.data > 3.0) {
+			if (interval.data > initial_close_interval) {
 				is_safe = false;
 				interval.data = 0.0;
+                initial_close_interval -= 0.3;
 				changeDecisionPub_.publish(interval);
+                if(initial_close_interval == min_close_interval)
+                    initial_close_interval = 3.0;
 			}
 				
 

@@ -22,8 +22,8 @@ class playerTowerTime{
         int counterFar = 0;
         geometry_msgs::Twist twistVel;
         geometry_msgs::Twist newTwistVel;
-        double speedUp = 0.10;
-        double maxSpeedUp = 0.14; 
+        double speedUp = 0.14;
+        double maxSpeedUp = 0.2; 
         int timesAtTowerLimit = 3;  
         double rangeAtTower = 2.4;    
 

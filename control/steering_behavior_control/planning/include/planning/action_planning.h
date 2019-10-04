@@ -40,6 +40,8 @@ namespace ActionPlanning{
 		ros::Time endTime;
 		std_msgs::Float32 interval;
 		bool trigger;
+        double min_close_interval;
+        double initial_close_interval;
 		ros::Publisher intervalPub_;
 		ros::Publisher changeDecisionPub_;
 
