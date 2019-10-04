@@ -92,6 +92,7 @@ void ActionPlanning::ActionPlanner::updateLoop(){
 
     bool is_safe = safety_count_ >= 5;
 
+    //comment from here to basic steering
 
 	if (!trigger) {
 		if (playerRobotDistance.data < 1.35 && playerTowerDistance.data > 1.5) {
@@ -118,6 +119,8 @@ void ActionPlanning::ActionPlanner::updateLoop(){
 
 		}
 	}
+
+    //to here
 
 /////
     if(!is_safe){
