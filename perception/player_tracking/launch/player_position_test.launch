@@ -11,7 +11,7 @@
         --clock
         --rate=1
         -s 0
-        /home/airlab/Documents/bags/game/speed_up_and_changing_end_decision.bag" />
+        /home/airlab/Documents/bags/game/_2019-10-04-09-28-19.bag" />
     <param name="use_sim_time" value="true" />
 
     <!--<node pkg="player_tracker" name="cut_player_off" type="cut_player_off"/>  -->

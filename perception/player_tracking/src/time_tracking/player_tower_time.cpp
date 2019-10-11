@@ -22,9 +22,9 @@ class playerTowerTime{
         int counterFar = 0;
         geometry_msgs::Twist twistVel;
         geometry_msgs::Twist newTwistVel;
-        double speedUp = 0.14;
+        double speedUp = 0.16;
         double maxSpeedUp = 0.2; 
-        int timesAtTowerLimit = 3;  
+        int timesAtTowerLimit = 2;  
         double rangeAtTower = 2.4;    
 
     public:
@@ -79,7 +79,7 @@ class playerTowerTime{
 
         previousPTDistance = playerTowerDistance;
 
-        if(playerTowerDistance.data - robotTowerDistance.data > 1.25 && isPlayerFar)
+        if(playerTowerDistance.data - robotTowerDistance.data > 1.0 && isPlayerFar)
             speedUpRobot();
 
     }
