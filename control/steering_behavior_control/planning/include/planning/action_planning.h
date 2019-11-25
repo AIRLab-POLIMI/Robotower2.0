@@ -28,6 +28,7 @@ namespace ActionPlanning{
         ros::Subscriber deception_command_sub_;
         ros::Subscriber playerRobotDistanceSub_;
 		ros::Subscriber playerTowerDistanceSub_;
+        ros::Subscriber robotTowerDistanceSub_;
         ros::Publisher action_pub_;
 
         std::string action_topic_;
@@ -36,10 +37,14 @@ namespace ActionPlanning{
 
         std_msgs::Float32 playerRobotDistance;
 		std_msgs::Float32 playerTowerDistance;
+        std_msgs::Float32 robotTowerDistance;
 		ros::Time startTime;
 		ros::Time endTime;
+        ros::Time startNearTowerTime;
+		ros::Time endNearTowerTime;
 		std_msgs::Float32 interval;
 		bool trigger;
+        bool changeTrigger;
         double min_close_interval;
         double initial_close_interval;
 		ros::Publisher intervalPub_;
@@ -58,6 +63,7 @@ namespace ActionPlanning{
 
         void playerRobotDistanceCallback(std_msgs::Float32 playerRobotDistance_);
 		void playerTowerDistanceCallback(std_msgs::Float32 playerTowerDistance_);
+        void robotTowerDistanceCallback(std_msgs::Float32 robotTowerDistance_);
 
         void safetyCallback(const planning::SafetyMsg& msg);
 		void deceptionCallback(const behavior_with_deception::Deception& msg);

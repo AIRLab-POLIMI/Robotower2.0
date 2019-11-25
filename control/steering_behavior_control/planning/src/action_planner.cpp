@@ -28,6 +28,7 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
     
     playerRobotDistanceSub_ = nh_.subscribe("/player_robot_distance", 1, &ActionPlanning::ActionPlanner::playerRobotDistanceCallback, this);
 	playerTowerDistanceSub_ = nh_.subscribe("/player_tower_distance", 1, &ActionPlanning::ActionPlanner::playerTowerDistanceCallback, this);
+	robotTowerDistanceSub_ = nh_.subscribe("/robot_tower_distance", 1, &ActionPlanning::ActionPlanner::robotTowerDistanceCallback, this);
 	intervalPub_ = nh_.advertise<std_msgs::Float32>("/close_robot_interval", 1);
 	changeDecisionPub_ = nh_.advertise<std_msgs::Float32>("/decision_changed", 1);
 
@@ -37,6 +38,7 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
 
     is_first_deceptive_message_ = false;
 	trigger = false;
+    changeTrigger = false;
 	interval.data = 0.0;
     min_close_interval = 0.9;
     initial_close_interval = 2.0;
@@ -58,6 +60,10 @@ ActionPlanning::ActionPlanner::ActionPlanner(){
 
  void ActionPlanning::ActionPlanner::playerTowerDistanceCallback(std_msgs::Float32 playerTowerDistance_) {
 	 playerTowerDistance = playerTowerDistance_;
+ }
+
+ void ActionPlanning::ActionPlanner::robotTowerDistanceCallback(std_msgs::Float32 robotTowerDistance_) {
+	 robotTowerDistance = robotTowerDistance_;
  }
 
 void ActionPlanning::ActionPlanner::safetyCallback(const planning::SafetyMsg& msg){
@@ -120,7 +126,28 @@ void ActionPlanning::ActionPlanner::updateLoop(){
 		}
 	}
 
+
+
+    
+    if(!changeTrigger){
+        if(robotTowerDistance.data - playerTowerDistance.data > 0.5){
+        startNearTowerTime = ros::Time::now();
+        changeTrigger = true;
+        }
+    }
+    else{
+        if(robotTowerDistance.data - playerTowerDistance.data > 0.5){
+            endNearTowerTime = ros::Time::now();
+          if((endNearTowerTime.toSec() - startNearTowerTime.toSec()) > 1.0){
+                is_safe = false;
+                changeTrigger = false;
+          }
+        }
+    }
+    
     //to here
+
+
 
 /////
     if(!is_safe){
